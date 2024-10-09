@@ -10,6 +10,7 @@ from abacus import (
     Entry,
     Regular,
     double_entry,
+    AbacusError,
 )
 
 
@@ -82,6 +83,21 @@ def test_ledger_creation(account_name, cls):
         .to_ledger()
     )
     assert isinstance(ledger[account_name], cls)
+
+@pytest.mark.parametrize(
+    "chart",
+    [
+        Chart(retained_earnings="re", income=["sales"]).offset("sales", "refunds").offset("sales", "refunds"),
+        Chart(retained_earnings="re", assets=["cash", "cash"]),
+        Chart(retained_earnings="re", assets=["other"], capital=["other"]),
+        Chart(retained_earnings="_", assets=["_"]),
+
+    ],
+)
+def test_chart_assert_unique_on_repeated_account_name(chart):
+    with pytest.raises(AbacusError):
+        chart.assert_unique()
+        print(chart)
 
 
 chart = make_chart()

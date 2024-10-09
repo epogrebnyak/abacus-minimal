@@ -94,7 +94,30 @@ class Chart(BaseModel):
     contra_accounts: dict[str, list[str]] = {}
     names: dict[str, str] = {}
 
-    def to_dict(self):
+    # TODO: add pydantic validation for uniqueness, contra account rules, etc.
+
+    @property
+    def accounts(self):
+        return (
+            self.assets
+            + self.capital
+            + self.liabilities
+            + self.income
+            + self.expenses
+            + [self.retained_earnings]
+            + sum(self.contra_accounts.values(), [])  # rather unusual
+        )
+
+    def assert_unique(self):
+        if len(self.to_dict()) < len(self.accounts):
+            raise AbacusError("Account names must be unique.")
+
+    def dry_run(self):
+        """Verify chart by making an empty ledger and try closing it."""
+        self.to_ledger().close(chart=self)
+        return self
+
+    def to_dict(self) -> "ChartDict":
         result = {}
         for t, attr in (
             (T5.Asset, "assets"),
@@ -111,11 +134,11 @@ class Chart(BaseModel):
                 result[contra_name] = Contra(account_name)
         return ChartDict(result)
 
-    def offset(self, account_name, contra_name):
+    def offset(self, account_name: str, contra_name: str):
         self.contra_accounts.setdefault(account_name, list()).append(contra_name)
         return self
 
-    def name(self, account_name, title):
+    def name(self, account_name: str, title: str):
         self.names[account_name] = title
         return self
 
@@ -133,15 +156,22 @@ class Definition(ABC):
 
 @dataclass
 class Regular(Definition):
+    """Regular account, holds information about account type."""
+
     t5: T5
 
 
 @dataclass
 class Contra(Definition):
+    """Contra account, refers to an existing regular account."""
+
     name: str
 
 
 class ChartDict(UserDict[str, Definition]):
+    """Dictionary of accounts with their definitions.
+    A useful intermediate data structure between Chart and Ledger.
+    """
 
     def get_constructor(self, account_name: str) -> Type["TAccount"]:
         """Return T-account class constructor for a given account name."""
@@ -429,9 +459,6 @@ class CreditAccount(TAccount):
 
 class Ledger(UserDict[AccountName, TAccount]):
     pass
-
-    #     def copy(self):
-    #         return Ledger({name: account.copy() for name, account in self.items()})
 
     def post_single(self, single_entry: SingleEntry):
         """Post single entry to ledger. Will raise `KeyError` if account name is not found."""
