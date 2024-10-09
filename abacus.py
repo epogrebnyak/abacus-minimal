@@ -48,7 +48,7 @@ from abc import ABC, abstractmethod
 from collections import UserDict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, Iterator, Sequence, Type, Set
+from typing import Iterator, Sequence, Type
 
 from pydantic import BaseModel
 
@@ -91,11 +91,11 @@ class Chart(BaseModel):
     liabilities: list[str] = []
     income: list[str] = []
     expenses: list[str] = []
-    contra_accounts: dict[str, set[str]] = {}
+    contra_accounts: dict[str, list[str]] = {}
     names: dict[str, str] = {}
 
     def to_dict(self):
-        result = {self.retained_earnings: Regular(T5.Capital)}
+        result = {}
         for t, attr in (
             (T5.Asset, "assets"),
             (T5.Liability, "liabilities"),
@@ -105,13 +105,18 @@ class Chart(BaseModel):
         ):
             for account_name in getattr(self, attr):
                 result[account_name] = Regular(t)
+        result[self.retained_earnings] = Regular(T5.Capital)
         for account_name, contra_names in self.contra_accounts.items():
             for contra_name in contra_names:
                 result[contra_name] = Contra(account_name)
         return ChartDict(result)
 
     def offset(self, account_name, contra_name):
-        self.contra_accounts.setdefault(account_name, set()).add(contra_name)
+        self.contra_accounts.setdefault(account_name, list()).append(contra_name)
+        return self
+
+    def name(self, account_name, title):
+        self.names[account_name] = title
         return self
 
     @property
@@ -136,37 +141,42 @@ class Contra(Definition):
     name: str
 
 
-def reverse(t_account: Type["TAccount"]) -> Type["TAccount"]:
-    return DebitAccount if t_account == CreditAccount else CreditAccount
-
-
 class ChartDict(UserDict[str, Definition]):
 
-    def get_constructor(self, account_name) -> Type["TAccount"]:
-        """Return T-account constructor for a given account name."""
+    def get_constructor(self, account_name: str) -> Type["TAccount"]:
+        """Return T-account class constructor for a given account name."""
         match self[account_name]:
             case Regular(t5):
                 return t5.t_account
             case Contra(name):
-                return reverse(self.get_constructor(name))
+                return self.get_constructor(name).reverse()
+        raise KeyError(account_name)
 
     def to_ledger(self) -> "Ledger":
         """Create ledger."""
         return Ledger(
-            {account_name: self.get_constructor(account_name)() for account_name in self.keys()}
+            {
+                account_name: self.get_constructor(account_name)()
+                for account_name in self.keys()
+            }
         )
+
+    def _closing_pairs_by_type(
+        self, t: T5, retained_earnings_account: str
+    ) -> Iterator[Pair]:
+        # Close contra income and contra expense accounts.
+        for name in self.by_type(t):
+            for contra_name in self.find_contra_accounts(name):
+                yield contra_name, name
+
+        # Close income and expense accounts to retained earnings account.
+        for name in self.by_type(t):
+            yield name, retained_earnings_account
 
     def closing_pairs(self, retained_earnings_account: str) -> Iterator[Pair]:
         """Yield closing pairs for accounting period end."""
-        for t in T5.Income, T5.Expense:
-            # Close contra income and contra expense accounts.
-            for name in self.by_type(t):
-                for contra_name in self.find_contra_accounts(name):
-                    yield contra_name, name
-
-            # Close income and expense accounts to retained earnings account.
-            for name in self.by_type(t):
-                yield name, retained_earnings_account
+        yield from self._closing_pairs_by_type(T5.Income, retained_earnings_account)
+        yield from self._closing_pairs_by_type(T5.Expense, retained_earnings_account)
 
     def by_type(self, t: T5) -> list[AccountName]:
         """Return account names for a given account type."""
@@ -319,8 +329,11 @@ class Entry:
         return sums(self.debits) == sums(self.credits)
 
 
-def double_entry(debit: AccountName, credit: AccountName, amount: Amount) -> Entry:
+def double_entry(
+    debit: AccountName, credit: AccountName, amount: Amount | int | float
+) -> Entry:
     """Create double entry with one debit and one credit entry."""
+    amount = Amount(amount)
     return Entry(debits=[(debit, amount)], credits=[(credit, amount)])
 
 
@@ -339,6 +352,10 @@ class TAccount(ABC):
     left: Amount = Amount(0)
     right: Amount = Amount(0)
 
+    @classmethod
+    def reverse(self):
+        pass
+
     def copy(self):
         return self.__class__(left=self.left, right=self.right)
 
@@ -355,8 +372,17 @@ class TAccount(ABC):
     def balance(self) -> Amount:
         pass
 
+    @abstractmethod
+    def closing_entry(self, from_: AccountName, to_: AccountName) -> "Entry":
+        pass
+
 
 class DebitAccount(TAccount):
+
+    @classmethod
+    def reverse(cls):
+        return CreditAccount
+
     @property
     def balance(self) -> Amount:
         return self.left - self.right
@@ -377,6 +403,11 @@ class DebitAccount(TAccount):
 
 
 class CreditAccount(TAccount):
+
+    @classmethod
+    def reverse(cls):
+        return DebitAccount
+
     @property
     def balance(self) -> Amount:
         return self.right - self.left
