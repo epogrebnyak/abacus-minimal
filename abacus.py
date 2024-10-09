@@ -136,32 +136,35 @@ class Contra(Definition):
     name: str
 
 
-def reverse(t_account):
-    return DebitAccount() if isinstance(t_account, CreditAccount) else CreditAccount()
+def reverse(t_account: Type["TAccount"]) -> Type["TAccount"]:
+    return DebitAccount if t_account == CreditAccount else CreditAccount
 
 
 class ChartDict(UserDict[str, Definition]):
-    def t_account(self, account_name):
+
+    def get_constructor(self, account_name) -> Type["TAccount"]:
+        """Return T-account constructor for a given account name."""
         match self[account_name]:
             case Regular(t5):
-                return t5.t_account()
+                return t5.t_account
             case Contra(name):
-                return reverse(self.t_account(name))
+                return reverse(self.get_constructor(name))
 
-    def to_ledger(self):
+    def to_ledger(self) -> "Ledger":
+        """Create ledger."""
         return Ledger(
-            {account_name: self.t_account(account_name) for account_name in self.keys()}
+            {account_name: self.get_constructor(account_name)() for account_name in self.keys()}
         )
 
     def closing_pairs(self, retained_earnings_account: str) -> Iterator[Pair]:
         """Yield closing pairs for accounting period end."""
         for t in T5.Income, T5.Expense:
-            # 1. Close contra income and contra expense accounts.
+            # Close contra income and contra expense accounts.
             for name in self.by_type(t):
                 for contra_name in self.find_contra_accounts(name):
                     yield contra_name, name
 
-            # 2. Close income and expense accounts to income summary account.
+            # Close income and expense accounts to retained earnings account.
             for name in self.by_type(t):
                 yield name, retained_earnings_account
 

@@ -1,8 +1,12 @@
-from abacus import ChartDict, Regular, Contra, T5, Chart, double_entry, Entry
+from abacus import ChartDict, Regular, Contra, T5, Chart, double_entry, Entry, CreditAccount, DebitAccount
 
-cd = ChartDict([("sales", Regular(T5.Income)), ("cashback", Contra("sales"))])
-print(cd.t_account("sales"))
-print(cd.t_account("cashback"))
+def test_chart_dict_for_regular():
+  cd = ChartDict([("sales", Regular(T5.Income)), ("cashback", Contra("sales"))])
+  assert cd.get_constructor("sales") == CreditAccount
+
+def test_chart_dict_for_contra():
+  cd = ChartDict([("sales", Regular(T5.Income)), ("cashback", Contra("sales"))])
+  assert cd.get_constructor("cashback") == DebitAccount
 
 
 chart = Chart(
