@@ -205,7 +205,9 @@ def toy_ledger(toy_chart):
 
 
 def test_trial_balance(toy_ledger):
-    assert toy_ledger.trial_balance == dict(cash=(10, 0), equity=(0, 10), re=(0, 0))
+    assert toy_ledger.trial_balance == dict(
+        cash=(10, None), equity=(None, 10), re=(None, 0)
+    )
 
 
 def test_balances(toy_ledger):
@@ -239,7 +241,9 @@ def test_opening_entry_fails(toy_chart):
 
 def test_chart_open(toy_chart):
     ledger = toy_chart.open(dict(cash=10, equity=10))
-    assert ledger.trial_balance == dict(re=(0, 0), cash=(10, 0), equity=(0, 10))
+    assert ledger.trial_balance == dict(
+        re=(None, 0), cash=(10, None), equity=(None, 10)
+    )
 
 
 def test_is_debit_account():

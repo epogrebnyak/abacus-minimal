@@ -78,7 +78,16 @@ class T5(Enum):
     Expense = "expense"
 
 
-class Chart(BaseModel):
+class SaveLoadMixin(ABC):
+    @classmethod
+    def load(cls, filename):
+        return cls.model_validate_json(Path(filename).read_text())
+
+    def save(self, filename):
+        Path(filename).write_text(self.model_dump_json())
+
+
+class Chart(BaseModel, SaveLoadMixin):
     """Serializable chart of accounts."""
 
     model_config = ConfigDict(extra="forbid")
@@ -365,6 +374,7 @@ class TAccount(ABC):
         pass
 
     def closing_entry(self, pair: Pair, title: str) -> "Entry":
+        """Make closing entry to transfer balance to another account."""
         frm, to = pair
         if isinstance(self, DebitAccount):
             dr, cr = to, frm  # debit destination account
@@ -387,7 +397,7 @@ class DebitAccount(TAccount):
 
     @property
     def tuple(self):
-        return self.balance, Amount(0)
+        return self.balance, None
 
 
 class CreditAccount(TAccount):
@@ -404,7 +414,7 @@ class CreditAccount(TAccount):
 
     @property
     def tuple(self):
-        return Amount(0), self.balance
+        return None, self.balance
 
 
 class Ledger(UserDict[AccountName, TAccount]):
@@ -535,10 +545,5 @@ class BalanceSheet(Report):
         )
 
 
-class BalancesDict(RootModel[Dict[str, Amount]]):
-    def save(self, filename):
-        Path(filename).write_text(self.model_dump_json())
-
-    @classmethod
-    def load(cls, filename):
-        return cls.model_validate_json(Path(filename).read_text())
+class BalancesDict(RootModel[Dict[str, Amount]], SaveLoadMixin):
+    pass
