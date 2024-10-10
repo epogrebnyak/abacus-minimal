@@ -296,7 +296,7 @@ def double_entry(
 ) -> Entry:
     """Create double entry with one debit and one credit entry."""
     amount = Amount(amount)
-    return Entry(title, debits=[(debit, amount)], credits=[(credit, amount)])
+    return Entry(title).dr(debit, amount).cr(credit, amount)
 
 
 @dataclass
@@ -304,11 +304,8 @@ class TAccount(ABC):
     """Base class for T-account that holds amounts on the left and right sides.
 
     Parent class for:
-      - UnrestrictedDebitAccount
-      - UnrestrictedCreditAccount
       - DebitAccount
       - CreditAccount
-      - DebitOrCreditAccount
     """
 
     left: Amount = Amount(0)
@@ -394,7 +391,6 @@ class CreditAccount(TAccount):
 
 
 class Ledger(UserDict[AccountName, TAccount]):
-    pass
 
     def post_single(self, single_entry: SingleEntry):
         """Post single entry to ledger. Will raise `KeyError` if account name is not found."""
@@ -419,7 +415,7 @@ class Ledger(UserDict[AccountName, TAccount]):
             raise error("Accounts do not exist", not_found)
         if cannot_post:
             raise error(
-                "Cannot post to ledger (account balance becomes negative)",
+                "Posting will make account balance negative",
                 cannot_post,
             )
 

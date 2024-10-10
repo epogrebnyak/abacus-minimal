@@ -11,6 +11,8 @@ from abacus import (
     Regular,
     double_entry,
     AbacusError,
+    CreditEntry,
+    Amount,
 )
 
 from pydantic import ValidationError
@@ -155,6 +157,14 @@ def test_end_to_end():
         "re": 85,
         "ts": 0,
     }
+
+
+def test_catch_negative_entry():
+    ledger = Chart(
+        retained_earnings="re", assets=["cash"], capital=["equity"]
+    ).to_ledger()
+    with pytest.raises(AbacusError):
+        ledger.post(Entry("Invalid").cr("cash", 1))
 
 
 # TODO: move to tests
