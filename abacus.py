@@ -102,6 +102,7 @@ class Chart(BaseModel):
 
     @property
     def accounts(self):
+        """All accounts in this chart including the duplicates."""
         return (
             self.assets
             + self.capital
@@ -113,9 +114,9 @@ class Chart(BaseModel):
         )
 
     def assert_unique(self):
-        """Check if all account names are unique."""
+        """Raise error if any duplicate account names are found."""
         if len(self.to_dict()) < len(self.accounts):
-            # FIXME: tell what account names are not unique in error message
+            # FIXME: tell what account names are not unique in the error message
             raise AbacusError("Account names are not unique.")
 
     def dry_run(self):
@@ -142,42 +143,42 @@ class Chart(BaseModel):
         return chart_dict
 
     def offset(self, account_name: str, contra_name: str):
+        """Add contra account to chart."""
         self.contra_accounts.setdefault(account_name, list()).append(contra_name)
         return self
 
     def name(self, account_name: str, title: str):
+        """Add descriptive account title."""
         self.names[account_name] = title
         return self
 
     @property
-    def closing_pairs(self):
+    def closing_pairs(self) -> list[Pair]:
+        """Return list of tuples that allows to close ledger at period end."""
         return list(self.to_dict().closing_pairs(self.retained_earnings))
 
     def to_ledger(self):
         return self.to_dict().to_ledger()
 
 
-class Definition(ABC):
-    pass
-
-
 @dataclass
-class Regular(Definition):
+class Regular:
     """Regular account, holds information about account type."""
 
     t: T5
 
 
 @dataclass
-class Contra(Definition):
+class Contra:
     """Contra account, refers to an existing regular account."""
 
     name: str
 
 
-class ChartDict(UserDict[str, Definition]):
+class ChartDict(UserDict[str, Regular | Contra]):
     """Dictionary of accounts with their definitions.
-    A useful intermediate data structure between Chart and Ledger.
+    A useful intermediate data structure between Chart and Ledger
+    that ensures account names are unique.
     """
 
     def set(self, t: T5, account_name: str):
@@ -210,22 +211,24 @@ class ChartDict(UserDict[str, Definition]):
             }
         )
 
-    def _closing_pairs_by_type(
-        self, t: T5, retained_earnings_account: str
-    ) -> Iterator[Pair]:
-        # Close contra income and contra expense accounts.
+    def _close_contra_accounts(self, t: T5) -> Iterator[Pair]:
+        """Close contra accounts for income or expense accounts."""
         for name in self.by_type(t):
             for contra_name in self.find_contra_accounts(name):
                 yield contra_name, name
 
-        # Close income and expense accounts to retained earnings account.
+    def _close_to_retained_earnings(
+        self, t: T5, retained_earnings_account: str
+    ) -> Iterator[Pair]:
+        """Close income and expense accounts to retained earnings account."""
         for name in self.by_type(t):
             yield name, retained_earnings_account
 
     def closing_pairs(self, retained_earnings_account: str) -> Iterator[Pair]:
         """Yield closing pairs for accounting period end."""
-        yield from self._closing_pairs_by_type(T5.Income, retained_earnings_account)
-        yield from self._closing_pairs_by_type(T5.Expense, retained_earnings_account)
+        for t in (T5.Income, T5.Expense):
+            yield from self._close_contra_accounts(t)
+            yield from self._close_to_retained_earnings(t, retained_earnings_account)
 
     def by_type(self, t: T5) -> list[AccountName]:
         """Return account names for a given account type."""
@@ -337,7 +340,6 @@ class TAccount(ABC):
 
 
 class DebitAccount(TAccount):
-
     @classmethod
     def reverse(cls):
         return CreditAccount
@@ -364,7 +366,6 @@ class DebitAccount(TAccount):
 
 
 class CreditAccount(TAccount):
-
     @classmethod
     def reverse(cls):
         return DebitAccount
@@ -391,7 +392,6 @@ class CreditAccount(TAccount):
 
 
 class Ledger(UserDict[AccountName, TAccount]):
-
     def post_single(self, single_entry: SingleEntry):
         """Post single entry to ledger. Will raise `KeyError` if account name is not found."""
         match single_entry:
