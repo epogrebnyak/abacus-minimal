@@ -50,7 +50,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Iterator, Sequence, Type
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AbacusError(Exception):
@@ -85,6 +85,8 @@ class T5(Enum):
 class Chart(BaseModel):
     """Serializable chart of accounts."""
 
+    model_config = ConfigDict(extra="forbid")
+
     retained_earnings: str
     assets: list[str] = []
     capital: list[str] = []
@@ -94,7 +96,9 @@ class Chart(BaseModel):
     contra_accounts: dict[str, list[str]] = {}
     names: dict[str, str] = {}
 
-    # TODO: add pydantic validation for uniqueness, contra account rules, etc.
+    def __post_init__(self):
+        self.assert_unique()
+        self.dry_run()
 
     @property
     def accounts(self):
@@ -109,8 +113,10 @@ class Chart(BaseModel):
         )
 
     def assert_unique(self):
+        """Check if all account names are unique."""
         if len(self.to_dict()) < len(self.accounts):
-            raise AbacusError("Account names must be unique.")
+            # FIXME: tell what account names are not unique in error message
+            raise AbacusError("Account names are not unique.")
 
     def dry_run(self):
         """Verify chart by making an empty ledger and try closing it."""
@@ -118,7 +124,7 @@ class Chart(BaseModel):
         return self
 
     def to_dict(self) -> "ChartDict":
-        result = {}
+        chart_dict = ChartDict()
         for t, attr in (
             (T5.Asset, "assets"),
             (T5.Liability, "liabilities"),
@@ -127,12 +133,13 @@ class Chart(BaseModel):
             (T5.Expense, "expenses"),
         ):
             for account_name in getattr(self, attr):
-                result[account_name] = Regular(t)
-        result[self.retained_earnings] = Regular(T5.Capital)
+                chart_dict.set(t, account_name)
+        chart_dict.set(T5.Capital, self.retained_earnings)
+        # all regular accounts are now added, adding contra accounts
         for account_name, contra_names in self.contra_accounts.items():
             for contra_name in contra_names:
-                result[contra_name] = Contra(account_name)
-        return ChartDict(result)
+                chart_dict.offset(account_name, contra_name)
+        return chart_dict
 
     def offset(self, account_name: str, contra_name: str):
         self.contra_accounts.setdefault(account_name, list()).append(contra_name)
@@ -158,7 +165,7 @@ class Definition(ABC):
 class Regular(Definition):
     """Regular account, holds information about account type."""
 
-    t5: T5
+    t: T5
 
 
 @dataclass
@@ -173,11 +180,23 @@ class ChartDict(UserDict[str, Definition]):
     A useful intermediate data structure between Chart and Ledger.
     """
 
+    def set(self, t: T5, account_name: str):
+        """Add regular account."""
+        self[account_name] = Regular(t)
+        return self
+
+    def offset(self, account_name: str, contra_account_name: str):
+        """Add contra account."""
+        if account_name not in self:
+            raise AbacusError(f"Account not found in chart: {account_name}")
+        self[contra_account_name] = Contra(account_name)
+        return self
+
     def get_constructor(self, account_name: str) -> Type["TAccount"]:
         """Return T-account class constructor for a given account name."""
         match self[account_name]:
-            case Regular(t5):
-                return t5.t_account
+            case Regular(t):
+                return t.t_account
             case Contra(name):
                 return self.get_constructor(name).reverse()
         raise KeyError(account_name)
@@ -219,94 +238,6 @@ class ChartDict(UserDict[str, Definition]):
         ]
 
 
-# @dataclass
-# class Chart:
-#     retained_earnings: str
-#     accounts: dict[str, T5] = field(default_factory=dict)
-#     contra_accounts: dict[str, str] = field(default_factory=dict)
-#     _ledger_dict: dict[str, Type["TAccount"]] = field(default_factory=dict)
-
-#     def __post_init__(self):
-#         self._set_isa(self.income_summary_account)
-#         self._set_re(self.retained_earnings_account)
-
-#     def set(self, t: T5, name: str):
-#         """Add regular account to chart."""
-#         self._ledger_dict[name] = t.side.taccount
-#         self.accounts[name] = t
-
-#     def _set_isa(self, name: str):
-#         """Set income summary account."""
-#         self._ledger_dict[name] = DebitOrCreditAccount
-
-#     def _set_re(self, name: str):
-#         """Set retained earnings account."""
-#         self.set(T5.Capital, name)
-
-#     def offset(self, existing_name: str, contra_name: str):
-#         """Add contra account to chart."""
-#         if existing_name not in self.accounts:
-#             raise AbacusError(f"Account name {existing_name} not found in chart.")
-#         taccount = self.accounts[existing_name].side.reverse().taccount
-#         self._ledger_dict[contra_name] = taccount
-#         self.contra_accounts[contra_name] = existing_name
-
-#     def ledger(self) -> "Ledger":
-#         """Create ledger from chart."""
-#         return Ledger(
-#             {name: taccount() for name, taccount in self._ledger_dict.items()}
-#         )
-
-#     @property
-#     def closing_pairs(self) -> Sequence[Pair]:
-#         """Return list of closing pairs for accounting period end."""
-#         return list(self._closing_pairs())
-
-#     def _closing_pairs(self) -> Iterator[Pair]:
-#         """Yield closing pairs for accounting period end."""
-#         for t in T5.Income, T5.Expense:
-#             # 1. Close contra income and contra expense accounts.
-#             for name in self.by_type(t):
-#                 for contra_name in self.find_contra_accounts(name):
-#                     yield contra_name, name
-
-#             # 2. Close income and expense accounts to income summary account.
-#             for name in self.by_type(t):
-#                 yield name, self.income_summary_account
-
-#         # 3. Close income summary account to retained earnings account.
-#         yield self.income_summary_account, self.retained_earnings_account
-
-#     def by_type(self, t: T5) -> list[AccountName]:
-#         """Return account names for a given account type."""
-#         return [name for name, _t in self.accounts.items() if _t == t]
-
-#     def find_contra_accounts(self, name: AccountName) -> list[AccountName]:
-#         """Find contra accounts for a given account name."""
-#         return [
-#             contra_name
-#             for contra_name, _name in self.contra_accounts.items()
-#             if _name == name
-#         ]
-
-#     @property
-#     def temporary_accounts(self) -> Set[str]:
-#         """Return temporary account names."""
-#         return set(name for name, _ in self.closing_pairs)
-
-#     def net_balances_factory(self, ledger) -> Callable[[T5], dict[AccountName, Amount]]:
-#         """Return a function that calculates net balances for a given account type."""
-
-#         return lambda t: {
-#             name: ledger.net_balance(name, self.find_contra_accounts(name))
-#             for name in self.by_type(t)
-#         }
-
-#     def dry_run(self):
-#         """Validate chart by making an empty ledger and trying closing it."""
-#         self.ledger().close(chart=self)
-
-
 @dataclass
 class SingleEntry(ABC):
     """Base class for a single entry changes either a debit or a credit side of an account."""
@@ -325,6 +256,7 @@ class CreditEntry(SingleEntry):
 
 @dataclass
 class Entry:
+    title: str
     debits: list[tuple[AccountName, Amount]] = field(default_factory=list)
     credits: list[tuple[AccountName, Amount]] = field(default_factory=list)
 
@@ -360,11 +292,11 @@ class Entry:
 
 
 def double_entry(
-    debit: AccountName, credit: AccountName, amount: Amount | int | float
+    title: str, debit: AccountName, credit: AccountName, amount: Amount | int | float
 ) -> Entry:
     """Create double entry with one debit and one credit entry."""
     amount = Amount(amount)
-    return Entry(debits=[(debit, amount)], credits=[(credit, amount)])
+    return Entry(title, debits=[(debit, amount)], credits=[(credit, amount)])
 
 
 @dataclass
@@ -424,8 +356,10 @@ class DebitAccount(TAccount):
             )
         self.right += amount
 
-    def closing_entry(self, from_: AccountName, to_: AccountName) -> "Entry":
-        return double_entry(to_, from_, self.balance)
+    def closing_entry(
+        self, from_: AccountName, to_: AccountName, title: str
+    ) -> "Entry":
+        return double_entry(title, to_, from_, self.balance)
 
     @property
     def tuple(self):
@@ -449,8 +383,10 @@ class CreditAccount(TAccount):
             )
         self.left += amount
 
-    def closing_entry(self, from_: AccountName, to_: AccountName) -> "Entry":
-        return double_entry(from_, to_, self.balance)
+    def closing_entry(
+        self, from_: AccountName, to_: AccountName, title: str
+    ) -> "Entry":
+        return double_entry(title, from_, to_, self.balance)
 
     @property
     def tuple(self):
@@ -483,7 +419,7 @@ class Ledger(UserDict[AccountName, TAccount]):
             raise error("Accounts do not exist", not_found)
         if cannot_post:
             raise error(
-                "Could not post to ledger (account balance becomes negative)",
+                "Cannot post to ledger (account balance becomes negative)",
                 cannot_post,
             )
 
@@ -508,19 +444,19 @@ class Ledger(UserDict[AccountName, TAccount]):
     #             self[contra_name].balance for contra_name in contra_names
     #         )
 
-    def close_by_pairs(self, pairs: Sequence[Pair]) -> list[Entry]:
+    def close_by_pairs(self, pairs: Sequence[Pair], entry_title: str) -> list[Entry]:
         """Close ledger by using closing pairs of accounts."""
         closing_entries = []
         for from_, to_ in pairs:
-            entry = self.data[from_].closing_entry(from_, to_)
+            entry = self.data[from_].closing_entry(from_, to_, entry_title)
             closing_entries.append(entry)
             self.post(entry)
             del self.data[from_]
         return closing_entries
 
-    def close(self, chart: Chart) -> list[Entry]:
+    def close(self, chart: Chart, entry_title="Closing entry") -> list[Entry]:
         """Close ledger at accounting period end."""
-        return self.close_by_pairs(chart.closing_pairs)
+        return self.close_by_pairs(chart.closing_pairs, entry_title)
 
 
 class TrialBalance(UserDict[str, tuple[Amount, Amount]]):

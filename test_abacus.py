@@ -13,6 +13,8 @@ from abacus import (
     AbacusError,
 )
 
+from pydantic import ValidationError
+
 
 def test_chart_dict_for_regular():
     cd = ChartDict([("sales", Regular(T5.Income)), ("cashback", Contra("sales"))])
@@ -102,13 +104,11 @@ def test_chart_assert_unique_on_repeated_account_name(chart):
         print(chart)
 
 
-@pytest.mark.skip
-def test_strange_pydantic_error():
-    with pytest.raises(AbacusError):
+def test_pydantic_will_not_accept_exttra_fields():
+    with pytest.raises(ValidationError):
         Chart(
             retained_earnings="re", haha=["equity"]
         )  # 'haha' is not a part of contructor
-        # Failed: DID NOT RAISE <class 'abacus.AbacusError'>
 
 
 def test_chart_to_dict():
@@ -116,7 +116,7 @@ def test_chart_to_dict():
         retained_earnings="re",
         assets=["cash"],
         capital=["equity"],
-        contra_accounts={"equity": "ts"},
+        contra_accounts={"equity": ["ts"]},
     ).to_dict() == ChartDict(
         {
             "cash": Regular(T5.Asset),
@@ -132,11 +132,16 @@ def test_end_to_end():
     ledger = chart.to_ledger()
     ledger.post_many(
         [
-            double_entry("cash", "equity", 20),
-            Entry().dr("cash", 120).cr("sales", 100).cr("vat", 20),
-            double_entry("refunds", "cash", 5),
-            double_entry("wages", "cash", 10),
-            double_entry("vat", "cash", 20),
+            double_entry(
+                "Starting investment", debit="cash", credit="equity", amount=20
+            ),
+            Entry("Accepted cash payment")
+            .dr("cash", 120)
+            .cr("sales", 100)
+            .cr("vat", 20),
+            double_entry("Made client refund", "refunds", "cash", 5),
+            double_entry("Paid salaries", "wages", "cash", 10),
+            double_entry("Paid VAT due", "vat", "cash", 20),
         ]
     )
     ledger.close(chart)
