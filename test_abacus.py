@@ -1,21 +1,23 @@
 import pytest  # type: ignore
+from pydantic import ValidationError
 
+from abacus import Chart  # IncomeStatement
 from abacus import (
     T5,
-    Chart,
+    AbacusError,
+    BalancesDict,
+    BalanceSheet,
     ChartDict,
     Contra,
     CreditAccount,
+    CreditEntry,
     DebitAccount,
+    DebitEntry,
+    DoubleEntry,
     Entry,
     Regular,
-    double_entry,
-    AbacusError,
-    CreditEntry,
-    Amount,
+    make_opening_entry,
 )
-
-from pydantic import ValidationError
 
 
 def test_chart_dict_for_regular():
@@ -64,13 +66,10 @@ def test_chart_closing_pairs():
 
 
 def test_chart_to_ledger_keys():
-    ledger = Chart(
-        retained_earnings="re", assets=["cash"], capital=["equity"]
-    ).to_ledger()
+    ledger = Chart(retained_earnings="re", assets=["cash"], capital=["equity"]).open()
     assert list(ledger.keys()) == ["cash", "equity", "re"]
 
 
-# parametrise
 @pytest.mark.parametrize(
     "account_name, cls",
     [
@@ -84,7 +83,7 @@ def test_ledger_creation(account_name, cls):
     ledger = (
         Chart(retained_earnings="re", assets=["cash"], capital=["equity"])
         .offset("equity", "ts")
-        .to_ledger()
+        .open()
     )
     assert isinstance(ledger[account_name], cls)
 
@@ -106,11 +105,9 @@ def test_chart_assert_unique_on_repeated_account_name(chart):
         print(chart)
 
 
-def test_pydantic_will_not_accept_exttra_fields():
+def test_pydantic_will_not_accept_extra_fields():
     with pytest.raises(ValidationError):
-        Chart(
-            retained_earnings="re", haha=["equity"]
-        )  # 'haha' is not a part of contructor
+        Chart(retained_earnings="re", haha=["equity"])
 
 
 def test_chart_to_dict():
@@ -131,19 +128,14 @@ def test_chart_to_dict():
 
 def test_end_to_end():
     chart = make_chart()
-    ledger = chart.to_ledger()
+    ledger = chart.open()
     ledger.post_many(
         [
-            double_entry(
-                "Starting investment", debit="cash", credit="equity", amount=20
-            ),
-            Entry("Accepted cash payment")
-            .dr("cash", 120)
-            .cr("sales", 100)
-            .cr("vat", 20),
-            double_entry("Made client refund", "refunds", "cash", 5),
-            double_entry("Paid salaries", "wages", "cash", 10),
-            double_entry("Paid VAT due", "vat", "cash", 20),
+            DoubleEntry("Start", debit="cash", credit="equity", amount=20),
+            Entry("Accepted payment").dr("cash", 120).cr("sales", 100).cr("vat", 20),
+            [DebitEntry("refunds", 5), CreditEntry("cash", 5)],
+            DoubleEntry("Paid salaries", "wages", "cash", 10),
+            DoubleEntry("Paid VAT due", "vat", "cash", 20),
         ]
     )
     ledger.close(chart)
@@ -160,14 +152,96 @@ def test_end_to_end():
 
 
 def test_catch_negative_entry():
-    ledger = Chart(
-        retained_earnings="re", assets=["cash"], capital=["equity"]
-    ).to_ledger()
+    ledger = Chart(retained_earnings="re", assets=["cash"], capital=["equity"]).open()
     with pytest.raises(AbacusError):
-        ledger.post(Entry("Invalid").cr("cash", 1))
+        ledger.post(Entry("Invalid entry").cr("cash", 1))
 
 
-# TODO: move to tests
-# print(ledger.trial_balance)
+def test_closing_entry_for_debit_account():
+    account = DebitAccount(20, 5)
+    assert (
+        account.closing_entry(("this", "that"), "close")
+        == DoubleEntry("close", "that", "this", 15).entry
+    )
 
-# TODO: balance and income statement
+
+def test_balance_sheet():
+    chart = Chart(
+        retained_earnings="re",
+        assets=["cash"],
+        capital=["equity"],
+        income=["sales"],
+        contra_accounts=dict(equity=["ts"], sales=["refunds"]),
+    )
+    ledger = chart.open()
+    ledger.post(DoubleEntry("Launch", "cash", "equity", 10))
+    ledger.post(DoubleEntry("Sold services", "cash", "sales", 50))
+    ledger.post(DoubleEntry("Refunded", "refunds", "cash", 40))
+    ledger.post(DoubleEntry("Buyback", "ts", "cash", 8))
+    assert ledger.income_statement(chart).net_earnings == 10
+    ledger.close(chart)
+    assert ledger.balance_sheet(chart) == BalanceSheet(
+        assets={"cash": 12}, capital={"equity": 2, "re": 10}, liabilities={}
+    )
+
+
+def test_net_earnings():
+    chart = Chart(retained_earnings="re", assets=["cash"], income=["sales"])
+    ledger = chart.open()
+    ledger.post(DoubleEntry("Free lunch", "cash", "sales", 10))
+    assert ledger.income_statement(chart).net_earnings == 10
+
+
+@pytest.fixture
+def toy_chart():
+    return Chart(retained_earnings="re", assets=["cash"], capital=["equity"])
+
+
+@pytest.fixture
+def toy_ledger(toy_chart):
+    ledger = toy_chart.open()
+    ledger.post(DoubleEntry("Launch", "cash", "equity", 10))
+    return ledger
+
+
+def test_trial_balance(toy_ledger):
+    assert toy_ledger.trial_balance == dict(cash=(10, 0), equity=(0, 10), re=(0, 0))
+
+
+def test_balances(toy_ledger):
+    assert toy_ledger.balances == dict(cash=10, equity=10, re=0)
+
+
+def test_balances_dict_json(toy_ledger):
+    content = BalancesDict(toy_ledger.balances).model_dump_json()
+    x = BalancesDict.model_validate_json(content)
+    assert x.root == dict(cash=10, equity=10, re=0)
+
+
+def test_balances_load_save(tmp_path):
+    path = str(tmp_path / "b.json")
+    b = BalancesDict(a=1)
+    b.save(path)
+    assert b == BalancesDict.load(path)
+
+
+def test_opening_entry_works(toy_chart):
+    entry = make_opening_entry(
+        toy_chart.to_dict(), dict(cash=10, equity=8, re=2), "open"
+    )
+    assert entry == Entry("open").dr("cash", 10).cr("equity", 8).cr("re", 2)
+
+
+def test_opening_entry_fails(toy_chart):
+    with pytest.raises(AbacusError):
+        make_opening_entry(toy_chart.to_dict(), dict(cash=10))
+
+
+def test_chart_open(toy_chart):
+    ledger = toy_chart.open(dict(cash=10, equity=10))
+    assert ledger.trial_balance == dict(re=(0, 0), cash=(10, 0), equity=(0, 10))
+
+
+def test_is_debit_account():
+    chart_dict = Chart(retained_earnings="re").to_dict().offset("re", "drawing")
+    assert chart_dict.is_debit_account("drawing") is True

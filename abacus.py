@@ -4,8 +4,9 @@ This module contains classes for:
 
   - chart of accounts (Chart)
   - general ledger (Ledger)
-  - accounting  entry (Entry)
+  - accounting entry (DoubleEntry, Entry)
   - reports (TrialBalance, IncomeStatement, BalanceSheet)
+  - data exchange formats (BalancesDict)
 
 Accounting workflow:
 
@@ -22,16 +23,14 @@ Accounting conventions:
 
 - regular accounts of five types (asset, liability, capital, income, expense)
 - contra accounts to regular accounts are possible (eg depreciation, discounts, etc.)
-- intermediate income summary account used for net income calculation
 
 Assumptions and simplifications (some may be relaxed in future versions): 
 
 - one currency
 - one level of accounts, no subaccounts
-- account names must be globally unique
+- account names must be globally unique (eg cannot have two "other" accounts)
 - chart always has retained earnigns account
-- chart always has income summary account
-- no other comprehensive income account (OCIA) 
+- other comprehensive income account (OCIA) not calculated 
 - no journals, entries are posted to ledger directly
 - an entry can touch any accounts
 - entry amount can be positive or negative
@@ -40,7 +39,7 @@ Assumptions and simplifications (some may be relaxed in future versions):
 - period end closing will transfer net earnings to retained earnings
 - no cash flow statement
 - no statement of changes in equity
-- no date or transaction metadata recorded
+- no date or any transaction metadata recorded
 """
 
 import decimal
@@ -48,9 +47,12 @@ from abc import ABC, abstractmethod
 from collections import UserDict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Iterator, Sequence, Type
 
-from pydantic import BaseModel, ConfigDict
+# some serialisation
+from pathlib import Path
+from typing import Dict, Iterator, Sequence, Type
+
+from pydantic import BaseModel, ConfigDict, RootModel
 
 
 class AbacusError(Exception):
@@ -74,12 +76,6 @@ class T5(Enum):
     Capital = "capital"
     Income = "income"
     Expense = "expense"
-
-    @property
-    def t_account(self):
-        if self in (T5.Asset, T5.Expense):
-            return DebitAccount
-        return CreditAccount
 
 
 class Chart(BaseModel):
@@ -125,6 +121,7 @@ class Chart(BaseModel):
         return self
 
     def to_dict(self) -> "ChartDict":
+        """Create chart dictionary with unique account names."""
         chart_dict = ChartDict()
         for t, attr in (
             (T5.Asset, "assets"),
@@ -157,8 +154,28 @@ class Chart(BaseModel):
         """Return list of tuples that allows to close ledger at period end."""
         return list(self.to_dict().closing_pairs(self.retained_earnings))
 
-    def to_ledger(self):
-        return self.to_dict().to_ledger()
+    def open(self, opening_balances: dict[AccountName, Amount] | None = None):
+        """Create ledger with some opening balances."""
+        ledger = self.to_dict().to_ledger()
+        if opening_balances:
+            entry = make_opening_entry(self.to_dict(), opening_balances)
+            ledger.post(entry)
+        return ledger
+
+
+def make_opening_entry(
+    chart_dict: "ChartDict",
+    opening_balances: dict[AccountName, Amount],
+    title="Opening entry",
+) -> "Entry":
+    """Create and validate opening entry."""
+    entry = Entry(title)
+    for account_name, amount in opening_balances.items():
+        if chart_dict.is_debit_account(account_name):
+            entry.dr(account_name, amount)
+        elif account_name in chart_dict.keys():
+            entry.cr(account_name, amount)
+    return entry.validate()
 
 
 @dataclass
@@ -181,6 +198,16 @@ class ChartDict(UserDict[str, Regular | Contra]):
     that ensures account names are unique.
     """
 
+    def is_debit_account(self, account_name: AccountName) -> bool:
+        """Return True if account is a debit account."""
+        match self[account_name]:
+            case Regular(t):
+                return t in (T5.Asset, T5.Expense)
+            case Contra(name):
+                return not self.is_debit_account(name)
+            case _:
+                raise AbacusError()
+
     def set(self, t: T5, account_name: str):
         """Add regular account."""
         self[account_name] = Regular(t)
@@ -195,12 +222,11 @@ class ChartDict(UserDict[str, Regular | Contra]):
 
     def get_constructor(self, account_name: str) -> Type["TAccount"]:
         """Return T-account class constructor for a given account name."""
-        match self[account_name]:
-            case Regular(t):
-                return t.t_account
-            case Contra(name):
-                return self.get_constructor(name).reverse()
-        raise KeyError(account_name)
+        if account_name not in self.keys():
+            raise KeyError(account_name)
+        if self.is_debit_account(account_name):
+            return DebitAccount
+        return CreditAccount
 
     def to_ledger(self) -> "Ledger":
         """Create ledger."""
@@ -212,7 +238,7 @@ class ChartDict(UserDict[str, Regular | Contra]):
         )
 
     def _close_contra_accounts(self, t: T5) -> Iterator[Pair]:
-        """Close contra accounts for income or expense accounts."""
+        """Close contra accounts, used for income or expense accounts."""
         for name in self.by_type(t):
             for contra_name in self.find_contra_accounts(name):
                 yield contra_name, name
@@ -271,15 +297,15 @@ class Entry:
 
     def dr(self, account_name, amount):
         """Add debit part to entry."""
-        self.debits.append((account_name, amount))
+        self.debits.append((account_name, Amount(amount)))
         return self
 
     def cr(self, account_name, amount):
         """Add credit part to entry."""
-        self.credits.append((account_name, amount))
+        self.credits.append((account_name, Amount(amount)))
         return self
 
-    def validate_balance(self):
+    def validate(self):
         """Raise error if sum of debits and sum credits are not equal."""
         if not self.is_balanced():
             raise error("Sum of debits does not equal to sum of credits", self)
@@ -294,12 +320,23 @@ class Entry:
         return sums(self.debits) == sums(self.credits)
 
 
-def double_entry(
-    title: str, debit: AccountName, credit: AccountName, amount: Amount | int | float
-) -> Entry:
+@dataclass
+class DoubleEntry:
     """Create double entry with one debit and one credit entry."""
-    amount = Amount(amount)
-    return Entry(title).dr(debit, amount).cr(credit, amount)
+
+    title: str
+    debit: AccountName
+    credit: AccountName
+    amount: Amount | int | float
+
+    @property
+    def entry(self) -> "Entry":
+        return (
+            Entry(self.title).dr(self.debit, self.amount).cr(self.credit, self.amount)
+        )
+
+    def __iter__(self):
+        return iter(self.entry)
 
 
 @dataclass
@@ -314,13 +351,6 @@ class TAccount(ABC):
     left: Amount = Amount(0)
     right: Amount = Amount(0)
 
-    @classmethod
-    def reverse(self):
-        pass
-
-    def copy(self):
-        return self.__class__(left=self.left, right=self.right)
-
     def debit(self, amount: Amount):
         """Add amount to debit side of T-account."""
         self.left += amount
@@ -334,16 +364,16 @@ class TAccount(ABC):
     def balance(self) -> Amount:
         pass
 
-    @abstractmethod
-    def closing_entry(self, from_: AccountName, to_: AccountName) -> "Entry":
-        pass
+    def closing_entry(self, pair: Pair, title: str) -> "Entry":
+        frm, to = pair
+        if isinstance(self, DebitAccount):
+            dr, cr = to, frm  # debit destination account
+        elif isinstance(self, CreditAccount):
+            dr, cr = frm, to  # credit destination account
+        return DoubleEntry(title, dr, cr, self.balance).entry
 
 
 class DebitAccount(TAccount):
-    @classmethod
-    def reverse(cls):
-        return CreditAccount
-
     @property
     def balance(self) -> Amount:
         return self.left - self.right
@@ -355,21 +385,12 @@ class DebitAccount(TAccount):
             )
         self.right += amount
 
-    def closing_entry(
-        self, from_: AccountName, to_: AccountName, title: str
-    ) -> "Entry":
-        return double_entry(title, to_, from_, self.balance)
-
     @property
     def tuple(self):
         return self.balance, Amount(0)
 
 
 class CreditAccount(TAccount):
-    @classmethod
-    def reverse(cls):
-        return DebitAccount
-
     @property
     def balance(self) -> Amount:
         return self.right - self.left
@@ -380,11 +401,6 @@ class CreditAccount(TAccount):
                 f"Account balance is {self.balance}, cannot debit {amount}."
             )
         self.left += amount
-
-    def closing_entry(
-        self, from_: AccountName, to_: AccountName, title: str
-    ) -> "Entry":
-        return double_entry(title, from_, to_, self.balance)
 
     @property
     def tuple(self):
@@ -415,7 +431,7 @@ class Ledger(UserDict[AccountName, TAccount]):
             raise error("Accounts do not exist", not_found)
         if cannot_post:
             raise error(
-                "Posting will make account balance negative",
+                "Posting should not make account balance negative",
                 cannot_post,
             )
 
@@ -427,24 +443,25 @@ class Ledger(UserDict[AccountName, TAccount]):
     @property
     def trial_balance(self):
         """Create trial balance from ledger."""
-        return TrialBalance({name: taccount.tuple for name, taccount in self.items()})
+        return TrialBalance({name: t_account.tuple for name, t_account in self.items()})
 
     @property
     def balances(self) -> dict[AccountName, Amount]:
         """Return account balances."""
         return {name: account.balance for name, account in self.items()}
 
-    #     def net_balance(self, name: AccountName, contra_names: list[AccountName]) -> Amount:
-    #         """Calculate net balance of an account by substracting the balances of its contra accounts."""
-    #         return self[name].balance - sum(
-    #             self[contra_name].balance for contra_name in contra_names
-    #         )
+    def net_balance(self, name: AccountName, contra_names: list[AccountName]) -> Amount:
+        """Calculate net balance of an account by substracting the balances of its contra accounts."""
+        return self[name].balance - sum(
+            self[contra_name].balance for contra_name in contra_names
+        )
 
     def close_by_pairs(self, pairs: Sequence[Pair], entry_title: str) -> list[Entry]:
         """Close ledger by using closing pairs of accounts."""
         closing_entries = []
-        for from_, to_ in pairs:
-            entry = self.data[from_].closing_entry(from_, to_, entry_title)
+        for pair in pairs:
+            from_ = pair[0]
+            entry = self.data[from_].closing_entry(pair, entry_title)
             closing_entries.append(entry)
             self.post(entry)
             del self.data[from_]
@@ -454,43 +471,74 @@ class Ledger(UserDict[AccountName, TAccount]):
         """Close ledger at accounting period end."""
         return self.close_by_pairs(chart.closing_pairs, entry_title)
 
+    def balance_sheet(self, chart: Chart):
+        return BalanceSheet.new(chart, self)
+
+    def income_statement(self, chart: Chart):
+        return IncomeStatement.new(chart, self)
+
 
 class TrialBalance(UserDict[str, tuple[Amount, Amount]]):
     """Trial balance contains account names and balances."""
 
 
-# class Report(BaseModel):
-#     """Base class for financial reports."""
+def net_balances_factory(chart: Chart, ledger: Ledger):
+    cd = chart.to_dict()
+
+    def fill(t: T5):
+        return {
+            name: ledger.net_balance(name, cd.find_contra_accounts(name))
+            for name in cd.by_type(t)
+        }
+
+    return fill
 
 
-# class IncomeStatement(Report):
-#     income: dict[AccountName, Amount]
-#     expenses: dict[AccountName, Amount]
-
-#     @classmethod
-#     def new(cls, ledger: Ledger, chart: Chart):
-#         """Create income statement from ledger and chart."""
-#         fill = chart.net_balances_factory(ledger)
-#         return cls(income=fill(T5.Income), expenses=fill(T5.Expense))
-
-#     @property
-#     def net_earnings(self):
-#         """Calculate net earnings as income less expenses."""
-#         return sum(self.income.values()) - sum(self.expenses.values())
+class Report(BaseModel):
+    """Base class for financial reports."""
 
 
-# class BalanceSheet(Report):
-#     assets: dict[AccountName, Amount]
-#     capital: dict[AccountName, Amount]
-#     liabilities: dict[AccountName, Amount]
+class IncomeStatement(Report):
+    income: dict[AccountName, Amount]
+    expenses: dict[AccountName, Amount]
 
-#     @classmethod
-#     def new(cls, ledger: Ledger, chart: Chart):
-#         """Create balance sheet from ledger and chart.
-#         Account will balances will be shown net of contra account balances."""
-#         fill = chart.net_balances_factory(ledger)
-#         return cls(
-#             assets=fill(T5.Asset),
-#             capital=fill(T5.Capital),
-#             liabilities=fill(T5.Liability),
-#         )
+    @classmethod
+    def new(
+        cls,
+        chart: Chart,
+        ledger: Ledger,
+    ):
+        """Create income statement from ledger and chart."""
+        fill = net_balances_factory(chart, ledger)
+        return cls(income=fill(T5.Income), expenses=fill(T5.Expense))
+
+    @property
+    def net_earnings(self):
+        """Calculate net earnings as income less expenses."""
+        return sum(self.income.values()) - sum(self.expenses.values())
+
+
+class BalanceSheet(Report):
+    assets: dict[AccountName, Amount]
+    capital: dict[AccountName, Amount]
+    liabilities: dict[AccountName, Amount]
+
+    @classmethod
+    def new(cls, chart: Chart, ledger: Ledger):
+        """Create balance sheet from ledger and chart.
+        Account will balances will be shown net of contra account balances."""
+        fill = net_balances_factory(chart, ledger)
+        return cls(
+            assets=fill(T5.Asset),
+            capital=fill(T5.Capital),
+            liabilities=fill(T5.Liability),
+        )
+
+
+class BalancesDict(RootModel[Dict[str, Amount]]):
+    def save(self, filename):
+        Path(filename).write_text(self.model_dump_json())
+
+    @classmethod
+    def load(cls, filename):
+        return cls.model_validate_json(Path(filename).read_text())
