@@ -5,9 +5,8 @@ This module contains classes for:
   - chart of accounts (Chart)
   - general ledger (Ledger)
   - accounting entry (DoubleEntry, Entry)
-  - reports (TrialBalance, IncomeStatement, BalanceSheet)
-  - data exchange formats (BalancesDict)
-
+  - summaries and reports (TrialBalance, BalancesDict, IncomeStatement, BalanceSheet)
+  
 Accounting workflow:
 
 1. create chart of accounts and set retained earnings account
@@ -27,9 +26,9 @@ Accounting conventions:
 Assumptions and simplifications (some may be relaxed in future versions): 
 
 - one currency
-- one level of accounts, no subaccounts
+- one level of accounts, no sub-accounts
 - account names must be globally unique (eg cannot have two "other" accounts)
-- chart always has retained earnigns account
+- chart always has retained earnings account
 - other comprehensive income account (OCIA) not calculated 
 - no journals, entries are posted to ledger directly
 - an entry can touch any accounts
@@ -47,10 +46,8 @@ from abc import ABC, abstractmethod
 from collections import UserDict
 from dataclasses import dataclass, field
 from enum import Enum
-
-# some serialisation
 from pathlib import Path
-from typing import Dict, Iterator, Sequence, Type
+from typing import Dict, Iterator, Sequence
 
 from pydantic import BaseModel, ConfigDict, RootModel
 
@@ -79,16 +76,18 @@ class T5(Enum):
 
 
 class SaveLoadMixin(ABC):
+    """Class for loading and saving Pydantic models to files."""
+
     @classmethod
-    def load(cls, filename):
+    def load(cls, filename: str):
         return cls.model_validate_json(Path(filename).read_text())
 
-    def save(self, filename):
-        Path(filename).write_text(self.model_dump_json())
+    def save(self, filename: str):
+        Path(filename).write_text(self.model_dump_json(indent=2))
 
 
 class Chart(BaseModel, SaveLoadMixin):
-    """Serializable chart of accounts."""
+    """Chart of accounts."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -115,19 +114,25 @@ class Chart(BaseModel, SaveLoadMixin):
             + self.income
             + self.expenses
             + [self.retained_earnings]
-            + sum(self.contra_accounts.values(), [])  # rather unusual
+            + sum(self.contra_accounts.values(), [])
         )
+
+    @property
+    def duplicates(self):
+        """Duplicate account names. Must be empty for valid chart."""
+        names = self.accounts
+        for name in self.to_dict().keys():
+            names.remove(name)
+        return names
 
     def assert_unique(self):
         """Raise error if any duplicate account names are found."""
-        if len(self.to_dict()) < len(self.accounts):
-            # FIXME: tell what account names are not unique in the error message
-            raise AbacusError("Account names are not unique.")
+        if names := self.duplicates:
+            raise error("Account names are not unique", names)
 
     def dry_run(self):
         """Verify chart by making an empty ledger and try closing it."""
         self.to_ledger().close(chart=self)
-        return self
 
     def to_dict(self) -> "ChartDict":
         """Create chart dictionary with unique account names."""
@@ -142,7 +147,7 @@ class Chart(BaseModel, SaveLoadMixin):
             for account_name in getattr(self, attr):
                 chart_dict.set(t, account_name)
         chart_dict.set(T5.Capital, self.retained_earnings)
-        # all regular accounts are now added, adding contra accounts
+        # all regular accounts are added, now adding contra accounts
         for account_name, contra_names in self.contra_accounts.items():
             for contra_name in contra_names:
                 chart_dict.offset(account_name, contra_name)
@@ -164,17 +169,17 @@ class Chart(BaseModel, SaveLoadMixin):
         return list(self.to_dict().closing_pairs(self.retained_earnings))
 
     def open(self, opening_balances: dict[AccountName, Amount] | None = None):
-        """Create ledger with some opening balances."""
+        """Create ledger with optional opening balances."""
         ledger = self.to_dict().to_ledger()
         if opening_balances:
-            entry = make_opening_entry(self.to_dict(), opening_balances)
+            entry = make_opening_entry(opening_balances, self.to_dict())
             ledger.post(entry)
         return ledger
 
 
 def make_opening_entry(
-    chart_dict: "ChartDict",
     opening_balances: dict[AccountName, Amount],
+    chart_dict: "ChartDict",
     title="Opening entry",
 ) -> "Entry":
     """Create and validate opening entry."""
@@ -184,7 +189,8 @@ def make_opening_entry(
             entry.dr(account_name, amount)
         elif account_name in chart_dict.keys():
             entry.cr(account_name, amount)
-    return entry.validate()
+    entry.validate()
+    return entry
 
 
 @dataclass
@@ -203,7 +209,7 @@ class Contra:
 
 class ChartDict(UserDict[str, Regular | Contra]):
     """Dictionary of accounts with their definitions.
-    A useful intermediate data structure between Chart and Ledger
+    This ia a useful intermediate data structure between Chart and Ledger
     that ensures account names are unique.
     """
 
@@ -215,7 +221,7 @@ class ChartDict(UserDict[str, Regular | Contra]):
             case Contra(name):
                 return not self.is_debit_account(name)
             case _:
-                raise AbacusError()
+                raise AbacusError()  # mypy wants it
 
     def set(self, t: T5, account_name: str):
         """Add regular account."""
@@ -229,21 +235,16 @@ class ChartDict(UserDict[str, Regular | Contra]):
         self[contra_account_name] = Contra(account_name)
         return self
 
-    def get_constructor(self, account_name: str) -> Type["TAccount"]:
-        """Return T-account class constructor for a given account name."""
-        if account_name not in self.keys():
-            raise KeyError(account_name)
-        if self.is_debit_account(account_name):
-            return DebitAccount
-        return CreditAccount
+    def t_account(self, account_name: str) -> "TAccount":
+        """Return T-account for a given account name."""
+        return (
+            DebitAccount() if self.is_debit_account(account_name) else CreditAccount()
+        )
 
     def to_ledger(self) -> "Ledger":
         """Create ledger."""
         return Ledger(
-            {
-                account_name: self.get_constructor(account_name)()
-                for account_name in self.keys()
-            }
+            {account_name: self.t_account(account_name) for account_name in self.keys()}
         )
 
     def _close_contra_accounts(self, t: T5) -> Iterator[Pair]:
@@ -395,10 +396,6 @@ class DebitAccount(TAccount):
             )
         self.right += amount
 
-    @property
-    def tuple(self):
-        return self.balance, None
-
 
 class CreditAccount(TAccount):
     @property
@@ -411,10 +408,6 @@ class CreditAccount(TAccount):
                 f"Account balance is {self.balance}, cannot debit {amount}."
             )
         self.left += amount
-
-    @property
-    def tuple(self):
-        return None, self.balance
 
 
 class Ledger(UserDict[AccountName, TAccount]):
@@ -453,7 +446,17 @@ class Ledger(UserDict[AccountName, TAccount]):
     @property
     def trial_balance(self):
         """Create trial balance from ledger."""
-        return TrialBalance({name: t_account.tuple for name, t_account in self.items()})
+
+        def as_tuple(t_account):
+            match t_account:
+                case DebitAccount(_, _):
+                    return t_account.balance, None
+                case CreditAccount(_, _):
+                    return None, t_account.balance
+
+        return TrialBalance(
+            {name: as_tuple(t_account) for name, t_account in self.items()}
+        )
 
     @property
     def balances(self) -> dict[AccountName, Amount]:
@@ -461,13 +464,14 @@ class Ledger(UserDict[AccountName, TAccount]):
         return {name: account.balance for name, account in self.items()}
 
     def net_balance(self, name: AccountName, contra_names: list[AccountName]) -> Amount:
-        """Calculate net balance of an account by substracting the balances of its contra accounts."""
+        """Calculate net balance of an account by deducting the balances of its contra accounts."""
         return self[name].balance - sum(
             self[contra_name].balance for contra_name in contra_names
         )
 
     def close_by_pairs(self, pairs: Sequence[Pair], entry_title: str) -> list[Entry]:
-        """Close ledger by using closing pairs of accounts."""
+        """Close ledger by using closing pairs of accounts.
+        This method changes the existing ledger."""
         closing_entries = []
         for pair in pairs:
             from_ = pair[0]
@@ -547,3 +551,103 @@ class BalanceSheet(Report):
 
 class BalancesDict(RootModel[Dict[str, Amount]], SaveLoadMixin):
     pass
+
+
+class EntryStore(BaseModel, SaveLoadMixin):
+    before_close: list[Entry] = []
+    closing: list[Entry] = []
+    after_close: list[Entry] = []
+
+    def is_closed(self):
+        return len(self.closing) > 0
+
+    def post(self, entry: Entry):
+        if self.is_closed():
+            self.after_close.append(entry)
+        else:
+            self.before_close.append(entry)
+
+
+@dataclass
+class Filenames:
+    directory: Path = Path(".")
+    chart: str = "chart.json"
+    store: str = "store.json"
+    balances: str = "balances.json"
+
+    @property
+    def chart_path(self):
+        return self.path / self.chart
+
+    @property
+    def store_path(self):
+        return self.path / self.store
+
+    @property
+    def balances_path(self):
+        return self.path / self.balances
+
+
+@dataclass
+class Book:
+    chart: Chart = Chart(retained_earnings="retained_earnings")
+    ledger: Ledger | None = None
+    store: EntryStore = field(default_factory=EntryStore)
+    files: Filenames = field(default_factory=Filenames)
+
+    def set_retained_earnings(self, account_name):
+        self.chart.retained_earnings = account_name
+
+    def set_directory(self, path):
+        self.files.path = Path(path)
+
+    def load_chart(self):
+        self.chart = Chart.load(self.files.chart_path)
+
+    def save_chart(self):
+        self.chart.save(self.files.chart_path)
+
+    def load_store(self):
+        self.store = EntryStore.load(self.files.store_path)
+
+    def save_store(self):
+        self.store.save(self.files.store_path)
+
+    def load_balances(self):
+        balances_dict = BalancesDict.load(self.files.balances_path).root
+        self.open(balances_dict)
+
+    def save_balances(self):
+        BalancesDict(self.ledger.balances).save(self.files.balances_path)
+
+    def load(self, path):
+        self.set_directory(path)
+        for method in (self.load_chart, self.load_store, self.load_balances):
+            try:
+                method()
+            except FileNotFoundError:
+                pass
+
+    def open(self, starting_balances=None):
+        if not starting_balances:
+            starting_balances = {}
+        self.ledger = self.chart.open(starting_balances)
+
+    def save(self, path):
+        self.set_directory(path)
+        self.save_chart()
+        self.save_store()
+        self.save_balances()
+
+    def post_double(self, title, debit, credit, amount):
+        self.post(DoubleEntry(title, debit, credit, amount).entry)
+
+    def post(self, entry: Entry):
+        if not self.ledger:
+            self.open()
+        self.ledger.post(entry)
+        self.store.post(entry)
+
+    def close(self):
+        entries = self.ledger.close(self.chart)
+        self.store.closing.extend(entries)

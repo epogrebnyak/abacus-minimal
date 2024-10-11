@@ -7,6 +7,7 @@ from abacus import (
     AbacusError,
     BalancesDict,
     BalanceSheet,
+    Book,
     ChartDict,
     Contra,
     CreditAccount,
@@ -22,12 +23,17 @@ from abacus import (
 
 def test_chart_dict_for_regular():
     cd = ChartDict([("sales", Regular(T5.Income)), ("cashback", Contra("sales"))])
-    assert cd.get_constructor("sales") == CreditAccount
+    assert isinstance(cd.t_account("sales"), CreditAccount)
 
 
 def test_chart_dict_for_contra():
     cd = ChartDict([("sales", Regular(T5.Income)), ("cashback", Contra("sales"))])
-    assert cd.get_constructor("cashback") == DebitAccount
+    assert isinstance(cd.t_account("cashback"), DebitAccount)
+
+
+def test_chart_dict_key_error():
+    with pytest.raises(KeyError):
+        ChartDict().t_account("vat")
 
 
 def test_chart_offset():
@@ -100,9 +106,9 @@ def test_ledger_creation(account_name, cls):
     ],
 )
 def test_chart_assert_unique_on_repeated_account_name(chart):
-    with pytest.raises(AbacusError):
+    with pytest.raises(AbacusError) as e:
         chart.assert_unique()
-        print(chart)
+        print(chart, e)
 
 
 def test_pydantic_will_not_accept_extra_fields():
@@ -229,14 +235,14 @@ def test_balances_load_save(tmp_path):
 
 def test_opening_entry_works(toy_chart):
     entry = make_opening_entry(
-        toy_chart.to_dict(), dict(cash=10, equity=8, re=2), "open"
+        dict(cash=10, equity=8, re=2), toy_chart.to_dict(), "open"
     )
     assert entry == Entry("open").dr("cash", 10).cr("equity", 8).cr("re", 2)
 
 
 def test_opening_entry_fails(toy_chart):
     with pytest.raises(AbacusError):
-        make_opening_entry(toy_chart.to_dict(), dict(cash=10))
+        make_opening_entry(dict(cash=10), toy_chart.to_dict())
 
 
 def test_chart_open(toy_chart):
@@ -249,3 +255,26 @@ def test_chart_open(toy_chart):
 def test_is_debit_account():
     chart_dict = Chart(retained_earnings="re").to_dict().offset("re", "drawing")
     assert chart_dict.is_debit_account("drawing") is True
+
+
+def test_book(tmp_path):
+    book = Book()
+    book.chart.assets.append("cash")
+    book.chart.capital.append("equity")
+    book.chart.income.append("sales")
+    book.chart.offset("sales", "refunds")
+    book.chart.expenses.append("salaries")
+    book.post(Entry("Initial investment").dr("cash", 10000).cr("equity", 10000))
+    book.save(tmp_path)
+    del book
+    book = Book()
+    book.load(tmp_path)
+    book.post_double("Sold services", debit="cash", credit="sales", amount=6500)
+    book.post_double("Made refund", debit="refunds", credit="cash", amount=500)
+    book.post_double("Paid salaries", debit="salaries", credit="cash", amount=1000)
+    book.close()
+    assert book.ledger.balances == {
+        "cash": 15000,
+        "equity": 10000,
+        "retained_earnings": 5000,
+    }
