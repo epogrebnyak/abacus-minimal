@@ -16,13 +16,20 @@ Intentions:
 - explain book-keeping rules through code;
 - make route into accounting for programmers and the route opposite way;
 - curate standard chart of accounts by country;
-- make web learning tools in accounting.  
+- make web learning tools in accounting (see [example][ex]).
+
+[ex]: https://abacus.streamlit.app/
 
 Limitations:
 
 - one currency;
 - one level of accounts;
 - no cash flow statement yet.
+
+Inspirations:
+- plain text accounting tools (plaintextaccounting.org)
+- js
+- reddit - microbooks.
 
 ## Install
 
