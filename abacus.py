@@ -645,8 +645,8 @@ class Book:
             starting_balances = {}
         self.ledger = self.chart.open(starting_balances)
 
-    def save(self, path):
-        self.set_directory(path)
+    def save(self, directory: str):
+        self.set_directory(directory)
         self.save_chart()
         self.save_store()
         self.save_balances()
