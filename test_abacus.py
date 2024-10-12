@@ -148,7 +148,10 @@ def test_end_to_end(chart):
     ledger.post_many(
         [
             DoubleEntry("Start", debit="cash", credit="equity", amount=20),
-            Entry("Accepted payment").dr("cash", 120).cr("sales", 100).cr("vat", 20),
+            Entry("Accepted payment")
+            .debit("cash", 120)
+            .credit("sales", 100)
+            .credit("vat", 20),
             [DebitEntry("refunds", 5), CreditEntry("cash", 5)],
             DoubleEntry("Paid salaries", "wages", "cash", 10),
             DoubleEntry("Paid VAT due", "vat", "cash", 20),
@@ -171,7 +174,7 @@ def test_end_to_end(chart):
 def test_catch_negative_entry():
     ledger = Chart(retained_earnings="re", assets=["cash"], capital=["equity"]).open()
     with pytest.raises(AbacusError):
-        ledger.post(Entry("Invalid entry").cr("cash", 1))
+        ledger.post(Entry("Invalid entry").credit("cash", 1))
 
 
 @pytest.mark.report
@@ -256,7 +259,7 @@ def test_opening_entry_works(toy_chart):
     entry = make_opening_entry(
         dict(cash=10, equity=8, re=2), toy_chart.to_dict(), "open"
     )
-    assert entry == Entry("open").dr("cash", 10).cr("equity", 8).cr("re", 2)
+    assert entry == Entry("open").debit("cash", 10).credit("equity", 8).credit("re", 2)
 
 
 @pytest.mark.entry
@@ -287,7 +290,7 @@ def test_book(tmp_path):
     book.chart.income.append("sales")
     book.chart.offset("sales", "refunds")
     book.chart.expenses.append("salaries")
-    book.post(Entry("Initial investment").dr("cash", 10000).cr("equity", 10000))
+    book.post(Entry("Initial investment").debit("cash", 10000).credit("equity", 10000))
     book.save(tmp_path)
     del book
     book = Book.new()

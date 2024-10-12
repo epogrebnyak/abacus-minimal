@@ -186,9 +186,11 @@ def make_opening_entry(
     entry = Entry(title)
     for account_name, amount in opening_balances.items():
         if chart_dict.is_debit_account(account_name):
-            entry.dr(account_name, amount)
+            entry.debit(account_name, amount)
         elif account_name in chart_dict.keys():
-            entry.cr(account_name, amount)
+            entry.credit(account_name, amount)
+        else:
+            raise AbacusError(f"Account not found in chart: {account_name}")
     entry.validate()
     return entry
 
@@ -305,12 +307,12 @@ class Entry:
         for name, amount in self.credits:
             yield CreditEntry(name, amount)
 
-    def dr(self, account_name, amount):
+    def debit(self, account_name, amount):
         """Add debit part to entry."""
         self.debits.append((account_name, Amount(amount)))
         return self
 
-    def cr(self, account_name, amount):
+    def credit(self, account_name, amount):
         """Add credit part to entry."""
         self.credits.append((account_name, Amount(amount)))
         return self
@@ -342,7 +344,9 @@ class DoubleEntry:
     @property
     def entry(self) -> "Entry":
         return (
-            Entry(self.title).dr(self.debit, self.amount).cr(self.credit, self.amount)
+            Entry(self.title)
+            .debit(self.debit, self.amount)
+            .credit(self.credit, self.amount)
         )
 
     def __iter__(self):
@@ -599,7 +603,9 @@ class Book:
 
     @classmethod
     def new(cls, direcotry=".", retained_earnings="retained_earnings"):
-       return cls(PathFinder(directory=direcotry), Chart(retained_earnings=retained_earnings))
+        return cls(
+            PathFinder(directory=direcotry), Chart(retained_earnings=retained_earnings)
+        )
 
     def set_retained_earnings(self, account_name: str):
         self.chart.retained_earnings = account_name
