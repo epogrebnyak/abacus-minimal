@@ -22,6 +22,7 @@ Accounting conventions:
 
 - regular accounts of five types (asset, liability, capital, income, expense)
 - contra accounts to regular accounts are possible (eg depreciation, discounts, etc.)
+- account balance cannot go negative
 
 Assumptions and simplifications (some may be relaxed in future versions): 
 
@@ -33,7 +34,6 @@ Assumptions and simplifications (some may be relaxed in future versions):
 - no journals, entries are posted to ledger directly
 - an entry can touch any accounts
 - entry amount can be positive or negative
-- account balance cannot go negative
 - net earnings are income less expenses, no gross profit or earnings before tax calculated    
 - period end closing will transfer net earnings to retained earnings
 - no cash flow statement
@@ -553,6 +553,8 @@ class BalancesDict(RootModel[Dict[str, Amount]], SaveLoadMixin):
     pass
 
 
+# 1. may flatten to one list
+# 2. may use append only for saving
 class EntryStore(BaseModel, SaveLoadMixin):
     before_close: list[Entry] = []
     closing: list[Entry] = []
@@ -569,58 +571,60 @@ class EntryStore(BaseModel, SaveLoadMixin):
 
 
 @dataclass
-class Filenames:
+class PathFinder:
     directory: Path = Path(".")
-    chart: str = "chart.json"
-    store: str = "store.json"
-    balances: str = "balances.json"
+    chart_filename: str = "chart.json"
+    store_filename: str = "store.json"
+    balances_filename: str = "balances.json"
 
     @property
-    def chart_path(self):
-        return self.path / self.chart
+    def chart(self):
+        return self.directory / self.chart_filename
 
     @property
-    def store_path(self):
-        return self.path / self.store
+    def store(self):
+        return self.directory / self.store_filename
 
     @property
-    def balances_path(self):
-        return self.path / self.balances
+    def balances(self):
+        return self.directory / self.balances_filename
 
 
 @dataclass
 class Book:
-    chart: Chart = field(
-        default_factory=lambda: Chart(retained_earnings="retained_earnings")
-    )
+    path: PathFinder
+    chart: Chart
     ledger: Ledger = field(default_factory=Ledger)
     store: EntryStore = field(default_factory=EntryStore)
-    files: Filenames = field(default_factory=Filenames)
 
-    def set_retained_earnings(self, account_name):
+    @classmethod
+    def new(cls, direcotry=".", retained_earnings="retained_earnings"):
+       return cls(PathFinder(directory=direcotry), Chart(retained_earnings=retained_earnings))
+
+    def set_retained_earnings(self, account_name: str):
         self.chart.retained_earnings = account_name
 
     def set_directory(self, path):
-        self.files.path = Path(path)
+        self.path.directory = Path(path)
 
     def load_chart(self):
-        self.chart = Chart.load(self.files.chart_path)
+        self.chart = Chart.load(self.path.chart)
 
     def save_chart(self):
-        self.chart.save(self.files.chart_path)
+        self.chart.save(self.path.chart)
 
     def load_store(self):
-        self.store = EntryStore.load(self.files.store_path)
+        self.store = EntryStore.load(self.path.store)
 
     def save_store(self):
-        self.store.save(self.files.store_path)
+        self.store.save(self.path.store)
 
     def load_balances(self):
-        balances_dict = BalancesDict.load(self.files.balances_path).root
+        balances_dict = BalancesDict.load(self.path.balances).root
         self.open(balances_dict)
 
     def save_balances(self):
-        BalancesDict(self.ledger.balances).save(self.files.balances_path)
+        BalancesDict(self.ledger.balances).save(self.path.balances)
 
     def load(self, path):
         self.set_directory(path)

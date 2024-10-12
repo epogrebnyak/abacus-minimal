@@ -1,6 +1,6 @@
 from abacus import Book
 
-book = Book()
+book = Book.new()
 book.chart.assets.append("cash")
 book.chart.capital.append("equity")
 book.chart.income.append("sales")
