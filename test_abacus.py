@@ -284,17 +284,20 @@ def test_is_debit_account():
 
 @pytest.mark.mixed
 def test_book(tmp_path):
-    book = Book.new()
-    book.chart.assets.append("cash")
-    book.chart.capital.append("equity")
-    book.chart.income.append("sales")
+    book = Book(
+        chart=Chart(
+            retained_earnings="retained_earnings",
+            assets=["cash"],
+            capital=["equity"],
+            income=["sales"],
+            expenses=["salaries"],
+        )
+    )
     book.chart.offset("sales", "refunds")
-    book.chart.expenses.append("salaries")
     book.post(Entry("Initial investment").debit("cash", 10000).credit("equity", 10000))
     book.save(tmp_path)
     del book
-    book = Book.new()
-    book.load(tmp_path)
+    book = Book.load(tmp_path)
     book.post_double("Sold services", debit="cash", credit="sales", amount=6500)
     book.post_double("Made refund", debit="refunds", credit="cash", amount=500)
     book.post_double("Paid salaries", debit="salaries", credit="cash", amount=1000)

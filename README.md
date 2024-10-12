@@ -27,20 +27,22 @@ cd abacus-minimal
 ## Usage example
 
 ```python
-from abacus import Book, Entry
+from abacus import Chart, Book, Entry
 
-book = Book.new()
 
 # Create chart of accounts
-book.chart.assets.append("cash")
-book.chart.capital.append("equity")
-book.chart.liabilities.append("vat")
-book.chart.name("vat", "VAT payable")
-book.chart.income.append("sales")
-book.chart.offset("sales", "refunds")
-book.chart.expenses.append("salaries")
+chart = Chart(
+    retained_earnings="retained_earnings",
+    assets=["cash"],
+    capital=["equity"],
+    liabilities=["vat"],
+    income=["sales"],
+    expenses=["salaries"],
+)
+chart.offset("sales", "refunds")
 
 # Post entries
+book = Book(chart=chart)
 book.post_double("Initial investment", debit="cash", credit="equity", amount=10000)
 book.post(
     Entry("Sold services with VAT")

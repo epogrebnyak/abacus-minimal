@@ -596,16 +596,10 @@ class PathFinder:
 
 @dataclass
 class Book:
-    path: PathFinder
     chart: Chart
     ledger: Ledger = field(default_factory=Ledger)
     store: EntryStore = field(default_factory=EntryStore)
-
-    @classmethod
-    def new(cls, direcotry=".", retained_earnings="retained_earnings"):
-        return cls(
-            PathFinder(directory=direcotry), Chart(retained_earnings=retained_earnings)
-        )
+    path: PathFinder = field(default_factory=PathFinder)
 
     def set_retained_earnings(self, account_name: str):
         self.chart.retained_earnings = account_name
@@ -632,13 +626,16 @@ class Book:
     def save_balances(self):
         BalancesDict(self.ledger.balances).save(self.path.balances)
 
-    def load(self, path):
-        self.set_directory(path)
-        for method in (self.load_chart, self.load_store, self.load_balances):
+    @classmethod
+    def load(cls, path):
+        book = cls(chart=Chart(retained_earnings="retained_earnings"))
+        book.set_directory(path)
+        for method in ('load_chart', 'load_store', 'load_balances'):
             try:
-                method()
+                getattr(book, method)()
             except FileNotFoundError:
                 pass
+        return book
 
     def open(self, starting_balances=None):
         if not starting_balances:
