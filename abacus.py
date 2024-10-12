@@ -300,6 +300,7 @@ class Entry:
     title: str
     debits: list[tuple[AccountName, Amount]] = field(default_factory=list)
     credits: list[tuple[AccountName, Amount]] = field(default_factory=list)
+    is_closing: bool = False
 
     def __iter__(self) -> Iterator[SingleEntry]:
         for name, amount in self.debits:
@@ -385,7 +386,11 @@ class TAccount(ABC):
             dr, cr = to, frm  # debit destination account
         elif isinstance(self, CreditAccount):
             dr, cr = frm, to  # credit destination account
-        return DoubleEntry(title, dr, cr, self.balance).entry
+        return (
+            Entry(title, is_closing=True)
+            .debit(dr, self.balance)
+            .credit(cr, self.balance)
+        )
 
 
 class DebitAccount(TAccount):
@@ -438,7 +443,7 @@ class Ledger(UserDict[AccountName, TAccount]):
             raise error("Accounts do not exist", not_found)
         if cannot_post:
             raise error(
-                "Posting should not make account balance negative",
+                "Forbidden to make account balance negative",
                 cannot_post,
             )
 
@@ -452,11 +457,8 @@ class Ledger(UserDict[AccountName, TAccount]):
         """Create trial balance from ledger."""
 
         def as_tuple(t_account):
-            match t_account:
-                case DebitAccount(_, _):
-                    return t_account.balance, None
-                case CreditAccount(_, _):
-                    return None, t_account.balance
+            b = t_account.balance
+            return (b, None) if isinstance(t_account, DebitAccount) else (None, b)
 
         return TrialBalance(
             {name: as_tuple(t_account) for name, t_account in self.items()}
@@ -490,10 +492,16 @@ class Ledger(UserDict[AccountName, TAccount]):
         return self.close_by_pairs(chart.closing_pairs, entry_title)
 
     def balance_sheet(self, chart: Chart):
-        return BalanceSheet.new(chart, self)
+        fill = net_balances_factory(chart, self)
+        return BalanceSheet(
+            assets=fill(T5.Asset),
+            capital=fill(T5.Capital),
+            liabilities=fill(T5.Liability),
+        )
 
     def income_statement(self, chart: Chart):
-        return IncomeStatement.new(chart, self)
+        fill = net_balances_factory(chart, self)
+        return IncomeStatement(income=fill(T5.Income), expenses=fill(T5.Expense))
 
 
 class TrialBalance(UserDict[str, tuple[Amount, Amount]]):
@@ -501,12 +509,12 @@ class TrialBalance(UserDict[str, tuple[Amount, Amount]]):
 
 
 def net_balances_factory(chart: Chart, ledger: Ledger):
-    cd = chart.to_dict()
+    chart_dict = chart.to_dict()
 
     def fill(t: T5):
         return {
-            name: ledger.net_balance(name, cd.find_contra_accounts(name))
-            for name in cd.by_type(t)
+            name: ledger.net_balance(name, chart_dict.find_contra_accounts(name))
+            for name in chart_dict.by_type(t)
         }
 
     return fill
@@ -520,16 +528,6 @@ class IncomeStatement(Report):
     income: dict[AccountName, Amount]
     expenses: dict[AccountName, Amount]
 
-    @classmethod
-    def new(
-        cls,
-        chart: Chart,
-        ledger: Ledger,
-    ):
-        """Create income statement from ledger and chart."""
-        fill = net_balances_factory(chart, ledger)
-        return cls(income=fill(T5.Income), expenses=fill(T5.Expense))
-
     @property
     def net_earnings(self):
         """Calculate net earnings as income less expenses."""
@@ -541,37 +539,13 @@ class BalanceSheet(Report):
     capital: dict[AccountName, Amount]
     liabilities: dict[AccountName, Amount]
 
-    @classmethod
-    def new(cls, chart: Chart, ledger: Ledger):
-        """Create balance sheet from ledger and chart.
-        Account will balances will be shown net of contra account balances."""
-        fill = net_balances_factory(chart, ledger)
-        return cls(
-            assets=fill(T5.Asset),
-            capital=fill(T5.Capital),
-            liabilities=fill(T5.Liability),
-        )
-
 
 class BalancesDict(RootModel[Dict[str, Amount]], SaveLoadMixin):
     pass
 
 
-# 1. may flatten to one list
-# 2. may use append only for saving
 class EntryStore(BaseModel, SaveLoadMixin):
-    before_close: list[Entry] = []
-    closing: list[Entry] = []
-    after_close: list[Entry] = []
-
-    def is_closed(self):
-        return len(self.closing) > 0
-
-    def post(self, entry: Entry):
-        if self.is_closed():
-            self.after_close.append(entry)
-        else:
-            self.before_close.append(entry)
+    entries: list[Entry] = []
 
 
 @dataclass
@@ -601,10 +575,7 @@ class Book:
     store: EntryStore = field(default_factory=EntryStore)
     path: PathFinder = field(default_factory=PathFinder)
 
-    def set_retained_earnings(self, account_name: str):
-        self.chart.retained_earnings = account_name
-
-    def set_directory(self, path):
+    def set_directory(self, path: str):
         self.path.directory = Path(path)
 
     def load_chart(self):
@@ -630,7 +601,7 @@ class Book:
     def load(cls, path):
         book = cls(chart=Chart(retained_earnings="retained_earnings"))
         book.set_directory(path)
-        for method in ('load_chart', 'load_store', 'load_balances'):
+        for method in ("load_chart", "load_store", "load_balances"):
             try:
                 getattr(book, method)()
             except FileNotFoundError:
@@ -656,8 +627,8 @@ class Book:
             self.open()
         if self.ledger:
             self.ledger.post(entry)
-            self.store.post(entry)
+            self.store.entries.append(entry)
 
     def close(self):
         entries = self.ledger.close(self.chart)
-        self.store.closing.extend(entries)
+        self.store.entries.extend(entries)

@@ -1,5 +1,4 @@
-from abacus import Chart, Book, Entry
-
+from abacus import Book, Chart, Entry
 
 # Create chart of accounts
 chart = Chart(

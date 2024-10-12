@@ -11,11 +11,18 @@ More features:
 - double or multiple entries;
 - saves everything to JSON files.
 
+Intentions:
+
+- explain book-keeping rules through code;
+- make route into accounting for programmers and the route opposite way;
+- curate standard chart of accounts by country;
+- make web learning tools in accounting.  
+
 Limitations:
 
 - one currency;
 - one level of accounts;
-- no cash flow statement.
+- no cash flow statement yet.
 
 ## Install
 

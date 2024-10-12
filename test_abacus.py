@@ -21,19 +21,19 @@ from abacus import (
 )
 
 
-@pytest.mark.cd
+@pytest.mark.chart_dict
 def test_chart_dict_for_regular():
     cd = ChartDict([("sales", Regular(T5.Income)), ("cashback", Contra("sales"))])
     assert isinstance(cd.t_account("sales"), CreditAccount)
 
 
-@pytest.mark.cd
+@pytest.mark.chart_dict
 def test_chart_dict_for_contra():
     cd = ChartDict([("sales", Regular(T5.Income)), ("cashback", Contra("sales"))])
     assert isinstance(cd.t_account("cashback"), DebitAccount)
 
 
-@pytest.mark.cd
+@pytest.mark.chart_dict
 def test_chart_dict_key_error():
     with pytest.raises(KeyError):
         ChartDict().t_account("vat")
@@ -211,7 +211,7 @@ def test_closing_entry_for_debit_account():
     account = DebitAccount(20, 5)
     assert (
         account.closing_entry(("this", "that"), "close")
-        == DoubleEntry("close", "that", "this", 15).entry
+        == Entry("close", is_closing=True).debit("that", 15).credit("this", 15)
     )
 
 
