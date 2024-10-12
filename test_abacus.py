@@ -21,27 +21,32 @@ from abacus import (
 )
 
 
+@pytest.mark.cd
 def test_chart_dict_for_regular():
     cd = ChartDict([("sales", Regular(T5.Income)), ("cashback", Contra("sales"))])
     assert isinstance(cd.t_account("sales"), CreditAccount)
 
 
+@pytest.mark.cd
 def test_chart_dict_for_contra():
     cd = ChartDict([("sales", Regular(T5.Income)), ("cashback", Contra("sales"))])
     assert isinstance(cd.t_account("cashback"), DebitAccount)
 
 
+@pytest.mark.cd
 def test_chart_dict_key_error():
     with pytest.raises(KeyError):
         ChartDict().t_account("vat")
 
 
+@pytest.mark.chart
 def test_chart_offset():
     chart = Chart(retained_earnings="re", income=["sales"]).offset("sales", "refunds")
     assert chart.contra_accounts["sales"] == ["refunds"]
 
 
-def make_chart():
+@pytest.fixture
+def chart():
     return Chart(
         retained_earnings="re",
         assets=["cash", "inventory", "ar"],
@@ -59,8 +64,8 @@ def make_chart():
     )
 
 
-def test_chart_closing_pairs():
-    chart = make_chart()
+@pytest.mark.chart
+def test_chart_closing_pairs(chart):
     assert chart.closing_pairs == [
         # income
         ("refunds", "sales"),
@@ -71,11 +76,13 @@ def test_chart_closing_pairs():
     ]
 
 
+@pytest.mark.chart
 def test_chart_to_ledger_keys():
     ledger = Chart(retained_earnings="re", assets=["cash"], capital=["equity"]).open()
     assert list(ledger.keys()) == ["cash", "equity", "re"]
 
 
+@pytest.mark.chart
 @pytest.mark.parametrize(
     "account_name, cls",
     [
@@ -94,6 +101,7 @@ def test_ledger_creation(account_name, cls):
     assert isinstance(ledger[account_name], cls)
 
 
+@pytest.mark.chart
 @pytest.mark.parametrize(
     "chart",
     [
@@ -111,11 +119,13 @@ def test_chart_assert_unique_on_repeated_account_name(chart):
         print(chart, e)
 
 
+@pytest.mark.chart
 def test_pydantic_will_not_accept_extra_fields():
     with pytest.raises(ValidationError):
         Chart(retained_earnings="re", haha=["equity"])
 
 
+@pytest.mark.chart
 def test_chart_to_dict():
     assert Chart(
         retained_earnings="re",
@@ -132,8 +142,8 @@ def test_chart_to_dict():
     )
 
 
-def test_end_to_end():
-    chart = make_chart()
+@pytest.mark.chart
+def test_end_to_end(chart):
     ledger = chart.open()
     ledger.post_many(
         [
@@ -157,20 +167,14 @@ def test_end_to_end():
     }
 
 
+@pytest.mark.chart
 def test_catch_negative_entry():
     ledger = Chart(retained_earnings="re", assets=["cash"], capital=["equity"]).open()
     with pytest.raises(AbacusError):
         ledger.post(Entry("Invalid entry").cr("cash", 1))
 
 
-def test_closing_entry_for_debit_account():
-    account = DebitAccount(20, 5)
-    assert (
-        account.closing_entry(("this", "that"), "close")
-        == DoubleEntry("close", "that", "this", 15).entry
-    )
-
-
+@pytest.mark.report
 def test_balance_sheet():
     chart = Chart(
         retained_earnings="re",
@@ -191,11 +195,21 @@ def test_balance_sheet():
     )
 
 
+@pytest.mark.report
 def test_net_earnings():
     chart = Chart(retained_earnings="re", assets=["cash"], income=["sales"])
     ledger = chart.open()
     ledger.post(DoubleEntry("Free lunch", "cash", "sales", 10))
     assert ledger.income_statement(chart).net_earnings == 10
+
+
+@pytest.mark.entry
+def test_closing_entry_for_debit_account():
+    account = DebitAccount(20, 5)
+    assert (
+        account.closing_entry(("this", "that"), "close")
+        == DoubleEntry("close", "that", "this", 15).entry
+    )
 
 
 @pytest.fixture
@@ -210,22 +224,26 @@ def toy_ledger(toy_chart):
     return ledger
 
 
+@pytest.mark.report
 def test_trial_balance(toy_ledger):
     assert toy_ledger.trial_balance == dict(
         cash=(10, None), equity=(None, 10), re=(None, 0)
     )
 
 
+@pytest.mark.report
 def test_balances(toy_ledger):
     assert toy_ledger.balances == dict(cash=10, equity=10, re=0)
 
 
+@pytest.mark.report
 def test_balances_dict_json(toy_ledger):
     content = BalancesDict(toy_ledger.balances).model_dump_json()
     x = BalancesDict.model_validate_json(content)
     assert x.root == dict(cash=10, equity=10, re=0)
 
 
+@pytest.mark.report
 def test_balances_load_save(tmp_path):
     path = str(tmp_path / "b.json")
     b = BalancesDict(a=1)
@@ -233,6 +251,7 @@ def test_balances_load_save(tmp_path):
     assert b == BalancesDict.load(path)
 
 
+@pytest.mark.entry
 def test_opening_entry_works(toy_chart):
     entry = make_opening_entry(
         dict(cash=10, equity=8, re=2), toy_chart.to_dict(), "open"
@@ -240,11 +259,13 @@ def test_opening_entry_works(toy_chart):
     assert entry == Entry("open").dr("cash", 10).cr("equity", 8).cr("re", 2)
 
 
+@pytest.mark.entry
 def test_opening_entry_fails(toy_chart):
     with pytest.raises(AbacusError):
         make_opening_entry(dict(cash=10), toy_chart.to_dict())
 
 
+@pytest.mark.mixed
 def test_chart_open(toy_chart):
     ledger = toy_chart.open(dict(cash=10, equity=10))
     assert ledger.trial_balance == dict(
@@ -252,11 +273,13 @@ def test_chart_open(toy_chart):
     )
 
 
+@pytest.mark.chart
 def test_is_debit_account():
     chart_dict = Chart(retained_earnings="re").to_dict().offset("re", "drawing")
     assert chart_dict.is_debit_account("drawing") is True
 
 
+@pytest.mark.mixed
 def test_book(tmp_path):
     book = Book()
     book.chart.assets.append("cash")

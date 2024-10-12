@@ -75,15 +75,15 @@ class T5(Enum):
     Expense = "expense"
 
 
-class SaveLoadMixin(ABC):
+class SaveLoadMixin:
     """Class for loading and saving Pydantic models to files."""
 
     @classmethod
     def load(cls, filename: str):
-        return cls.model_validate_json(Path(filename).read_text())
+        return cls.model_validate_json(Path(filename).read_text())  # type: ignore
 
     def save(self, filename: str):
-        Path(filename).write_text(self.model_dump_json(indent=2))
+        Path(filename).write_text(self.model_dump_json(indent=2))  # type: ignore
 
 
 class Chart(BaseModel, SaveLoadMixin):
@@ -169,7 +169,7 @@ class Chart(BaseModel, SaveLoadMixin):
         return list(self.to_dict().closing_pairs(self.retained_earnings))
 
     def open(self, opening_balances: dict[AccountName, Amount] | None = None):
-        """Create ledger with optional opening balances."""
+        """Create ledger with opening balances."""
         ledger = self.to_dict().to_ledger()
         if opening_balances:
             entry = make_opening_entry(opening_balances, self.to_dict())
@@ -590,8 +590,10 @@ class Filenames:
 
 @dataclass
 class Book:
-    chart: Chart = Chart(retained_earnings="retained_earnings")
-    ledger: Ledger | None = None
+    chart: Chart = field(
+        default_factory=lambda: Chart(retained_earnings="retained_earnings")
+    )
+    ledger: Ledger = field(default_factory=Ledger)
     store: EntryStore = field(default_factory=EntryStore)
     files: Filenames = field(default_factory=Filenames)
 
@@ -643,10 +645,11 @@ class Book:
         self.post(DoubleEntry(title, debit, credit, amount).entry)
 
     def post(self, entry: Entry):
-        if not self.ledger:
+        if len(self.ledger) == 0:
             self.open()
-        self.ledger.post(entry)
-        self.store.post(entry)
+        if self.ledger:
+            self.ledger.post(entry)
+            self.store.post(entry)
 
     def close(self):
         entries = self.ledger.close(self.chart)
