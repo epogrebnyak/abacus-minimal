@@ -5,9 +5,8 @@ of book-keeping rules.
 
 `abacus-minimal` allows to create a chart of accounts,
 open general ledger, post entries, and properly close ledger
-at accounting period end.
-
-On output we get trial balance, balance sheet and income statement reports.
+at accounting period end. On output we get trial balance, 
+balance sheet and income statement reports.
 
 Extra features:
 
