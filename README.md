@@ -7,14 +7,14 @@ of book-keeping rules.
 open general ledger, post entries, and properly close ledger
 at accounting period end.
 
-On input we get a Chart and list on entries and on output we
-get balance, balance sheet and income statement reports.
+On input we use a chart and a list of entries and on output we
+get trial balance, balance sheet and income statement reports.
 
 Extra features:
 
-- allows contra accounts,
+- contra accounts,
 - double or multiple entries,
-- saves everything to JSON files.
+- everything saved to JSON files.
 
 Limitations:
 
@@ -48,10 +48,10 @@ chart.offset("sales", "refunds")
 # Post entries
 book = Book(chart)
 entries = [
-    DoubleEntry("Initial investment", debit="cash", credit="equity", amount=10000),
+    Entry("Initial investment", amount=10_000).debit("cash").credit("equity"),
     Entry("Sold services with VAT").debit("cash", 6000).credit("sales", 5000).credit("vat", 1000),
-    DoubleEntry("Made client refund", debit="refunds", credit="cash", amount=500),
-    DoubleEntry("Paid salaries", debit="salaries", credit="cash", amount=1500),
+    Entry("Made client refund", amount=500).debit("refunds").credit("cash"),
+    Entry("Paid salaries", amount=1500).debit("salaries").credit("cash"),
 ]
 book.post_many(entries)
 
@@ -70,12 +70,12 @@ assert book.ledger.balances == {
 book.save(directory=".")
 ```
 
-## Project intentions
+## Project intent
 
-- Explain book-keeping rules through code,
-- Make route into accounting for programmers and the route opposite way,
+- Explain book-keeping rules through code.
+- Make routes into accounting for programmers and vice versa.
 - Curate typical charts of accounts by country and convert between them.
-- Make web learning tools in accounting like [abacus-streamlit][ex].
+- Make web learning tools in accounting similar to [abacus-streamlit][ex].
 
 [ex]: https://abacus.streamlit.app/
 

@@ -303,6 +303,7 @@ class Entry:
     debits: list[tuple[AccountName, Amount]] = field(default_factory=list)
     credits: list[tuple[AccountName, Amount]] = field(default_factory=list)
     is_closing: bool = False
+    amount: Amount | int | float | None = None
 
     def __iter__(self) -> Iterator[SingleEntry]:
         for name, amount in self.debits:
@@ -310,13 +311,17 @@ class Entry:
         for name, amount in self.credits:
             yield CreditEntry(name, amount)
 
-    def debit(self, account_name, amount):
+    def debit(self, account_name, amount=None):
         """Add debit part to entry."""
+        if amount is None:
+            amount = self.amount
         self.debits.append((account_name, Amount(amount)))
         return self
 
-    def credit(self, account_name, amount):
+    def credit(self, account_name, amount=None):
         """Add credit part to entry."""
+        if amount is None:
+            amount = self.amount
         self.credits.append((account_name, Amount(amount)))
         return self
 
@@ -333,27 +338,6 @@ class Entry:
             return sum(amount for _, amount in xs)
 
         return sums(self.debits) == sums(self.credits)
-
-
-@dataclass
-class DoubleEntry:
-    """Create double entry with one debit and one credit entry."""
-
-    title: str
-    debit: AccountName
-    credit: AccountName
-    amount: Amount | int | float
-
-    @property
-    def entry(self) -> "Entry":
-        return (
-            Entry(self.title)
-            .debit(self.debit, self.amount)
-            .credit(self.credit, self.amount)
-        )
-
-    def __iter__(self):
-        return iter(self.entry)
 
 
 @dataclass
@@ -618,9 +602,7 @@ class Book:
         self.save_store(directory)
         self.save_balances(directory)
 
-    def post(self, entry: Entry | DoubleEntry):
-        if isinstance(entry, DoubleEntry):
-            entry = entry.entry
+    def post(self, entry: Entry):
         self.ledger.post(entry)
         self.store.entries.append(entry)
 

@@ -1,4 +1,4 @@
-from abacus import Book, Chart, DoubleEntry, Entry
+from abacus import Book, Chart, Entry
 
 # Create chart of accounts
 chart = Chart(
@@ -13,15 +13,14 @@ chart.offset("sales", "refunds")
 
 # Post entries
 book = Book(chart)
+# fmt: off
 entries = [
-    DoubleEntry("Initial investment", debit="cash", credit="equity", amount=10000),
-    Entry("Sold services with VAT")
-    .debit("cash", 6000)
-    .credit("sales", 5000)
-    .credit("vat", 1000),
-    DoubleEntry("Made client refund", debit="refunds", credit="cash", amount=500),
-    DoubleEntry("Paid salaries", debit="salaries", credit="cash", amount=1500),
+    Entry("Initial investment", amount=10_000).debit("cash").credit("equity"),
+    Entry("Sold services with VAT").debit("cash", 6000).credit("sales", 5000).credit("vat", 1000),
+    Entry("Made client refund", amount=500).debit("refunds").credit("cash"),
+    Entry("Paid salaries", amount=1500).debit("salaries").credit("cash"),
 ]
+# fmt: on
 book.post_many(entries)
 
 # Close at period end
