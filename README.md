@@ -5,31 +5,36 @@ start general ledger, post entries, properly close ledger
 at accounting period end and produce trial balance, balance sheet 
 and income statement reports.
 
+`abacus-minimal` aims to be as concise as possible in implemetation
+of book-keeping rules. 
+
 More features:
 
-- allows contra accounts;
-- double or multiple entries;
+- allows contra accounts,
+- double or multiple entries,
 - saves everything to JSON files.
 
 Intentions:
 
-- explain book-keeping rules through code;
-- make route into accounting for programmers and the route opposite way;
-- curate standard chart of accounts by country;
+- explain book-keeping rules through code,
+- make route into accounting for programmers and the route opposite way,
+- curate standard charts of accounts by country,
 - make web learning tools in accounting (see [example][ex]).
 
 [ex]: https://abacus.streamlit.app/
 
 Limitations:
 
-- one currency;
-- one level of accounts;
+- one currency,
+- one level of accounts,
 - no cash flow statement yet.
 
 Inspirations:
-- plain text accounting tools (plaintextaccounting.org)
-- js
-- reddit - microbooks.
+
+- [hledger](https://github.com/simonmichael/hledger) 
+   and a familiy of [plain text accounting tools](https://plaintextaccounting.org/),
+- [medici](https://github.com/flash-oss/medici) ledger in JavaScript and Mongo,
+- [microbooks](https://microbooks.io/) API.
 
 ## Install
 
@@ -56,7 +61,7 @@ chart = Chart(
 chart.offset("sales", "refunds")
 
 # Post entries
-book = Book(chart=chart)
+book = Book(chart)
 book.post_double("Initial investment", debit="cash", credit="equity", amount=10000)
 book.post(
     Entry("Sold services with VAT")

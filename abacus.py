@@ -550,62 +550,71 @@ class EntryStore(BaseModel, SaveLoadMixin):
 
 @dataclass
 class PathFinder:
-    directory: Path = Path(".")
-    chart_filename: str = "chart.json"
-    store_filename: str = "store.json"
-    balances_filename: str = "balances.json"
+    directory: str
+    _chart: str = "chart.json"
+    _store: str = "store.json"
+    _balances: str = "balances.json"
 
     @property
-    def chart(self):
-        return self.directory / self.chart_filename
+    def base(self) -> Path:
+        return Path(self.directory)
 
     @property
-    def store(self):
-        return self.directory / self.store_filename
+    def chart(self) -> Path:
+        return self.base / self._chart
 
     @property
-    def balances(self):
-        return self.directory / self.balances_filename
+    def store(self) -> Path:
+        return self.base / self._store
+
+    @property
+    def balances(self) -> Path:
+        return self.base / self._balances
+
+    def get_chart(self):
+        return Chart.load(self.chart)
+
+    def get_store(self):
+        return EntryStore.load(self.store)
+
+    def get_balances(self):
+        return BalancesDict.load(self.balances).root
 
 
-@dataclass
 class Book:
-    chart: Chart
-    ledger: Ledger = field(default_factory=Ledger)
-    store: EntryStore = field(default_factory=EntryStore)
-    path: PathFinder = field(default_factory=PathFinder)
-
-    def set_directory(self, path: str):
-        self.path.directory = Path(path)
-
-    def load_chart(self):
-        self.chart = Chart.load(self.path.chart)
+    def __init__(self, chart: Chart, directory: str = "."):
+        self.chart = chart
+        self.ledger = chart.open()
+        self.store = EntryStore()
+        self.path = PathFinder(directory)
 
     def save_chart(self):
         self.chart.save(self.path.chart)
-
-    def load_store(self):
-        self.store = EntryStore.load(self.path.store)
 
     def save_store(self):
         self.store.save(self.path.store)
 
     def load_balances(self):
-        balances_dict = BalancesDict.load(self.path.balances).root
+        balances_dict = self.path.get_balances()
         self.open(balances_dict)
 
     def save_balances(self):
         BalancesDict(self.ledger.balances).save(self.path.balances)
 
     @classmethod
-    def load(cls, path):
-        book = cls(chart=Chart(retained_earnings="retained_earnings"))
-        book.set_directory(path)
-        for method in ("load_chart", "load_store", "load_balances"):
-            try:
-                getattr(book, method)()
-            except FileNotFoundError:
-                pass
+    def load(cls, directory: str):
+        """Load book from directory."""
+        path = PathFinder(directory)
+        try:
+            chart = Chart.load(str(path.chart))
+        except FileNotFoundError:
+            raise AbacusError(f"Chart file not found: {path.chart}")
+        book = cls(chart, directory)
+        if path.balances.exists():
+            book.load_balances()
+        # note: will not be necessary in append-only database
+        if path.store.exists():
+            book.store = path.get_store()
         return book
 
     def open(self, starting_balances=None):
@@ -613,8 +622,9 @@ class Book:
             starting_balances = {}
         self.ledger = self.chart.open(starting_balances)
 
-    def save(self, directory: str):
-        self.set_directory(directory)
+    def save(self, directory: str | None = None):
+        if directory:
+            self.path = PathFinder(directory)
         self.save_chart()
         self.save_store()
         self.save_balances()
@@ -623,11 +633,8 @@ class Book:
         self.post(DoubleEntry(title, debit, credit, amount).entry)
 
     def post(self, entry: Entry):
-        if len(self.ledger) == 0:
-            self.open()
-        if self.ledger:
-            self.ledger.post(entry)
-            self.store.entries.append(entry)
+        self.ledger.post(entry)
+        self.store.entries.append(entry)
 
     def close(self):
         entries = self.ledger.close(self.chart)

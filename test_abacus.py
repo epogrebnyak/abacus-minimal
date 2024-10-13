@@ -209,10 +209,9 @@ def test_net_earnings():
 @pytest.mark.entry
 def test_closing_entry_for_debit_account():
     account = DebitAccount(20, 5)
-    assert (
-        account.closing_entry(("this", "that"), "close")
-        == Entry("close", is_closing=True).debit("that", 15).credit("this", 15)
-    )
+    assert account.closing_entry(("this", "that"), "close") == Entry(
+        "close", is_closing=True
+    ).debit("that", 15).credit("this", 15)
 
 
 @pytest.fixture
@@ -284,18 +283,17 @@ def test_is_debit_account():
 
 @pytest.mark.mixed
 def test_book(tmp_path):
-    book = Book(
-        chart=Chart(
-            retained_earnings="retained_earnings",
-            assets=["cash"],
-            capital=["equity"],
-            income=["sales"],
-            expenses=["salaries"],
-        )
+    chart = Chart(
+        retained_earnings="retained_earnings",
+        assets=["cash"],
+        capital=["equity"],
+        income=["sales"],
+        expenses=["salaries"],
     )
-    book.chart.offset("sales", "refunds")
+    chart.offset("sales", "refunds")
+    book = Book(chart, tmp_path)
     book.post(Entry("Initial investment").debit("cash", 10000).credit("equity", 10000))
-    book.save(tmp_path)
+    book.save()
     del book
     book = Book.load(tmp_path)
     book.post_double("Sold services", debit="cash", credit="sales", amount=6500)
