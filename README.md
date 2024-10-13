@@ -7,8 +7,7 @@ of book-keeping rules.
 open general ledger, post entries, and properly close ledger
 at accounting period end.
 
-On input we use a chart and a list of entries and on output we
-get trial balance, balance sheet and income statement reports.
+On output we get trial balance, balance sheet and income statement reports.
 
 Extra features:
 
@@ -32,7 +31,7 @@ cd abacus-minimal
 ## Usage example
 
 ```python
-from abacus import Book, Chart, Entry, DoubleEntry
+from abacus import Book, Chart, Entry
 
 # Create chart of accounts
 chart = Chart(
