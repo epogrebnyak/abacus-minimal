@@ -145,8 +145,7 @@ def test_chart_to_dict():
 @pytest.mark.chart
 def test_end_to_end(chart):
     ledger = chart.open()
-    ledger.post_many(
-        [
+    entries = [
             DoubleEntry("Start", debit="cash", credit="equity", amount=20),
             Entry("Accepted payment")
             .debit("cash", 120)
@@ -156,7 +155,8 @@ def test_end_to_end(chart):
             DoubleEntry("Paid salaries", "wages", "cash", 10),
             DoubleEntry("Paid VAT due", "vat", "cash", 20),
         ]
-    )
+    for entry in entries:
+        ledger.post(entry)
     ledger.close(chart)
     assert ledger.balances == {
         "cash": 105,
@@ -291,14 +291,17 @@ def test_book(tmp_path):
         expenses=["salaries"],
     )
     chart.offset("sales", "refunds")
-    book = Book(chart, tmp_path)
+    book = Book(chart)
     book.post(Entry("Initial investment").debit("cash", 10000).credit("equity", 10000))
-    book.save()
+    book.save(tmp_path)
     del book
     book = Book.load(tmp_path)
-    book.post_double("Sold services", debit="cash", credit="sales", amount=6500)
-    book.post_double("Made refund", debit="refunds", credit="cash", amount=500)
-    book.post_double("Paid salaries", debit="salaries", credit="cash", amount=1000)
+    entries =[
+        DoubleEntry("Sold services", debit="cash", credit="sales", amount=6500),
+        DoubleEntry("Made refund", debit="refunds", credit="cash", amount=500),
+        DoubleEntry("Paid salaries", debit="salaries", credit="cash", amount=1000)
+    ]
+    book.post_many(entries)
     book.close()
     assert book.ledger.balances == {
         "cash": 15000,

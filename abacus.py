@@ -79,10 +79,10 @@ class SaveLoadMixin:
     """Class for loading and saving Pydantic models to files."""
 
     @classmethod
-    def load(cls, filename: str):
+    def load(cls, filename: str | Path):
         return cls.model_validate_json(Path(filename).read_text())  # type: ignore
 
-    def save(self, filename: str):
+    def save(self, filename: str | Path):
         Path(filename).write_text(self.model_dump_json(indent=2))  # type: ignore
 
 
@@ -168,7 +168,9 @@ class Chart(BaseModel, SaveLoadMixin):
         """Return list of tuples that allows to close ledger at period end."""
         return list(self.to_dict().closing_pairs(self.retained_earnings))
 
-    def open(self, opening_balances: dict[AccountName, Amount] | None = None):
+    def open(
+        self, opening_balances: dict[AccountName, Amount] | None = None
+    ) -> "Ledger":
         """Create ledger with opening balances."""
         ledger = self.to_dict().to_ledger()
         if opening_balances:
@@ -232,7 +234,7 @@ class ChartDict(UserDict[str, Regular | Contra]):
 
     def offset(self, account_name: str, contra_account_name: str):
         """Add contra account."""
-        if account_name not in self:
+        if account_name not in self.keys():
             raise AbacusError(f"Account not found in chart: {account_name}")
         self[contra_account_name] = Contra(account_name)
         return self
@@ -447,11 +449,6 @@ class Ledger(UserDict[AccountName, TAccount]):
                 cannot_post,
             )
 
-    def post_many(self, entries: Sequence[Entry]):
-        """Post several streams of entries to ledger."""
-        for entry in entries:
-            self.post(entry)
-
     @property
     def trial_balance(self):
         """Create trial balance from ledger."""
@@ -480,11 +477,11 @@ class Ledger(UserDict[AccountName, TAccount]):
         This method changes the existing ledger."""
         closing_entries = []
         for pair in pairs:
-            from_ = pair[0]
-            entry = self.data[from_].closing_entry(pair, entry_title)
+            frm, _ = pair
+            entry = self.data[frm].closing_entry(pair, entry_title)
             closing_entries.append(entry)
             self.post(entry)
-            del self.data[from_]
+            del self.data[frm]
         return closing_entries
 
     def close(self, chart: Chart, entry_title="Closing entry") -> list[Entry]:
@@ -492,6 +489,7 @@ class Ledger(UserDict[AccountName, TAccount]):
         return self.close_by_pairs(chart.closing_pairs, entry_title)
 
     def balance_sheet(self, chart: Chart):
+        """Create balance sheet from ledger."""
         fill = net_balances_factory(chart, self)
         return BalanceSheet(
             assets=fill(T5.Asset),
@@ -500,6 +498,7 @@ class Ledger(UserDict[AccountName, TAccount]):
         )
 
     def income_statement(self, chart: Chart):
+        """Create income statement from ledger."""
         fill = net_balances_factory(chart, self)
         return IncomeStatement(income=fill(T5.Income), expenses=fill(T5.Expense))
 
@@ -577,65 +576,66 @@ class PathFinder:
     def get_store(self):
         return EntryStore.load(self.store)
 
-    def get_balances(self):
+    def get_balances(self) -> dict[AccountName, Amount]:
         return BalancesDict.load(self.balances).root
 
 
 class Book:
-    def __init__(self, chart: Chart, directory: str = "."):
+    def __init__(self, chart: Chart, opening_balances: dict | None = None):
         self.chart = chart
-        self.ledger = chart.open()
+        if opening_balances is None:
+            opening_balances = {}
+        self.ledger = chart.open(opening_balances)
         self.store = EntryStore()
-        self.path = PathFinder(directory)
 
-    def save_chart(self):
-        self.chart.save(self.path.chart)
+    def save_chart(self, directory: str):
+        self.chart.save(PathFinder(directory).chart)
 
-    def save_store(self):
-        self.store.save(self.path.store)
+    def save_store(self, directory: str):
+        self.store.save(PathFinder(directory).store)
 
-    def load_balances(self):
-        balances_dict = self.path.get_balances()
-        self.open(balances_dict)
-
-    def save_balances(self):
-        BalancesDict(self.ledger.balances).save(self.path.balances)
+    def save_balances(self, directory: str):
+        BalancesDict(self.ledger.balances).save(PathFinder(directory).balances)
 
     @classmethod
     def load(cls, directory: str):
-        """Load book from directory."""
+        """Load chart and starting balances from directory."""
         path = PathFinder(directory)
         try:
-            chart = Chart.load(str(path.chart))
+            chart = Chart.load(path.chart)
         except FileNotFoundError:
             raise AbacusError(f"Chart file not found: {path.chart}")
-        book = cls(chart, directory)
-        if path.balances.exists():
-            book.load_balances()
-        # note: will not be necessary in append-only database
-        if path.store.exists():
-            book.store = path.get_store()
-        return book
+        opening_balances = path.get_balances() if path.balances.exists() else {}
+        return cls(chart, opening_balances)
 
     def open(self, starting_balances=None):
         if not starting_balances:
             starting_balances = {}
         self.ledger = self.chart.open(starting_balances)
 
-    def save(self, directory: str | None = None):
-        if directory:
-            self.path = PathFinder(directory)
-        self.save_chart()
-        self.save_store()
-        self.save_balances()
+    def save(self, directory: str):
+        self.save_chart(directory)
+        self.save_store(directory)
+        self.save_balances(directory)
 
-    def post_double(self, title, debit, credit, amount):
-        self.post(DoubleEntry(title, debit, credit, amount).entry)
-
-    def post(self, entry: Entry):
+    def post(self, entry: Entry | DoubleEntry):
+        if isinstance(entry, DoubleEntry):
+            entry = entry.entry
         self.ledger.post(entry)
         self.store.entries.append(entry)
+
+    def post_many(self, entries: Sequence[Entry]):
+        for entry in entries:
+            self.post(entry)
 
     def close(self):
         entries = self.ledger.close(self.chart)
         self.store.entries.extend(entries)
+
+    @property
+    def income_statement(self):
+        return self.ledger.income_statement(self.chart)
+    
+    @property
+    def balance_sheet(self):
+        return self.ledger.balance_sheet(self.chart)
