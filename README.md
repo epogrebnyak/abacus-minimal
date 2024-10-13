@@ -1,40 +1,26 @@
 # abacus-minimal
 
-Accounting system in Python that allows to create a chart of accounts,
-start general ledger, post entries, properly close ledger
-at accounting period end and produce trial balance, balance sheet 
-and income statement reports.
-
 `abacus-minimal` aims to be as concise as possible in implemetation
-of book-keeping rules. 
+of book-keeping rules.
 
-More features:
+`abacus-minimal` allows to create a chart of accounts,
+open general ledger, post entries, and properly close ledger
+at accounting period end.
+
+On input we get a Chart and list on entries and on output we
+get balance, balance sheet and income statement reports.
+
+Extra features:
 
 - allows contra accounts,
 - double or multiple entries,
 - saves everything to JSON files.
-
-Intentions:
-
-- explain book-keeping rules through code,
-- make route into accounting for programmers and the route opposite way,
-- curate standard charts of accounts by country,
-- make web learning tools in accounting (see [example][ex]).
-
-[ex]: https://abacus.streamlit.app/
 
 Limitations:
 
 - one currency,
 - one level of accounts,
 - no cash flow statement yet.
-
-Inspirations:
-
-- [hledger](https://github.com/simonmichael/hledger) 
-   and a familiy of [plain text accounting tools](https://plaintextaccounting.org/),
-- [medici](https://github.com/flash-oss/medici) ledger in JavaScript and Mongo,
-- [microbooks](https://microbooks.io/) API.
 
 ## Install
 
@@ -85,3 +71,21 @@ assert book.ledger.balances == {
 book.save(directory=".")
 ```
 
+npm install --save-dev --save-exact prettier
+
+## Project intentions
+
+- Explain book-keeping rules through code,
+- Make route into accounting for programmers and the route opposite way,
+- Curate typical charts of accounts by country and convert between them.
+- Make web learning tools in accounting like [abacus-streamlit][ex].
+
+[ex]: https://abacus.streamlit.app/
+
+# Alternatives
+
+`abacus-minimal` is inspired by the following great projects:
+
+- [hledger](https://github.com/simonmichael/hledger) and [plain text accounting tools](https://plaintextaccounting.org/).
+- [medici](https://github.com/flash-oss/medici) ledger in JavaScript based on Mongo database.
+- [microbooks](https://microbooks.io/) API.
