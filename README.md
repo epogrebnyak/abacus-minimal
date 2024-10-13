@@ -81,6 +81,6 @@ book.save(directory=".")
 
 `abacus-minimal` is inspired by the following great projects:
 
-- [hledger](https://github.com/simonmichael/hledger) and [plain text accounting tools](https://plaintextaccounting.org/).
-- [medici](https://github.com/flash-oss/medici) ledger in JavaScript based on Mongo database.
+- [hledger](https://github.com/simonmichael/hledger) and [plain text accounting tools](https://plaintextaccounting.org/),
+- [medici](https://github.com/flash-oss/medici) ledger in JavaScript based on Mongo database,
 - [microbooks](https://microbooks.io/) API.
