@@ -635,7 +635,7 @@ class Book:
     @property
     def income_statement(self):
         return self.ledger.income_statement(self.chart)
-    
+
     @property
     def balance_sheet(self):
         return self.ledger.balance_sheet(self.chart)

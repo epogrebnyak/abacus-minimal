@@ -1,4 +1,4 @@
-from abacus import Book, Chart, Entry, DoubleEntry
+from abacus import Book, Chart, DoubleEntry, Entry
 
 # Create chart of accounts
 chart = Chart(
@@ -13,9 +13,12 @@ chart.offset("sales", "refunds")
 
 # Post entries
 book = Book(chart)
-entries = [ 
+entries = [
     DoubleEntry("Initial investment", debit="cash", credit="equity", amount=10000),
-    Entry("Sold services with VAT").debit("cash", 6000).credit("sales", 5000).credit("vat", 1000), 
+    Entry("Sold services with VAT")
+    .debit("cash", 6000)
+    .credit("sales", 5000)
+    .credit("vat", 1000),
     DoubleEntry("Made client refund", debit="refunds", credit="cash", amount=500),
     DoubleEntry("Paid salaries", debit="salaries", credit="cash", amount=1500),
 ]

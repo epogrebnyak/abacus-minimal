@@ -32,8 +32,7 @@ cd abacus-minimal
 ## Usage example
 
 ```python
-from abacus import Chart, Book, Entry
-
+from abacus import Book, Chart, Entry, DoubleEntry
 
 # Create chart of accounts
 chart = Chart(
@@ -48,18 +47,18 @@ chart.offset("sales", "refunds")
 
 # Post entries
 book = Book(chart)
-book.post_double("Initial investment", debit="cash", credit="equity", amount=10000)
-book.post(
-    Entry("Sold services with VAT")
-    .debit("cash", 6000)
-    .credit("sales", 5000)
-    .credit("vat", 1000)
-)
-book.post_double("Made client refund", debit="refunds", credit="cash", amount=500)
-book.post_double("Paid salaries", debit="salaries", credit="cash", amount=1500)
+entries = [
+    DoubleEntry("Initial investment", debit="cash", credit="equity", amount=10000),
+    Entry("Sold services with VAT").debit("cash", 6000).credit("sales", 5000).credit("vat", 1000),
+    DoubleEntry("Made client refund", debit="refunds", credit="cash", amount=500),
+    DoubleEntry("Paid salaries", debit="salaries", credit="cash", amount=1500),
+]
+book.post_many(entries)
 
 # Close at period end
+print(book.income_statement)
 book.close()
+print(book.balance_sheet)
 assert book.ledger.balances == {
     "cash": 14000,
     "equity": 10000,
@@ -70,8 +69,6 @@ assert book.ledger.balances == {
 # Save to JSON files in current folder
 book.save(directory=".")
 ```
-
-npm install --save-dev --save-exact prettier
 
 ## Project intentions
 

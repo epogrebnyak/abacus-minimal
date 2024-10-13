@@ -146,15 +146,15 @@ def test_chart_to_dict():
 def test_end_to_end(chart):
     ledger = chart.open()
     entries = [
-            DoubleEntry("Start", debit="cash", credit="equity", amount=20),
-            Entry("Accepted payment")
-            .debit("cash", 120)
-            .credit("sales", 100)
-            .credit("vat", 20),
-            [DebitEntry("refunds", 5), CreditEntry("cash", 5)],
-            DoubleEntry("Paid salaries", "wages", "cash", 10),
-            DoubleEntry("Paid VAT due", "vat", "cash", 20),
-        ]
+        DoubleEntry("Start", debit="cash", credit="equity", amount=20),
+        Entry("Accepted payment")
+        .debit("cash", 120)
+        .credit("sales", 100)
+        .credit("vat", 20),
+        [DebitEntry("refunds", 5), CreditEntry("cash", 5)],
+        DoubleEntry("Paid salaries", "wages", "cash", 10),
+        DoubleEntry("Paid VAT due", "vat", "cash", 20),
+    ]
     for entry in entries:
         ledger.post(entry)
     ledger.close(chart)
@@ -296,10 +296,10 @@ def test_book(tmp_path):
     book.save(tmp_path)
     del book
     book = Book.load(tmp_path)
-    entries =[
+    entries = [
         DoubleEntry("Sold services", debit="cash", credit="sales", amount=6500),
         DoubleEntry("Made refund", debit="refunds", credit="cash", amount=500),
-        DoubleEntry("Paid salaries", debit="salaries", credit="cash", amount=1000)
+        DoubleEntry("Paid salaries", debit="salaries", credit="cash", amount=1000),
     ]
     book.post_many(entries)
     book.close()
