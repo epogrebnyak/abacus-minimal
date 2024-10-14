@@ -13,41 +13,6 @@
 
 [ex]: https://abacus.streamlit.app/
 
-## Workflow
-
-There are three steps involved in using `abacus-minimal` - creating a chart of accounts, 
-posting transactions to ledger and reporting financial results.
-
-### 1. Create chart of accounts:
-
-- specify name of the retained earnings account that will accumulate company gains and losses,
-- add account names for assets, capital, liabilities, income and expenses,
-- add contra accounts (eg refunds is a contra account to sales).
-
-###  2. Post entries to ledger:
-
-- create a data structure that represents state of accounts (ledger),
-- record account starting balances from the previous period (skip for a new company)
-- record accounting entries that represent business transactions,
-- show state of ledger (trial balance or account balances) at any time.
-
-### 3. Report financial results for the period:
-
-- make adjustment entries for accruals and deferrals, 
-- close temporary accounts to the retained earnings account,
-- make post-close entries if applicable (eg dividend payout),
-- show balance sheet and income statement,
-- save account balances for the next period. 
-
-### Key limitations:
-
-- one currency,
-- one level of accounts in chart,
-- current vs non-current accounts not distinguished, 
-- no changes in equity and cash flow statements yet.
-
-Other assumptions and simplifications listed in the module docstring.
-
 ## Install
 
 ```bash
@@ -55,12 +20,26 @@ git clone https://github.com/epogrebnyak/abacus-minimal.git
 cd abacus-minimal
 ```
 
-## Usage example
+## Workflow
+
+There are three steps involved in using `abacus-minimal` - creating a chart of accounts, 
+posting transactions to ledger and reporting financial results.
+
+Code example:
+
+### 1. Create chart of accounts
+
+Steps involved:
+
+- specify name of the retained earnings account that will accumulate company gains and losses,
+- add account names for assets, capital, liabilities, income and expenses,
+- add contra accounts (eg refunds is a contra account to sales).
+
+Code example:
 
 ```python
-from abacus import Book, Chart, Entry
+from abacus import Chart
 
-# 1. Create chart of accounts
 chart = Chart(
     retained_earnings="retained_earnings",
     assets=["cash"],
@@ -70,8 +49,26 @@ chart = Chart(
     expenses=["salaries"],
 )
 chart.offset("sales", "refunds")
+```
 
-# 2. Post entries to ledger
+Note:
+
+- `Chart` class is a `pydantic` model, which means it is easily converted to a human-readable JSON file.
+
+###  2. Post entries to ledger
+
+Steps involved:
+
+- create a data structure that represents state of accounts (ledger),
+- record account starting balances from the previous period (skip for a new company),
+- record accounting entries that represent business transactions,
+- show state of ledger (trial balance or account balances) at any time.
+
+Code example:
+
+```python
+from abacus import Book, Entry
+
 book = Book(chart)
 entries = [
     Entry("Initial investment", amount=10_000).debit("cash").credit("equity"),
@@ -80,11 +77,36 @@ entries = [
     Entry("Paid salaries", amount=1500).debit("salaries").credit("cash"),
 ]
 book.post_many(entries)
+```
 
-# 3. Close at period end and show reports
+Note:
+
+- invalid entries will be rejected with `AbacusError` raised,
+- entries stored into `store.json` file upon calling `save()` method (see below).
+
+### 3. Report financial results
+
+Before reporting:
+
+- make reconciliation entries,
+- make adjustment entries for accruals and deferrals, 
+- close temporary accounts to the retained earnings account,
+- make post-close entries if applicable (eg dividend payout).
+
+For reporting:
+
+- show balance sheet and income statement,
+- save account balances for the next period. 
+
+Code example:
+
+```python 
+# Close at period end and show reports
 print(book.income_statement)
 book.close()
 print(book.balance_sheet)
+
+# Check account balances match expected values
 assert book.ledger.balances == {
     "cash": 14000,
     "equity": 10000,
@@ -95,6 +117,24 @@ assert book.ledger.balances == {
 # Save everything to JSON files in current folder
 book.save(directory=".")
 ```
+
+### Complete example
+
+Complete usage example is in the [readme.py](readme.py) file. 
+
+### Key limitations
+
+Several assumptions and simplifications are used to make `abacus-minimal` really minimal. 
+This helps to focus on one thing at a time before moving to the next feature.
+
+The key assumptions are:
+
+- one currency,
+- one level of accounts in chart,
+- no account durations (current vs non-current),  
+- no changes in equity and cash flow statements yet.
+
+See [abacus.py](abacus.py) source code in the module docstring for detail.
 
 # Alternatives
 
