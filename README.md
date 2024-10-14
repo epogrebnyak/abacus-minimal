@@ -9,7 +9,7 @@
 - Make routes into accounting for programmers and vice versa.
 - Curate various charts of accounts as JSON files and make conversions between them.
 - Make free web learning tools in accounting similar to [abacus-streamlit][ex].
-- Ultimately, lower the book-keeping costs for the businesses. 
+- Ultimately, lower the book-keeping and analytics costs for the businesses. 
 
 [ex]: https://abacus.streamlit.app/
 
@@ -131,19 +131,18 @@ Notes:
 
 Complete usage example is located in [readme.py](readme.py) file.
 
-### Key limitations
+# Key limitations
 
-Several assumptions and simplifications are used to make advances in
-`abacus-minimal` incremental. 
+Several assumptions and simplifications are used to make advances in `abacus-minimal` incremental. 
 
 The key assumptions are:
 
 - one currency,
 - one level of accounts in chart,
 - no account durations (current vs non-current),  
-- no changes in equity and cash flow statements yet.
+- no changes in equity and cash flow statements.
 
-See [abacus.py](abacus.py) source code in the module docstring for detail.
+See [abacus.py](abacus.py) module docstring for detail.
 
 # Alternatives
 
@@ -154,7 +153,7 @@ See [abacus.py](abacus.py) source code in the module docstring for detail.
 - [microbooks](https://microbooks.io/) API and [python-accounting](https://github.com/ekmungai/python-accounting).
 
 Plain text accounting tools are usually for personal finance while `abacus-minimal` targets accounting for a corporate entity. 
-`medici` is a high performance ledger, but does not enforce the accounting rules on data entry. 
+`medici` is a high performance ledger, but does not enforce any accounting rules. 
 `python-accounting` is a production-grade project, tightly coupled to a database. 
 
 Big players in accounting software are Intuit Quickbooks (US) and Xero (Australia) for small and middle-sized companies.
@@ -168,16 +167,18 @@ If you are totally new to accounting the suggested friendly course is <https://w
 ACCA and CPA are the international and the US professional qualifications and IFRS and GAAP are the accounting standards for accounting recognition, measurement and disclosure. 
 
 You might want to review part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf)
-to familiarize yourself with what `abacus-minimal` allows you to do and figure out its limitations.
+to familiarize yourself with what `abacus-minimal` is designed for.
 
 # Implementation detail
 
-I use a superb [`just` command runner](https://github.com/casey/just) to invoke `just test` and `just fix` scripts that will run:
+I use [`just` command runner](https://github.com/casey/just) to automate code maintenance tasks in this project.
 
-- `pytest`,
-- `mypy`,
-- `black` and `isort --float-to-top`,
-- `ruff`,
-- other quality-of-life utilities as specified in `justfile`.
+`just test` and `just fix` scripts will run the following tools:
+
+- `pytest`
+- `mypy`
+- `black` and `isort --float-to-top`
+- `ruff`
+- other utilities as specified in [`justfile`](justfile).
 
 A future version of `abacus-minimal` will be a PyPI package managed through `poetry`.
