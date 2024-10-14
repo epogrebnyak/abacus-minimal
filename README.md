@@ -18,20 +18,20 @@
 There are three steps involved in using `abacus-minimal` - creating a chart of accounts, 
 posting transactions to ledger and reporting financial results.
 
-1. Create chart of accounts:
+### 1. Create chart of accounts:
 
 - specify name of the retained earnings account that will accumulate company gains and losses,
 - add account names for assets, capital, liabilities, income and expenses,
 - add contra accounts (eg refunds is a contra account to sales).
 
-2. Post entries to ledger:
+###  2. Post entries to ledger:
 
 - create a data structure that represents state of accounts (ledger),
 - record account starting balances from the previous period (skip for a new company)
 - record accounting entries that represent business transactions,
 - show state of ledger (trial balance or account balances) at any time.
 
-3. Report financial results for the period:
+### 3. Report financial results for the period:
 
 - make adjustment entries for accruals and deferrals, 
 - close temporary accounts to the retained earnings account,
@@ -39,7 +39,7 @@ posting transactions to ledger and reporting financial results.
 - show balance sheet and income statement,
 - save account balances for the next period. 
 
-Key limitations:
+### Key limitations:
 
 - one currency,
 - one level of accounts in chart,
@@ -106,7 +106,7 @@ book.save(directory=".")
 
 Plain text accounting tools are usually for personal finance while `abacus-minimal` targets accounting for a corporate entity. 
 `medici` is a high performance ledger, but does not enforce the accounting rules on data entry. 
-`python-accounting` is a bigger production-grade project, tightly coupled to a database 
+`python-accounting` is a production-grade project, tightly coupled to a database. 
 
 Big players in accounting software are Intuit Quickbooks (US) and Xero (Australia) for small and middle-sized companies.
 Many other office automation providers do also have accounting APIs (eg Zoho) and there are open source packages that have accounting functionality (eg Frappe). 
