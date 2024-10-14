@@ -16,7 +16,8 @@
 ## For the next version
 
 - [ ] `book.income_statement` that works before and after close.
-- [ ] `book.balance_sheet` with `current_profit` account when not closed. 
+- [ ] `book.balance_sheet` with `current_profit` account when not closed.
+- [ ] separate `Entry(Iterable[SingleEntry])` into `MultipleEntry(Entry)`, `DoubleEntry` and `ClosingEntry(Entry)` (is_closing=True)
 
 ## Install
 
@@ -158,7 +159,7 @@ Plain text accounting tools are usually for personal finance while `abacus-minim
 
 Big players in accounting software are Intuit Quickbooks (US) and Xero (Australia) for small and middle-sized companies.
 Many other office automation providers do also have accounting APIs (eg Zoho) and there are open source packages that have accounting functionality (eg Frappe). 
-Several outlets advertise they provide IFRS-compliant charts of accounts, but usually as Excel files.
+Several outlets advertise they provide IFRS-compliant charts of accounts, but usually as Excel files and as account taxanomies, not charts.
 
 # Accounting knowledge
 
