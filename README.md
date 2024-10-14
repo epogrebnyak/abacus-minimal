@@ -133,8 +133,8 @@ Complete usage example is located in [readme.py](readme.py) file.
 
 ### Key limitations
 
-Several assumptions and simplifications are used to make `abacus-minimal` really minimal. 
-This helps to focus on one thing at a time before moving to the next feature.
+Several assumptions and simplifications are used to make advances in
+`abacus-minimal` incremental. 
 
 The key assumptions are:
 
