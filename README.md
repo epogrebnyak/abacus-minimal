@@ -87,7 +87,7 @@ Note:
 
 - invalid entries will be rejected with `AbacusError` raised.
 
-### 3. Closing account and reporting
+### 3. Closing accounts and reporting
 
 Closing accounts at period end:
 
