@@ -15,7 +15,7 @@
 
 ## For the next version
 
-- [ ] `book.income_statement` that works beofre and after close.
+- [ ] `book.income_statement` that works before and after close.
 - [ ] `book.balance_sheet` with `current_profit` account when not closed. 
 
 ## Install
