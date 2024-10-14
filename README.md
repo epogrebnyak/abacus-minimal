@@ -13,6 +13,11 @@
 
 [ex]: https://abacus.streamlit.app/
 
+## For the next version
+
+- [ ] `book.income_statement` that works beofre and after close.
+- [ ] `book.balance_sheet` with `current_profit` account when not closed. 
+
 ## Install
 
 ```bash
@@ -22,10 +27,8 @@ cd abacus-minimal
 
 ## Workflow
 
-There are three steps involved in using `abacus-minimal` - creating a chart of accounts, 
-posting transactions to ledger and reporting financial results.
-
-Code example:
+There are four steps involved in using `abacus-minimal` – creating a chart of accounts, 
+posting transactions to ledger, closing accounts and reporting financial results.
 
 ### 1. Create chart of accounts
 
@@ -81,19 +84,18 @@ book.post_many(entries)
 
 Note:
 
-- invalid entries will be rejected with `AbacusError` raised,
-- entries stored into `store.json` file upon calling `save()` method (see below).
+- invalid entries will be rejected with `AbacusError` raised.
 
-### 3. Report financial results
+### 3. Closing account and reporting
 
-Before reporting:
+Closing accounts at period end:
 
-- make reconciliation entries,
-- make adjustment entries for accruals and deferrals, 
+- make reconciliation entries (not in current example),
+- make adjustment entries for accruals and deferrals (not in current example), 
 - close temporary accounts to the retained earnings account,
-- make post-close entries if applicable (eg dividend payout).
+- make post-close entries if applicable, eg dividend payout (not in current example).
 
-For reporting:
+Reporting:
 
 - show balance sheet and income statement,
 - save account balances for the next period. 
@@ -107,6 +109,7 @@ book.close()
 print(book.balance_sheet)
 
 # Check account balances match expected values
+# (used as part of testing)
 assert book.ledger.balances == {
     "cash": 14000,
     "equity": 10000,
@@ -118,9 +121,15 @@ assert book.ledger.balances == {
 book.save(directory=".")
 ```
 
+Notes:
+
+- closing accounts properly was probably the hardest part of the project
+  where I had to refactor code several times to make it both correct and legible,
+- saving the book will write `chart.json`, `store.json` and `balances.json` files.
+
 ### Complete example
 
-Complete usage example is in the [readme.py](readme.py) file. 
+Complete usage example is located in [readme.py](readme.py) file.
 
 ### Key limitations
 
@@ -160,3 +169,15 @@ ACCA and CPA are the international and the US professional qualifications and IF
 
 You might want to review part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf)
 to familiarize yourself with what `abacus-minimal` allows you to do and figure out its limitations.
+
+# Implementation detail
+
+I use a superb [`just` command runner](https://github.com/casey/just) to invoke `just test` and `just fix` scripts that will run:
+
+- `pytest`,
+- `mypy`,
+- `black` and `isort --float-to-top`,
+- `ruff`,
+- other quality-of-life utilities as specified in `justfile`.
+
+A future version of `abacus-minimal` will be a PyPI package managed through `poetry`.
