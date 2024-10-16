@@ -6,7 +6,7 @@
 
 - Make valid accounting engine in fewer lines of code (Python or other languages).
 - Explain book-keeping rules through code examples.
-- Make routes into accounting for programmers and vice versa.
+- Make routes into accounting for programmers andvand into programming for accountants. 
 - Curate various charts of accounts as JSON files and make conversions between them.
 - Make free web learning tools in accounting similar to [abacus-streamlit][ex].
 - Ultimately, lower the book-keeping and analytics costs for the businesses. 
@@ -28,8 +28,14 @@ cd abacus-minimal
 
 ## Workflow
 
-There are four steps involved in using `abacus-minimal` – creating a chart of accounts, 
-posting transactions to ledger, closing accounts and reporting financial results.
+The steps for using `abacus-minimal` follow typical accounting cycle: 
+
+- creating a chart of accounts, 
+- posting transactions to ledger, 
+- making reconciliations and adjustments, 
+- closing accounts, 
+- reporting financial results, 
+- saving data for the next accounting period. 
 
 ### 1. Create chart of accounts
 
