@@ -42,7 +42,7 @@ The steps for using `abacus-minimal` follow typical accounting cycle:
 - report financial results,
 - save data for the next accounting period.
 
-[readme.py](readme.py) file contains complete example code.
+The [readme.py](readme.py) file contains complete example code.
 
 ### 1. Create chart of accounts
 
