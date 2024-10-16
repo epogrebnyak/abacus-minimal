@@ -11,4 +11,3 @@ fix:
    ruff format . # experimetal
    ruff check . --fix
    npx prettier README.md --write
-

@@ -22,8 +22,13 @@
 ## Install
 
 ```bash
-git clone https://github.com/epogrebnyak/abacus-minimal.git
-cd abacus-minimal
+pip install abacus-minimal
+```
+
+Latest:
+
+```bash
+pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 ```
 
 ## Workflow
@@ -36,6 +41,8 @@ The steps for using `abacus-minimal` follow typical accounting cycle:
 - close accounts,
 - report financial results,
 - save data for the next accounting period.
+
+[readme.py](readme.py) file contains complete example code.
 
 ### 1. Create chart of accounts
 
@@ -91,20 +98,29 @@ entries = [
 book.post_many(entries)
 ```
 
-Note:
+Invalid entries will be rejected with `AbacusError` raised.
 
-- invalid entries will be rejected with `AbacusError` raised.
+### 3. Closing accounts
 
-### 3. Closing accounts and reporting
+Steps before closing (not in current example):
+
+- make reconciliation entries,
+- make adjustment entries for accruals and deferrals.
 
 Closing accounts at period end:
 
-- make reconciliation entries (not in current example),
-- make adjustment entries for accruals and deferrals (not in current example),
+- close contra accounts to temporary accounts,
 - close temporary accounts to the retained earnings account,
-- make post-close entries if applicable, eg dividend payout (not in current example).
+- make post-close entries if applicable (not in current example).
 
-Reporting:
+Closing accounts was probably the hardest part of the project
+where I had to refactor code several times to make it both correct and
+understandable to follow.
+
+I ended up making a list of account pairs for closing based on chart of accounts,
+then making closing actual entries from pairs and processing them one by one.
+
+### 4. Reporting and saving
 
 - show balance sheet and income statement,
 - save account balances for the next period.
@@ -118,7 +134,6 @@ book.close()
 print(book.balance_sheet)
 
 # Check account balances match expected values
-# (used as part of testing)
 assert book.ledger.balances == {
     "cash": 14000,
     "equity": 10000,
@@ -132,13 +147,7 @@ book.save(directory=".")
 
 Notes:
 
-- closing accounts properly was probably the hardest part of the project
-  where I had to refactor code several times to make it both correct and legible,
 - saving the book will write `chart.json`, `store.json` and `balances.json` files.
-
-### Complete example
-
-Complete usage example is located in [readme.py](readme.py) file.
 
 # Key limitations
 
