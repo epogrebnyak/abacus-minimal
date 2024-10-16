@@ -160,7 +160,7 @@ The key assumptions are:
 - no account durations (current vs non-current),
 - no changes in equity and cash flow statements.
 
-See [abacus.py](abacus.py) module docstring for detail.
+See [main.py](abacus/main.py) module docstring for detail.
 
 # Alternatives
 
@@ -196,7 +196,5 @@ I use [`just` command runner](https://github.com/casey/just) to automate code ma
 - `pytest`
 - `mypy`
 - `black` and `isort --float-to-top`
-- `ruff`
+- `ruff` 
 - other utilities as specified in [`justfile`](justfile).
-
-A future version of `abacus-minimal` will be a PyPI package managed through `poetry`.
