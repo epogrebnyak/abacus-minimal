@@ -30,18 +30,18 @@ cd abacus-minimal
 
 The steps for using `abacus-minimal` follow typical accounting cycle: 
 
-- creating a chart of accounts, 
-- posting transactions to ledger, 
-- making reconciliations and adjustments, 
-- closing accounts, 
-- reporting financial results, 
-- saving data for the next accounting period. 
+- create a chart of accounts, 
+- post transactions to ledger, 
+- make reconciliations and adjustments, 
+- close accounts, 
+- report financial results, 
+- save data for the next accounting period. 
 
 ### 1. Create chart of accounts
 
 Steps involved:
 
-- specify name of the retained earnings account that will accumulate company gains and losses,
+- specify name of the retained earnings account that will accumulate company profits less dividend,
 - add account names for assets, capital, liabilities, income and expenses,
 - add contra accounts (eg refunds is a contra account to sales).
 
@@ -61,9 +61,11 @@ chart = Chart(
 chart.offset("sales", "refunds")
 ```
 
-Note:
+`Chart` class is a `pydantic` model, which means it is easily converted to a JSON file: 
 
-- `Chart` class is a `pydantic` model, which means it is easily converted to a human-readable JSON file.
+```python 
+chart.save("chart.json") 
+```
 
 ###  2. Post entries to ledger
 
