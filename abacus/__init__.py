@@ -1,1 +1,1 @@
-from .main import Chart, Book, Entry
+from .main import Book, Chart, Entry

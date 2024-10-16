@@ -1,7 +1,7 @@
 import pytest  # type: ignore
 from pydantic import ValidationError
 
-from abacus import Chart, Book, Entry  # IncomeStatement
+from abacus import Book, Chart, Entry  # IncomeStatement
 from abacus.main import (
     T5,
     AbacusError,

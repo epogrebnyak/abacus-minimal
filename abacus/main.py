@@ -6,17 +6,17 @@ This module contains classes for:
   - general ledger (Ledger)
   - accounting entry (DoubleEntry, Entry)
   - summaries and reports (TrialBalance, BalancesDict, IncomeStatement, BalanceSheet)
-  
+
 Accounting workflow:
 
 1. create chart of accounts and set retained earnings account
 2. create ledger from chart with opening balances
 3. post entries to ledger
 4. show trial balance at any time
-5. show proxy income statement if necessary 
+5. show proxy income statement if necessary
 6. close ledger at accounting period end and make income statement
 7. make post-close entries and make balance sheet
-8. save permanent account balances for next period  
+8. save permanent account balances for next period
 
 Accounting conventions:
 
@@ -24,17 +24,17 @@ Accounting conventions:
 - contra accounts to regular accounts are possible (eg depreciation, discounts, etc.)
 - account balance cannot go negative
 
-Assumptions and simplifications (some may be relaxed in future versions): 
+Assumptions and simplifications (some may be relaxed in future versions):
 
 - one currency
 - one level of accounts, no sub-accounts
 - account names must be globally unique (eg cannot have two "other" accounts)
 - chart always has retained earnings account
-- other comprehensive income account (OCIA) not calculated 
+- other comprehensive income account (OCIA) not calculated
 - no journals, entries are posted to ledger directly
 - an entry can touch any accounts
 - entry amount can be positive or negative
-- net earnings are income less expenses, no gross profit or earnings before tax calculated    
+- net earnings are income less expenses, no gross profit or earnings before tax calculated
 - period end closing will transfer net earnings to retained earnings
 - no cash flow statement
 - no statement of changes in equity

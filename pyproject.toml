@@ -1,3 +1,6 @@
+[tool.ruff]
+exclude = ["__init__.py"]
+
 [tool.pytest.ini_options]
 markers = [
     "chart: test chart of accounts",

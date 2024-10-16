@@ -6,10 +6,10 @@
 
 - Make valid accounting engine in fewer lines of code (Python or other languages).
 - Explain book-keeping rules through code examples.
-- Make routes into accounting for programmers andvand into programming for accountants. 
+- Make routes into accounting for programmers andvand into programming for accountants.
 - Curate various charts of accounts as JSON files and make conversions between them.
 - Make free web learning tools in accounting similar to [abacus-streamlit][ex].
-- Ultimately, lower the book-keeping and analytics costs for the businesses. 
+- Ultimately, lower the book-keeping and analytics costs for the businesses.
 
 [ex]: https://abacus.streamlit.app/
 
@@ -28,14 +28,14 @@ cd abacus-minimal
 
 ## Workflow
 
-The steps for using `abacus-minimal` follow typical accounting cycle: 
+The steps for using `abacus-minimal` follow typical accounting cycle:
 
-- create a chart of accounts, 
-- post transactions to ledger, 
-- make reconciliations and adjustments, 
-- close accounts, 
-- report financial results, 
-- save data for the next accounting period. 
+- create a chart of accounts,
+- post transactions to ledger,
+- make reconciliations and adjustments,
+- close accounts,
+- report financial results,
+- save data for the next accounting period.
 
 ### 1. Create chart of accounts
 
@@ -61,13 +61,13 @@ chart = Chart(
 chart.offset("sales", "refunds")
 ```
 
-`Chart` class is a `pydantic` model, which means it is easily converted to a JSON file: 
+`Chart` class is a `pydantic` model, which means it is easily converted to a JSON file:
 
-```python 
-chart.save("chart.json") 
+```python
+chart.save("chart.json")
 ```
 
-###  2. Post entries to ledger
+### 2. Post entries to ledger
 
 Steps involved:
 
@@ -100,18 +100,18 @@ Note:
 Closing accounts at period end:
 
 - make reconciliation entries (not in current example),
-- make adjustment entries for accruals and deferrals (not in current example), 
+- make adjustment entries for accruals and deferrals (not in current example),
 - close temporary accounts to the retained earnings account,
 - make post-close entries if applicable, eg dividend payout (not in current example).
 
 Reporting:
 
 - show balance sheet and income statement,
-- save account balances for the next period. 
+- save account balances for the next period.
 
 Code example:
 
-```python 
+```python
 # Close at period end and show reports
 print(book.income_statement)
 book.close()
@@ -142,13 +142,13 @@ Complete usage example is located in [readme.py](readme.py) file.
 
 # Key limitations
 
-Several assumptions and simplifications are used to make advances in `abacus-minimal` incremental. 
+Several assumptions and simplifications are used to make advances in `abacus-minimal` incremental.
 
 The key assumptions are:
 
 - one currency,
 - one level of accounts in chart,
-- no account durations (current vs non-current),  
+- no account durations (current vs non-current),
 - no changes in equity and cash flow statements.
 
 See [abacus.py](abacus.py) module docstring for detail.
@@ -161,19 +161,19 @@ See [abacus.py](abacus.py) module docstring for detail.
 - [medici](https://github.com/flash-oss/medici) ledger in JavaScript using Mongo database,
 - [microbooks](https://microbooks.io/) API and [python-accounting](https://github.com/ekmungai/python-accounting).
 
-Plain text accounting tools are usually for personal finance while `abacus-minimal` targets accounting for a corporate entity. 
-`medici` is a high performance ledger, but does not enforce any accounting rules. 
-`python-accounting` is a production-grade project, tightly coupled to a database. 
+Plain text accounting tools are usually for personal finance while `abacus-minimal` targets accounting for a corporate entity.
+`medici` is a high performance ledger, but does not enforce any accounting rules.
+`python-accounting` is a production-grade project, tightly coupled to a database.
 
 Big players in accounting software are Intuit Quickbooks (US) and Xero (Australia) for small and middle-sized companies.
-Many other office automation providers do also have accounting APIs (eg Zoho) and there are open source packages that have accounting functionality (eg Frappe). 
+Many other office automation providers do also have accounting APIs (eg Zoho) and there are open source packages that have accounting functionality (eg Frappe).
 Several outlets advertise they provide IFRS-compliant charts of accounts, but usually as Excel files and as account taxanomies, not charts.
 
 # Accounting knowledge
 
-If you are totally new to accounting the suggested friendly course is <https://www.accountingcoach.com/>. 
+If you are totally new to accounting the suggested friendly course is <https://www.accountingcoach.com/>.
 
-ACCA and CPA are the international and the US professional qualifications and IFRS and GAAP are the accounting standards for accounting recognition, measurement and disclosure. 
+ACCA and CPA are the international and the US professional qualifications and IFRS and GAAP are the accounting standards for accounting recognition, measurement and disclosure.
 
 You might want to review part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf)
 to familiarize yourself with what `abacus-minimal` is designed for.
