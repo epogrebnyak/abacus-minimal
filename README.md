@@ -122,8 +122,12 @@ then making closing actual entries from pairs and processing them one by one.
 
 ### 4. Reporting and saving
 
+Steps involved:
+
 - show balance sheet and income statement,
 - save account balances for the next period.
+
+Saving the book will write `chart.json`, `store.json` and `balances.json` files.
 
 Code example:
 
@@ -144,10 +148,6 @@ assert book.ledger.balances == {
 # Save everything to JSON files in current folder
 book.save(directory=".")
 ```
-
-Notes:
-
-- saving the book will write `chart.json`, `store.json` and `balances.json` files.
 
 # Key limitations
 
@@ -196,5 +196,5 @@ I use [`just` command runner](https://github.com/casey/just) to automate code ma
 - `pytest`
 - `mypy`
 - `black` and `isort --float-to-top`
-- `ruff` 
+- `ruff`
 - other utilities as specified in [`justfile`](justfile).
