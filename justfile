@@ -1,7 +1,7 @@
 test: 
-   pytest .
-   mypy .
-   python readme.py
+   poetry run pytest .
+   poetry run mypy .
+   poetry run python readme.py
    rm balances.json chart.json store.json
 
 
