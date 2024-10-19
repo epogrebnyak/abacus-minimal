@@ -74,10 +74,10 @@ chart.offset("sales", "refunds")
 chart.save("chart.json")
 ```
 
-Equally, you can load an existing chart from file: 
+Equally, you can load an existing chart from file:
 
 ```python
-chart = Chart.load("chart.json") 
+chart = Chart.load("chart.json")
 ```
 
 ### 2. Post entries to ledger
@@ -108,7 +108,7 @@ entries = [
 book.post_many(entries)
 ```
 
-Invalid entries will be rejected with `AbacusError` raised. The invalid entriesa are the ones that touch non-existent accounts or the entries where debits and credits are not balanced. 
+Invalid entries will be rejected with `AbacusError` raised. The invalid entriesa are the ones that touch non-existent accounts or the entries where debits and credits are not balanced.
 
 ### 3. Closing accounts
 
@@ -117,16 +117,13 @@ Steps before closing (not in current example):
 - make reconciliation entries,
 - make adjustment entries for accruals and deferrals.
 
-Closing accounts at period end:
+Closing accounts at period end involves:
 
-- close contra accounts to temporary accounts,
-- close temporary accounts to the retained earnings account,
+- closing contra accounts to temporary accounts,
+- closing temporary accounts to the retained earnings account,
 - make post-close entries if applicable (not in current example).
 
-Closing accounts was probably the hardest part of the project where I had to refactor code several times.
-
-I ended up making a list of account pairs for closing based on chart of accounts,
-then making closing actual entries from the pairs and processing them one by one.
+Closing accounts was probably the hardest part of the project where I had to refactor code several times to make the code look good to the reader.
 
 ### 4. Reporting and saving
 
@@ -168,7 +165,7 @@ The key assumptions are:
 - no account durations (current vs non-current),
 - no changes in equity and cash flow statements.
 
-See [main.py](abacus/main.py) module docstring for detail.
+See [main.py](abacus/main.py) module docstring for details.
 
 # Alternatives
 
@@ -179,12 +176,13 @@ See [main.py](abacus/main.py) module docstring for detail.
 - [microbooks](https://microbooks.io/) API and [python-accounting](https://github.com/ekmungai/python-accounting).
 
 Plain text accounting tools are usually for personal finance while `abacus-minimal` targets accounting for a corporate entity.
-`medici` is a high performance ledger, but does not enforce any accounting rules.
+`medici` is a high performance ledger, but does not enforce accounting rules on data entry.
 `python-accounting` is a production-grade project, tightly coupled to a database.
 
 Big players in accounting software are Intuit Quickbooks (US) and Xero (Australia) for small and middle-sized companies.
 Many other office automation providers do also have accounting APIs (eg Zoho) and there are open source packages that have accounting functionality (eg Frappe).
-Several outlets advertise they provide IFRS-compliant charts of accounts, but usually as Excel files and as account taxanomies, not charts.
+
+Several outlets advertise they provide IFRS-compliant charts of accounts, but usually as Excel files. Account taxonomies for reporting, but not charts are often published as well.
 
 # Accounting knowledge
 
@@ -203,6 +201,7 @@ I use [`just` command runner](https://github.com/casey/just) to automate code ma
 
 - `pytest`
 - `mypy`
-- `black` and `isort --float-to-top`
-- `ruff`
-- other utilities as specified in [`justfile`](justfile).
+- `black` and `isort --float-to-top` (probably should replace with `ruff format`)
+- `ruff check`
+- `prettier` for markdown formatting
+- `codedown` to extract code from README.md and try running it.
