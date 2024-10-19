@@ -6,10 +6,10 @@
 
 - Make valid accounting engine in fewer lines of code (Python or other languages).
 - Explain book-keeping rules through code examples.
-- Make routes into accounting for programmers andvand into programming for accountants.
+- Make routes into accounting for programmers and into programming for accountants.
 - Curate various charts of accounts as JSON files and make conversions between them.
 - Make free web learning tools in accounting similar to [abacus-streamlit][ex].
-- Ultimately, lower the book-keeping and analytics costs for the businesses.
+- Ultimately, lower the book-keeping and financial analytics costs for the businesses.
 
 [ex]: https://abacus.streamlit.app/
 
@@ -33,12 +33,12 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 
 ## Workflow
 
-The steps for using `abacus-minimal` follow typical accounting cycle:
+The steps for using `abacus-minimal` follow the steps of a typical accounting cycle:
 
 - create a chart of accounts,
-- post transactions to ledger,
+- post business transactions to ledger,
 - make reconciliations and adjustments,
-- close accounts,
+- close accounts at reporting period end,
 - report financial results,
 - save data for the next accounting period.
 
@@ -74,6 +74,12 @@ chart.offset("sales", "refunds")
 chart.save("chart.json")
 ```
 
+Equally, you can load an existing chart from file: 
+
+```python
+chart = Chart.load("chart.json") 
+```
+
 ### 2. Post entries to ledger
 
 Steps involved:
@@ -102,7 +108,7 @@ entries = [
 book.post_many(entries)
 ```
 
-Invalid entries will be rejected with `AbacusError` raised.
+Invalid entries will be rejected with `AbacusError` raised. The invalid entriesa are the ones that touch non-existent accounts or the entries where debits and credits are not balanced. 
 
 ### 3. Closing accounts
 
@@ -117,12 +123,10 @@ Closing accounts at period end:
 - close temporary accounts to the retained earnings account,
 - make post-close entries if applicable (not in current example).
 
-Closing accounts was probably the hardest part of the project
-where I had to refactor code several times to make it both correct and
-understandable to follow.
+Closing accounts was probably the hardest part of the project where I had to refactor code several times.
 
 I ended up making a list of account pairs for closing based on chart of accounts,
-then making closing actual entries from pairs and processing them one by one.
+then making closing actual entries from the pairs and processing them one by one.
 
 ### 4. Reporting and saving
 
