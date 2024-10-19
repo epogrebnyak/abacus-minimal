@@ -56,10 +56,6 @@ class AbacusError(Exception):
     """Custom error for the abacus project."""
 
 
-def error(message: str, data):
-    return AbacusError([message, data])
-
-
 AccountName = str
 Amount = decimal.Decimal
 Pair = tuple[AccountName, AccountName]
@@ -128,7 +124,7 @@ class Chart(BaseModel, SaveLoadMixin):
     def assert_unique(self):
         """Raise error if any duplicate account names are found."""
         if names := self.duplicates:
-            raise error("Account names are not unique", names)
+            raise AbacusError(f"Account names are not unique: {names}")
 
     def dry_run(self):
         """Verify chart by making an empty ledger and try closing it."""
@@ -327,17 +323,17 @@ class Entry:
 
     def validate(self):
         """Raise error if sum of debits and sum credits are not equal."""
-        if not self.is_balanced():
-            raise error("Sum of debits does not equal to sum of credits", self)
-        return self
+        a, b = self.balances()
+        if a != b:
+            raise AbacusError("Sum of debits {a} does not equal to sum of credits {b}.")
 
-    def is_balanced(self) -> bool:
+    def balances(self) -> tuple[Amount, Amount]:
         """Return True if sum of debits equals to sum credits."""
+        return sums(self.debits), sums(self.credits)
 
-        def sums(xs):
-            return sum(amount for _, amount in xs)
 
-        return sums(self.debits) == sums(self.credits)
+def sums(xs):
+    return sum(amount for _, amount in xs)
 
 
 @dataclass
@@ -426,11 +422,10 @@ class Ledger(UserDict[AccountName, TAccount]):
             except AbacusError as e:
                 cannot_post.append((e, single_entry))
         if not_found:
-            raise error("Accounts do not exist", not_found)
+            raise AbacusError(f"Accounts do not exist: {not_found}")
         if cannot_post:
-            raise error(
-                "Forbidden to make account balance negative",
-                cannot_post,
+            raise AbacusError(
+                f"Forbidden to make account balances negative: {cannot_post}"
             )
 
     @property
