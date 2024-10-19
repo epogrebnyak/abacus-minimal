@@ -143,14 +143,14 @@ def test_chart_to_dict():
 def test_end_to_end(chart):
     ledger = chart.open()
     entries = [
-        Entry("Start", amount=20).debit("cash").credit("equity"),
+        Entry("Start").debit("cash", 20).credit("equity", 20),
         Entry("Accepted payment")
         .debit("cash", 120)
         .credit("sales", 100)
         .credit("vat", 20),
         [DebitEntry("refunds", 5), CreditEntry("cash", 5)],
-        Entry("Paid salaries", amount=10).debit("wages").credit("cash"),
-        Entry("Paid VAT due", amount=20).debit("vat").credit("cash"),
+        Entry("Paid salaries").double(debit="wages", credit="cash", amount=10),
+        Entry("Paid VAT due").double(debit="vat", credit="cash", amount=20),
     ]
     for entry in entries:
         ledger.post(entry)
@@ -184,10 +184,10 @@ def test_balance_sheet():
         contra_accounts=dict(equity=["ts"], sales=["refunds"]),
     )
     ledger = chart.open()
-    ledger.post(Entry("Launch", amount=10).debit("cash").credit("equity"))
-    ledger.post(Entry("Sold services", amount=50).debit("cash").credit("sales"))
-    ledger.post(Entry("Refunded", amount=40).debit("refunds").credit("cash"))
-    ledger.post(Entry("Buyback", amount=8).debit("ts").credit("cash"))
+    ledger.post(Entry("Launch").debit("cash", 10).credit("equity", 10))
+    ledger.post(Entry("Sold services").double(debit="cash", credit="sales", amount=50))
+    ledger.post(Entry("Issued refund").debit("refunds", 40).credit("cash", 40))
+    ledger.post(Entry("Made buyback").double(debit="ts", credit="cash", amount=8))
     assert ledger.income_statement(chart).net_earnings == 10
     ledger.close(chart)
     assert ledger.balance_sheet(chart) == BalanceSheet(
@@ -199,7 +199,7 @@ def test_balance_sheet():
 def test_net_earnings():
     chart = Chart(retained_earnings="re", assets=["cash"], income=["sales"])
     ledger = chart.open()
-    ledger.post(Entry("Free lunch", amount=10).debit("cash").credit("sales"))
+    ledger.post(Entry("Free cheese, no expenses").debit("cash", 10).credit("sales", 10))
     assert ledger.income_statement(chart).net_earnings == 10
 
 
@@ -219,7 +219,7 @@ def toy_chart():
 @pytest.fixture
 def toy_ledger(toy_chart):
     ledger = toy_chart.open()
-    ledger.post(Entry("Start company", amount=10).debit("cash").credit("equity"))
+    ledger.post(Entry("Start company").amount(10).debit("cash").credit("equity"))
     return ledger
 
 
@@ -294,9 +294,11 @@ def test_book(tmp_path):
     del book
     book = Book.load(tmp_path)
     entries = [
-        Entry("Sold services with VAT", amount=6500).debit("cash").credit("sales"),
-        Entry("Made refund", amount=500).debit("refunds").credit("cash"),
-        Entry("Paid salaries", amount=1000).debit("salaries").credit("cash"),
+        Entry("Sold services with VAT").double(
+            amount=6500, debit="cash", credit="sales"
+        ),
+        Entry("Made refund").double(amount=500, debit="refunds", credit="cash"),
+        Entry("Paid salaries").double(amount=1000, debit="salaries", credit="cash"),
     ]
     book.post_many(entries)
     book.close()

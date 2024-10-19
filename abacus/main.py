@@ -293,13 +293,16 @@ class CreditEntry(SingleEntry):
     """An entry that increases the credit side of an account."""
 
 
+Numeric = int | float | Amount
+
+
 @dataclass
 class Entry:
     title: str
     debits: list[tuple[AccountName, Amount]] = field(default_factory=list)
     credits: list[tuple[AccountName, Amount]] = field(default_factory=list)
     is_closing: bool = False
-    amount: Amount | int | float | None = None
+    _current_amount: Amount | None = None
 
     def __iter__(self) -> Iterator[SingleEntry]:
         for name, amount in self.debits:
@@ -307,29 +310,41 @@ class Entry:
         for name, amount in self.credits:
             yield CreditEntry(name, amount)
 
-    def debit(self, account_name, amount=None):
-        """Add debit part to entry."""
-        if amount is None:
-            amount = self.amount
-        self.debits.append((account_name, Amount(amount)))
+    def double(self, debit: str, credit: str, amount: Numeric):
+        if self.debits or self.credits:
+            raise AbacusError("Cannot create double entry.")
+        return self.debit(debit, amount).credit(credit, amount)
+
+    def amount(self, amount: Numeric):
+        """Set amount for the entry."""
+        self._current_amount = Amount(amount)
         return self
 
-    def credit(self, account_name, amount=None):
-        """Add credit part to entry."""
+    def _get_amount(self, amount: Numeric | None = None) -> Amount:
         if amount is None:
-            amount = self.amount
-        self.credits.append((account_name, Amount(amount)))
+            if self._current_amount:
+                return self._current_amount
+            else:
+                raise AbacusError("Amount is not set.")
+        return Amount(amount)
+
+    def debit(self, account_name: str, amount: Numeric | None = None):
+        """Add debit part to entry."""
+        self.debits.append((account_name, self._get_amount(amount)))
+        return self
+
+    def credit(self, account_name: str, amount: Numeric | None = None):
+        """Add credit part to entry."""
+        self.credits.append((account_name, self._get_amount(amount)))
         return self
 
     def validate(self):
         """Raise error if sum of debits and sum credits are not equal."""
-        a, b = self.balances()
+        a = sums(self.debits)
+        b = sums(self.credits)
         if a != b:
             raise AbacusError("Sum of debits {a} does not equal to sum of credits {b}.")
-
-    def balances(self) -> tuple[Amount, Amount]:
-        """Return True if sum of debits equals to sum credits."""
-        return sums(self.debits), sums(self.credits)
+        return self
 
 
 def sums(xs):
