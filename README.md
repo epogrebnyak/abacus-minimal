@@ -48,7 +48,7 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 
 Complete example code is in [readme.py](readme.py).
 For lower level implementation details see ['Data structures and actions'
-section below][#ds]
+section below](#ds)
 
 ### 1. Create chart of accounts
 
