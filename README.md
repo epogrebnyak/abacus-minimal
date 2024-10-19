@@ -48,7 +48,7 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 
 Complete example code is in [readme.py](readme.py).
 For lower level implementation details see ['Data structures and actions'
-section below](#ds)
+section below](#ds).
 
 ### 1. Create chart of accounts
 
@@ -100,14 +100,16 @@ Code example:
 ```python
 from abacus import Book, Entry
 
-book = Book(chart)
+# Create book with opening balances
+opening_balances = {"cash": 10_000, "equity": 10_000}
+book = Book(chart, opening_balances)
+
+# Post entries
 entries = [
-    # various formats to specify entry are shown
-    Entry("Initial investment").amount(10_000).debit("cash").credit("equity"),
-    Entry("Sold services with VAT"
-       ).debit("cash", 6000
-       ).credit("sales", 5000
-       ).credit("vat_payable", 1000),
+    Entry("Sold services with VAT")
+    .debit("cash", 6000)
+    .credit("sales", 5000)
+    .credit("vat_payable", 1000),
     Entry("Made client refund").double(debit="refunds", credit="cash", amount=500),
     Entry("Paid salaries").debit("salaries", 1500).credit("cash", 1500),
 ]
@@ -180,8 +182,8 @@ The principal chain of actions is the following:
 
 - create ledger: `ChartDict` -> `Ledger`
 - post entries to ledger: `Ledger` -> `[MultipleEntry]` -> `Ledger`
-- make a list of closing entries: (`ChartDict`, `AccountName`) -> `Ledger` -> `[MultipleEntry]`
-- close the ledger at period end: (`ChartDict`, `AccountName`) -> `Ledger` -> (`IncomeStatement`, `Ledger`)
+- make a list of closing entries: `(ChartDict, AccountName)` -> `Ledger` -> `[MultipleEntry]`
+- close the ledger at period end: `(ChartDict, AccountName)` -> `Ledger` -> `(IncomeStatement, Ledger)`
 - report balance sheet: `Ledger` -> `BalanceSheet`
 - show trial balance: `Ledger` -> `Trial Balance`
 - save account balances: `Ledger` -> `BalancesDict`.

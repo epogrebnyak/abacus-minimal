@@ -1,11 +1,12 @@
 test: 
    poetry run pytest .
    poetry run mypy .
+   cat README.md | codedown python > readme.py
    poetry run python readme.py
-   cat README.md | codedown python | poetry run python
    rm balances.json chart.json store.json
 
 fix:    
+   cat README.md | codedown python > readme.py
    isort . --float-to-top
    black .
    ruff format . # experimetal
