@@ -46,9 +46,9 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 - show reports for the financial results,
 - save data for the next reporting period.
 
-Complete example code is in [readme.py](readme.py).
-For lower level implementation details see ['Data structures and actions'
-section below](#ds).
+The complete example code for the workflow is in [readme.py](readme.py).
+For lower level implementation details see
+['Data structures and actions'](#ds) section below.
 
 ### 1. Create chart of accounts
 
@@ -114,9 +114,10 @@ entries = [
     Entry("Paid salaries").debit("salaries", 1500).credit("cash", 1500),
 ]
 book.post_many(entries)
+print(book.trial_balance)
 ```
 
-Invalid entries will be rejected with `AbacusError` raised. The invalid entriesa are the ones that touch non-existent accounts or the entries where debits and credits are not balanced.
+Invalid entries will be rejected with `AbacusError` raised. The invalid entries are the ones that touch non-existent accounts or the entries where debits and credits are not balanced.
 
 ### 3. Closing accounts
 
@@ -131,7 +132,9 @@ Closing accounts at period end involves:
 - closing temporary accounts to the retained earnings account,
 - make post-close entries if applicable (not in current example).
 
-Closing accounts was probably the hardest part of the project where I had to refactor code several times to make the code look good to the reader.
+Closing accounts was probably the hardest part of the project
+where I had to refactor code several times
+to make it better understood for the reader.
 
 ### 4. Reporting and saving
 
@@ -172,17 +175,17 @@ structures that make up the core of `abacus-minimal`:
 - `T5(Enum)` - the indicator of type of an account,
 - `ChartDict` - holds chart of accounts information and ensures uniqueness and consistency of account names,
 - `SingleEntry` - debit or credit specific account with amount,
-- `MultipleEntry` - list of `SingleEntry` items where sum of debit and credit entries match,
+- `MultipleEntry` - list of `SingleEntry` items where sum of debit and credit entries should match,
 - `TAccount` - base class for `DebitAccount` and `CreditAccount`,
 - `Ledger` - a dictionary that maps account names to accounts and accepts entries for posting,
-- `TrailBalance`, `BalanceSheet` and `IncomeStatement` reports,
-- `BalancesDict` - saves account names and their balance.
+- `TrailBalance`, `BalanceSheet` and `IncomeStatement` report state of ledger,
+- `BalancesDict` - saves account names and their balances from ledger.
 
 The principal chain of actions is the following:
 
 - create ledger: `ChartDict` -> `Ledger`
 - post entries to ledger: `Ledger` -> `[MultipleEntry]` -> `Ledger`
-- make a list of closing entries: `(ChartDict, AccountName)` -> `Ledger` -> `[MultipleEntry]`
+- make a list of closing pairs: `(ChartDict, AccountName)` -> `[(AccountName, AccountName)]`
 - close the ledger at period end: `(ChartDict, AccountName)` -> `Ledger` -> `(IncomeStatement, Ledger)`
 - report balance sheet: `Ledger` -> `BalanceSheet`
 - show trial balance: `Ledger` -> `Trial Balance`
@@ -191,7 +194,7 @@ The principal chain of actions is the following:
 # Key limitations
 
 Several assumptions and simplifications are used to
-`abacus-minimal` more managable to develop -- cannot do everything at once.
+`abacus-minimal` more managable to develop.
 
 The key assumptions are:
 
@@ -231,9 +234,10 @@ ACCA and CPA are the international and the US professional qualifications and IF
 You might want to review part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf)
 to familiarize yourself with what `abacus-minimal` is designed for.
 
-# Implementation detail
+# Project conventions
 
-I use [`just` command runner](https://github.com/casey/just) to automate code maintenance tasks in this project.
+I use [`just` command runner](https://github.com/casey/just) to automate
+code maintenance tasks in this project.
 
 `just test` and `just fix` scripts will run the following tools:
 
@@ -242,4 +246,6 @@ I use [`just` command runner](https://github.com/casey/just) to automate code ma
 - `black` and `isort --float-to-top` (probably should replace with `ruff format`)
 - `ruff check`
 - `prettier` for markdown formatting
-- `codedown` to extract code from README.md and try running it.
+- `codedown` to extract Python code from README.md.
+
+`readme.py` is overwritten by the `just readme` command.

@@ -651,3 +651,7 @@ class Book:
     @property
     def balance_sheet(self):
         return self.ledger.balance_sheet(self.chart)
+
+    @property
+    def trial_balance(self):
+        return self.ledger.trial_balance
