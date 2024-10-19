@@ -15,10 +15,10 @@ chart.offset("sales", "refunds")
 book = Book(chart)
 # fmt: off
 entries = [
-    Entry("Initial investment", amount=10_000).debit("cash").credit("equity"),
+    Entry("Initial investment").amount(10_000).debit("cash").credit("equity"),
     Entry("Sold services with VAT").debit("cash", 6000).credit("sales", 5000).credit("vat", 1000),
-    Entry("Made client refund", amount=500).debit("refunds").credit("cash"),
-    Entry("Paid salaries", amount=1500).debit("salaries").credit("cash"),
+    Entry("Made client refund").double(debit="refunds", credit="cash", amount=500),
+    Entry("Paid salaries").debit("salaries", 1500).credit("cash", 1500),
 ]
 # fmt: on
 book.post_many(entries)

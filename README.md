@@ -17,7 +17,7 @@
 
 - [ ] `book.income_statement` that works before and after close.
 - [ ] `book.balance_sheet` with `current_profit` account when not closed.
-- [ ] separate `Entry(Iterable[SingleEntry])` into `MultipleEntry(Entry)`, `DoubleEntry` and `ClosingEntry(Entry)` (is_closing=True)
+- [ ] relax check for negativity, make warning
 
 ## Install
 
@@ -90,10 +90,14 @@ from abacus import Book, Entry
 
 book = Book(chart)
 entries = [
-    Entry("Initial investment", amount=10_000).debit("cash").credit("equity"),
-    Entry("Sold services with VAT").debit("cash", 6000).credit("sales", 5000).credit("vat_payable", 1000),
-    Entry("Made client refund", amount=500).debit("refunds").credit("cash"),
-    Entry("Paid salaries", amount=1500).debit("salaries").credit("cash"),
+    # various formats to specify entry are shown
+    Entry("Initial investment").amount(10_000).debit("cash").credit("equity"),
+    Entry("Sold services with VAT"
+       ).debit("cash", 6000
+       ).credit("sales", 5000
+       ).credit("vat_payable", 1000),
+    Entry("Made client refund").double(debit="refunds", credit="cash", amount=500),
+    Entry("Paid salaries").debit("salaries", 1500).credit("cash", 1500),
 ]
 book.post_many(entries)
 ```

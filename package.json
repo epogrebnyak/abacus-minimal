@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "codedown": "^3.2.1",
     "prettier": "^3.3.3"
   }
 }
