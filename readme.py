@@ -1,4 +1,4 @@
-from abacus import Book, Chart, Entry
+from abacus import Chart
 
 chart = Chart(
     retained_earnings="retained_earnings",
@@ -14,6 +14,7 @@ chart.save("chart.json")
 
 chart = Chart.load("chart.json")
 
+from abacus import Book, Entry
 
 # Create book with opening balances
 opening_balances = {"cash": 10_000, "equity": 10_000}
