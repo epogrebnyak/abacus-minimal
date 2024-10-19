@@ -174,6 +174,46 @@ def test_catch_negative_entry():
         ledger.post(Entry("Invalid entry").credit("cash", 1))
 
 
+@pytest.mark.entry
+def test_entry_double():
+    entry = Entry("Double entry").double(debit="cash", credit="equity", amount=10)
+    assert entry.debits == [("cash", 10)]
+    assert entry.credits == [("equity", 10)]
+
+
+@pytest.mark.entry
+def test_entry_double_cannot_recyle():
+    entry = Entry("Double entry").double(debit="cash", credit="equity", amount=9)
+    with pytest.raises(AbacusError):
+        entry.double(debit="cash", credit="equity", amount=1)
+
+
+@pytest.mark.entry
+def test_entry_amount():
+    entry = Entry("Entry with amount").amount(10).debit("cash").credit("equity")
+    assert entry.debits == [("cash", 10)]
+    assert entry.credits == [("equity", 10)]
+
+
+@pytest.mark.entry
+def test_entry_no_amount_raises_error():
+    with pytest.raises(AbacusError):
+        Entry("Entry with no amount").debit("cash").credit("equity")
+
+
+@pytest.mark.entry
+def test_entry_chained():
+    entry = (
+        Entry("Chained entry")
+        .debit("cash", 6)
+        .debit("ar", 6)
+        .credit("sales", 10)
+        .credit("vat", 2)
+    )
+    assert entry.debits == [("cash", 6), ("ar", 6)]
+    assert entry.credits == [("sales", 10), ("vat", 2)]
+
+
 @pytest.mark.report
 def test_balance_sheet():
     chart = Chart(

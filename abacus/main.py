@@ -293,16 +293,21 @@ class CreditEntry(SingleEntry):
     """An entry that increases the credit side of an account."""
 
 
-Numeric = int | float | Amount
+def sums(xs):
+    return sum(amount for _, amount in xs)
 
 
 @dataclass
-class Entry:
+class MultipleEntry:
+    """A multiple entry is effectively a list of single entries
+    that can be iterated over to post to ledger.
+    In a valid entry the sum of debits equals the sum of credits,
+    this we can check using .validate() method.
+    """
+
     title: str
     debits: list[tuple[AccountName, Amount]] = field(default_factory=list)
     credits: list[tuple[AccountName, Amount]] = field(default_factory=list)
-    is_closing: bool = False
-    _current_amount: Amount | None = None
 
     def __iter__(self) -> Iterator[SingleEntry]:
         for name, amount in self.debits:
@@ -310,7 +315,29 @@ class Entry:
         for name, amount in self.credits:
             yield CreditEntry(name, amount)
 
+    def validate(self):
+        """Raise error if sum of debits and sum credits are not equal."""
+        a = sums(self.debits)
+        b = sums(self.credits)
+        if a != b:
+            raise AbacusError("Sum of debits {a} does not equal to sum of credits {b}.")
+        return self
+
+
+Numeric = int | float | Amount
+
+
+@dataclass
+class Entry(MultipleEntry):
+    """An Entry class is a user interface for creating a double or multiple entry.
+    Optionally one can indicate the entry is a closing entry.
+    """
+
+    is_closing: bool = False
+    _current_amount: Amount | None = None
+
     def double(self, debit: str, credit: str, amount: Numeric):
+        """Create double entry."""
         if self.debits or self.credits:
             raise AbacusError("Cannot create double entry.")
         return self.debit(debit, amount).credit(credit, amount)
@@ -321,6 +348,7 @@ class Entry:
         return self
 
     def _get_amount(self, amount: Numeric | None = None) -> Amount:
+        """Use provided amount, default amount or raise error if no suffient data."""
         if amount is None:
             if self._current_amount:
                 return self._current_amount
@@ -337,18 +365,6 @@ class Entry:
         """Add credit part to entry."""
         self.credits.append((account_name, self._get_amount(amount)))
         return self
-
-    def validate(self):
-        """Raise error if sum of debits and sum credits are not equal."""
-        a = sums(self.debits)
-        b = sums(self.credits)
-        if a != b:
-            raise AbacusError("Sum of debits {a} does not equal to sum of credits {b}.")
-        return self
-
-
-def sums(xs):
-    return sum(amount for _, amount in xs)
 
 
 @dataclass
@@ -502,6 +518,8 @@ class TrialBalance(UserDict[str, tuple[Amount, Amount]]):
 
 
 def net_balances_factory(chart: Chart, ledger: Ledger):
+    """Create a function that calculates net balances for a given account type
+    based on the provided chart and ledger."""
     chart_dict = chart.to_dict()
 
     def fill(t: T5):
@@ -571,7 +589,7 @@ class PathFinder:
         return EntryStore.load(self.store)
 
     def get_balances(self) -> dict[AccountName, Amount]:
-        return BalancesDict.load(self.balances).root
+        return BalancesDict.load(self.balances).root  # note the root part
 
 
 class Book:
@@ -593,7 +611,7 @@ class Book:
 
     @classmethod
     def load(cls, directory: str):
-        """Load chart and starting balances from directory."""
+        """Load chart and starting balances from the directory."""
         path = PathFinder(directory)
         try:
             chart = Chart.load(path.chart)
@@ -624,10 +642,12 @@ class Book:
         entries = self.ledger.close(self.chart)
         self.store.entries.extend(entries)
 
+    # FIXME: no incomestatement if accoutn was closed
     @property
     def income_statement(self):
         return self.ledger.income_statement(self.chart)
 
+    # FIXME: balance sheet is incomplete before accounte werre closed
     @property
     def balance_sheet(self):
         return self.ledger.balance_sheet(self.chart)

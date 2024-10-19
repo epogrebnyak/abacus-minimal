@@ -1,17 +1,21 @@
 # abacus-minimal
 
-`abacus-minimal` aims to be as concise as possible in implementation of double entry book-keeping rules as applied for corporate accounting.
+`abacus-minimal` aims to be as concise as possible in implementation of double entry book-keeping rules as applied in corporate accounting.
 
 ## Project goals
 
 - Make valid accounting engine in fewer lines of code (Python or other languages).
 - Explain book-keeping rules through code examples.
-- Make routes into accounting for programmers and into programming for accountants.
+- Make pathways into accounting for programmers and into programming for accountants.
 - Curate various charts of accounts as JSON files and make conversions between them.
 - Make free web learning tools in accounting similar to [abacus-streamlit][ex].
 - Ultimately, lower the book-keeping and financial analytics costs for the businesses.
 
 [ex]: https://abacus.streamlit.app/
+
+Non-goals:
+
+- replacing SAP or QBO immediately with this Python code.
 
 ## For the next version
 
@@ -39,10 +43,12 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 - post business transactions to ledger,
 - make reconciliations and adjustments,
 - close accounts at reporting period end,
-- report financial results,
-- save data for the next accounting period.
+- show reports for the financial results,
+- save data for the next reporting period.
 
-The [readme.py](readme.py) file contains complete example code.
+Complete example code is in [readme.py](readme.py).
+For lower level implementation details see ['Data structures and actions'
+section below][#ds]
 
 ### 1. Create chart of accounts
 
@@ -154,15 +160,42 @@ assert book.ledger.balances == {
 book.save(directory=".")
 ```
 
+<a href="ds">
+# Data structures and actions
+
+Underneath `Chart`, `Entry` and `Book` clasees there are more primitive data
+structures that make up the core of `abacus-minimal`:
+
+- `T5(Enum)` - the indicator of type of an account,
+- `ChartDict` - holds chart of accounts information and ensures uniqueness and consistency of account names,
+- `SingleEntry` - debit or credit specific account with amount,
+- `MultipleEntry` - list of `SingleEntry` items where sum of debit and credit entries match,
+- `TAccount` - base class for `DebitAccount` and `CreditAccount`,
+- `Ledger` - a dictionary that maps account names to accounts and accepts entries for posting,
+- `TrailBalance`, `BalanceSheet` and `IncomeStatement` reports,
+- `BalancesDict` - saves account names and their balance.
+
+The principal chain of actions is the following:
+
+- create ledger: `ChartDict` -> `Ledger`
+- post entries to ledger: `Ledger` -> `[MultipleEntry]` -> `Ledger`
+- make a list of closing entries: (`ChartDict`, `AccountName`) -> `Ledger` -> `[MultipleEntry]`
+- close the ledger at period end: (`ChartDict`, `AccountName`) -> `Ledger` -> (`IncomeStatement`, `Ledger`)
+- report balance sheet: `Ledger` -> `BalanceSheet`
+- show trial balance: `Ledger` -> `Trial Balance`
+- save account balances: `Ledger` -> `BalancesDict`.
+
 # Key limitations
 
-Several assumptions and simplifications are used to make advances in `abacus-minimal` incremental.
+Several assumptions and simplifications are used to
+`abacus-minimal` more managable to develop -- cannot do everything at once.
 
 The key assumptions are:
 
 - one currency,
 - one level of accounts in chart,
-- no account durations (current vs non-current),
+- no intermediate accounts,
+- no account durations in current chart of accounts (current vs non-current),
 - no changes in equity and cash flow statements.
 
 See [main.py](abacus/main.py) module docstring for details.
@@ -179,7 +212,9 @@ Plain text accounting tools are usually for personal finance while `abacus-minim
 `medici` is a high performance ledger, but does not enforce accounting rules on data entry.
 `python-accounting` is a production-grade project, tightly coupled to a database.
 
-Big players in accounting software are Intuit Quickbooks (US) and Xero (Australia) for small and middle-sized companies.
+Big players in accounting software are Intuit Quickbooks (US) and Xero (Australia) for small and middle-sized companies. There are ongoing debates which gives more hassle for the users
+and the value of provided services, especially when moving form desktop version to the cloud.
+
 Many other office automation providers do also have accounting APIs (eg Zoho) and there are open source packages that have accounting functionality (eg Frappe).
 
 Several outlets advertise they provide IFRS-compliant charts of accounts, but usually as Excel files. Account taxonomies for reporting, but not charts are often published as well.
