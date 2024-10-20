@@ -165,7 +165,9 @@ assert book.ledger.balances == {
 book.save(directory=".")
 ```
 
-# Data structures and actions
+## Data structures and actions
+
+### Data structures 
 
 Underneath `Chart`, `Entry` and `Book` clasees there are more primitive data
 structures that make up the core of `abacus-minimal`:
@@ -178,9 +180,13 @@ structures that make up the core of `abacus-minimal`:
 - `TrailBalance` and `BalancesDict` show account names and their balances.
 - `BalanceSheet` and `IncomeStatement` are financial reports based on ledger state.
 
-The principal chain of actions is the following:
+### Actions
 
-| Action                       | Signature                                                             |
+The principal chain of actions in `abacus-minimal` is shown in a table below. 
+The function signature indicates waht variables participate in the transformations 
+and is close to type annotations in Python.
+
+| Action                       | Function signature                                                             |
 | ---------------------------- | --------------------------------------------------------------------- |
 | Create ledger                | `ChartDict` -> `Ledger`                                               |
 | Post entries to ledger       | `Ledger` -> `[MultipleEntry]` -> `Ledger`                             |
@@ -226,10 +232,10 @@ Several outlets advertise they provide IFRS-compliant charts of accounts, but us
 
 If you are totally new to accounting the suggested friendly course is <https://www.accountingcoach.com/>.
 
-ACCA and CPA are the international and the US professional qualifications and IFRS and GAAP are the accounting standards for accounting recognition, measurement and disclosure.
+ACCA and CPA are the international and the US professional qualifications and IFRS and GAAP are the standards for accounting recognition, measurement and disclosure.
 
-You might want to review part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf)
-to familiarize yourself with what `abacus-minimal` is designed for.
+Part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf)
+talk about what `abacus-minimal` is designed for.
 
 # Project conventions
 
