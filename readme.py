@@ -16,6 +16,7 @@ chart.save("chart.json")
 
 chart = Chart.load("chart.json")
 
+
 # Create book with opening balances
 opening_balances = {"cash": 10_000, "equity": 10_000}
 book = Book(chart, opening_balances)

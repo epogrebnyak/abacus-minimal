@@ -165,32 +165,16 @@ class Chart(BaseModel, SaveLoadMixin):
         return list(self.to_dict().closing_pairs(self.retained_earnings))
 
     def open(
-        self, opening_balances: dict[AccountName, Amount] | None = None
+        self,
+        opening_balances: dict[AccountName, Amount] | None = None,
+        opening_entry_title="Opening entry",
     ) -> "Ledger":
         """Create ledger with opening balances."""
         ledger = self.to_dict().to_ledger()
         if opening_balances:
-            entry = make_opening_entry(opening_balances, self.to_dict())
+            entry = Entry(opening_entry_title).opening(opening_balances, self.to_dict())
             ledger.post(entry)
         return ledger
-
-
-def make_opening_entry(
-    opening_balances: dict[AccountName, Amount],
-    chart_dict: "ChartDict",
-    title="Opening entry",
-) -> "Entry":
-    """Create and validate opening entry."""
-    entry = Entry(title)
-    for account_name, amount in opening_balances.items():
-        if chart_dict.is_debit_account(account_name):
-            entry.debit(account_name, amount)
-        elif account_name in chart_dict.keys():
-            entry.credit(account_name, amount)
-        else:
-            raise AbacusError(f"Account not found in chart: {account_name}")
-    entry.validate()
-    return entry
 
 
 @dataclass
@@ -364,6 +348,20 @@ class Entry(MultipleEntry):
     def credit(self, account_name: str, amount: Numeric | None = None):
         """Add credit part to entry."""
         self.credits.append((account_name, self._get_amount(amount)))
+        return self
+
+    def opening(
+        self, opening_balances: dict[AccountName, Amount], chart_dict: "ChartDict"
+    ):
+        """Create opening entry."""
+        for account_name, amount in opening_balances.items():
+            if chart_dict.is_debit_account(account_name):
+                self.debit(account_name, amount)
+            elif account_name in chart_dict.keys():
+                self.credit(account_name, amount)
+            else:
+                raise AbacusError(f"Account not found in chart: {account_name}")
+        self.validate()
         return self
 
 

@@ -14,7 +14,6 @@ from abacus.main import (
     DebitAccount,
     DebitEntry,
     Regular,
-    make_opening_entry,
 )
 
 
@@ -292,16 +291,18 @@ def test_balances_load_save(tmp_path):
 
 @pytest.mark.entry
 def test_opening_entry_works(toy_chart):
-    entry = make_opening_entry(
-        dict(cash=10, equity=8, re=2), toy_chart.to_dict(), "open"
+    entry = Entry("Will open").opening(
+        dict(cash=10, equity=8, re=2), toy_chart.to_dict()
     )
-    assert entry == Entry("open").debit("cash", 10).credit("equity", 8).credit("re", 2)
+    assert entry == Entry("Will open").debit("cash", 10).credit("equity", 8).credit(
+        "re", 2
+    )
 
 
 @pytest.mark.entry
 def test_opening_entry_fails(toy_chart):
     with pytest.raises(AbacusError):
-        make_opening_entry(dict(cash=10), toy_chart.to_dict())
+        Entry("Doomed").opening(dict(cash=10, equity=8), toy_chart.to_dict())
 
 
 @pytest.mark.mixed
