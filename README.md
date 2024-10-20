@@ -20,8 +20,8 @@ Non-goals:
 ## For the `0.10.0` version
 
 - [ ] `book.income_statement` that works before and after period close
-- [ ] `book.balance_sheet` with `current_profit` account when not close + 
-- [ ] relax check for negative account balance, make warning instead of error
+- [ ] `book.balance_sheet` with `current_profit` account when not closed + `Chart.current_earnings` attribute
+- [ ] relax check for negative account balances, make warning instead of error
 
 ## Install
 
