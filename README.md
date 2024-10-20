@@ -46,9 +46,10 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 - show reports for the financial results,
 - save data for the next reporting period.
 
-The complete example code for the workflow is in [readme.py](readme.py).
+The complete example code for the workflow is in [readme.py](examples/readme.py).
+
 For lower level implementation details see
-['Data structures and actions'](#ds) section below.
+"Data structures and actions" section below.
 
 ### 1. Create chart of accounts
 
@@ -164,8 +165,6 @@ assert book.ledger.balances == {
 # Save everything to JSON files in current folder
 book.save(directory=".")
 ```
-
-<a id="ds"></a>
 
 # Data structures and actions
 
