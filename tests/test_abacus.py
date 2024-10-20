@@ -245,7 +245,7 @@ def test_net_earnings():
 @pytest.mark.entry
 def test_closing_entry_for_debit_account():
     account = DebitAccount(20, 5)
-    assert account.closing_entry(("this", "that"), "close") == Entry(
+    assert account.closing_entry("this", "that", "close") == Entry(
         "close", is_closing=True
     ).debit("that", 15).credit("this", 15)
 

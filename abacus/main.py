@@ -5,7 +5,8 @@ This module contains classes for:
   - chart of accounts (Chart)
   - general ledger (Ledger)
   - accounting entry (DoubleEntry, Entry)
-  - summaries and reports (TrialBalance, BalancesDict, IncomeStatement, BalanceSheet)
+  - account summaries (TrialBalance, BalancesDict), and
+  - reports (IncomeStatement, BalanceSheet)
 
 Accounting workflow:
 
@@ -30,6 +31,7 @@ Assumptions and simplifications (some may be relaxed in future versions):
 - one level of accounts, no sub-accounts
 - account names must be globally unique (eg cannot have two "other" accounts)
 - chart always has retained earnings account
+- no account durations (current vs non-current)
 - other comprehensive income account (OCIA) not calculated
 - no journals, entries are posted to ledger directly
 - an entry can touch any accounts
@@ -276,10 +278,10 @@ def sums(xs):
 
 @dataclass
 class MultipleEntry:
-    """A multiple entry is effectively a list of single entries
+    """A multiple entry is similar to a list of single entries
     that can be iterated over to post to ledger.
-    In a valid entry the sum of debits equals the sum of credits,
-    this we can check using .validate() method.
+
+    For a valid entry the sum of debits equals the sum of credits.
     """
 
     title: str
@@ -287,6 +289,8 @@ class MultipleEntry:
     credits: list[tuple[AccountName, Amount]] = field(default_factory=list)
 
     def __iter__(self) -> Iterator[SingleEntry]:
+        """A multiple entry is behaves like a list of single entries
+        that can be iterated when posting to ledger."""
         for name, amount in self.debits:
             yield DebitEntry(name, amount)
         for name, amount in self.credits:
@@ -306,8 +310,8 @@ Numeric = int | float | Amount
 
 @dataclass
 class Entry(MultipleEntry):
-    """An Entry class is a user interface for creating a double or multiple entry.
-    Optionally one can indicate the entry is a closing entry.
+    """An Entry class is a user interface for creating a double or multiple entry
+    and also an opening or a closing entry.
     """
 
     is_closing: bool = False
@@ -357,6 +361,17 @@ class Entry(MultipleEntry):
         self.validate()
         return self
 
+    def transfer(self, frm: AccountName, to: AccountName, t_account: "TAccount"):
+        """Make entry to transfer account balances from one account to another."""
+        if isinstance(t_account, DebitAccount):
+            dr, cr = to, frm  # debit destination account
+        elif isinstance(t_account, CreditAccount):
+            dr, cr = frm, to  # credit destination account
+        self.is_closing = True
+        self.debit(dr, b := t_account.balance)
+        self.credit(cr, b)
+        return self
+
 
 @dataclass
 class TAccount(ABC):
@@ -383,18 +398,9 @@ class TAccount(ABC):
     def balance(self) -> Amount:
         pass
 
-    def closing_entry(self, pair: Pair, title: str) -> "Entry":
+    def closing_entry(self, frm: AccountName, to: AccountName, title: str) -> "Entry":
         """Make closing entry to transfer balance to another account."""
-        frm, to = pair
-        if isinstance(self, DebitAccount):
-            dr, cr = to, frm  # debit destination account
-        elif isinstance(self, CreditAccount):
-            dr, cr = frm, to  # credit destination account
-        return (
-            Entry(title, is_closing=True)
-            .debit(dr, self.balance)
-            .credit(cr, self.balance)
-        )
+        return Entry(title).transfer(frm, to, self)
 
 
 class DebitAccount(TAccount):
@@ -477,9 +483,8 @@ class Ledger(UserDict[AccountName, TAccount]):
         """Close ledger by using closing pairs of accounts.
         This method changes the existing ledger."""
         closing_entries = []
-        for pair in pairs:
-            frm, _ = pair
-            entry = self.data[frm].closing_entry(pair, entry_title)
+        for frm, to in pairs:
+            entry = self.data[frm].closing_entry(frm, to, entry_title)
             closing_entries.append(entry)
             self.post(entry)
             del self.data[frm]

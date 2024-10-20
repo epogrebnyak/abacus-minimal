@@ -48,8 +48,7 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 
 The complete example code for the workflow is in [readme.py](examples/readme.py).
 
-For lower level implementation details see
-"Data structures and actions" section below.
+For lower level implementation details see "Data structures and actions" section below.
 
 ### 1. Create chart of accounts
 
@@ -171,39 +170,38 @@ book.save(directory=".")
 Underneath `Chart`, `Entry` and `Book` clasees there are more primitive data
 structures that make up the core of `abacus-minimal`:
 
-- `T5(Enum)` - the indicator of type of an account,
-- `ChartDict` - holds chart of accounts information and ensures uniqueness and consistency of account names,
-- `SingleEntry` - debit or credit specific account with amount,
-- `MultipleEntry` - list of `SingleEntry` items where sum of debit and credit entries should match,
-- `TAccount` - base class for `DebitAccount` and `CreditAccount`,
-- `Ledger` - a dictionary that maps account names to accounts and accepts entries for posting,
-- `TrailBalance`, `BalanceSheet` and `IncomeStatement` report state of ledger,
-- `BalancesDict` - saves account names and their balances from ledger.
+- `ChartDict` holds chart of accounts information and ensures uniqueness and consistency of account names.
+- `SingleEntry` specifies amount and debit or credit side.
+- `MultipleEntry` is a list of `SingleEntry` items where sum of debit and credit entries should match.
+- `TAccount` is the base class for `DebitAccount` and `CreditAccount`.
+- `Ledger` is a dictionary that maps account names to accounts and accepts entries for posting.
+- `TrailBalance` and `BalancesDict` show account names and their balances.
+- `BalanceSheet` and `IncomeStatement` are financial reports based on ledger state.
 
 The principal chain of actions is the following:
 
-- create ledger: `ChartDict` -> `Ledger`
-- post entries to ledger: `Ledger` -> `[MultipleEntry]` -> `Ledger`
-- make a list of closing pairs: `(ChartDict, AccountName)` -> `[(AccountName, AccountName)]`
-- close the ledger at period end: `(ChartDict, AccountName)` -> `Ledger` -> `(IncomeStatement, Ledger)`
-- report balance sheet: `Ledger` -> `BalanceSheet`
-- show trial balance: `Ledger` -> `Trial Balance`
-- save account balances: `Ledger` -> `BalancesDict`.
+| Action                       | Signature                                                             |
+| ---------------------------- | --------------------------------------------------------------------- |
+| Create ledger                | `ChartDict` -> `Ledger`                                               |
+| Post entries to ledger       | `Ledger` -> `[MultipleEntry]` -> `Ledger`                             |
+| Make a list of closing pairs | `(ChartDict, AccountName)` -> `[(AccountName, AccountName)]`          |
+| Close ledger at period end   | `(ChartDict, AccountName)` -> `Ledger` -> `(IncomeStatement, Ledger)` |
+| Report balance sheet         | `Ledger` -> `BalanceSheet`                                            |
+| Show trial balance           | `Ledger` -> `Trial Balance`                                           |
+| Show account balances        | `Ledger` -> `BalancesDict`.                                           |
 
-# Key limitations
+# Limitations
 
-Several assumptions and simplifications are used to
-`abacus-minimal` more managable to develop.
+Several assumptions and simplifications are used to make `abacus-minimal` more manageable to develop.
 
 The key assumptions are:
 
 - one currency,
 - one level of accounts in chart,
 - no intermediate accounts,
-- no account durations in current chart of accounts (current vs non-current),
 - no changes in equity and cash flow statements.
 
-See [main.py](abacus/main.py) module docstring for details.
+See [main.py](abacus/main.py) module docstring for more detail.
 
 # Alternatives
 
