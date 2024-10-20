@@ -231,24 +231,17 @@ class ChartDict(UserDict[str, Regular | Contra]):
             {account_name: self.t_account(account_name) for account_name in self.keys()}
         )
 
-    def _close_contra_accounts(self, t: T5) -> Iterator[Pair]:
-        """Close contra accounts, used for income or expense accounts."""
-        for name in self.by_type(t):
-            for contra_name in self.find_contra_accounts(name):
-                yield contra_name, name
-
-    def _close_to_retained_earnings(
-        self, t: T5, retained_earnings_account: str
-    ) -> Iterator[Pair]:
-        """Close income and expense accounts to retained earnings account."""
-        for name in self.by_type(t):
-            yield name, retained_earnings_account
-
     def closing_pairs(self, retained_earnings_account: str) -> Iterator[Pair]:
         """Yield closing pairs for accounting period end."""
+
+        def close_account(name: AccountName):
+            for contra_name in self.find_contra_accounts(name):
+                yield contra_name, name
+            yield name, retained_earnings_account
+
         for t in (T5.Income, T5.Expense):
-            yield from self._close_contra_accounts(t)
-            yield from self._close_to_retained_earnings(t, retained_earnings_account)
+            for account_name in self.by_type(t):
+                yield from close_account(account_name)
 
     def by_type(self, t: T5) -> list[AccountName]:
         """Return account names for a given account type."""
