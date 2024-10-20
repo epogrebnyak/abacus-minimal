@@ -17,11 +17,11 @@ Non-goals:
 
 - replacing SAP or QBO immediately with this Python code.
 
-## For the next version
+## For the `0.10.0` version
 
-- [ ] `book.income_statement` that works before and after close.
-- [ ] `book.balance_sheet` with `current_profit` account when not closed.
-- [ ] relax check for negativity, make warning
+- [ ] `book.income_statement` that works before and after period close
+- [ ] `book.balance_sheet` with `current_profit` account when not close + 
+- [ ] relax check for negative account balance, make warning instead of error
 
 ## Install
 
@@ -47,8 +47,7 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 - save data for the next reporting period.
 
 The complete example code for the workflow is in [readme.py](examples/readme.py).
-
-For lower level implementation details see "Data structures and actions" section below.
+For more implementation details see "Data structures, actions and architecture" section below.
 
 ### 1. Create chart of accounts
 
@@ -165,7 +164,7 @@ assert book.ledger.balances == {
 book.save(directory=".")
 ```
 
-## Data structures and actions
+## Data structures, actions and architecture
 
 ### Data structures 
 
@@ -196,6 +195,15 @@ and is close to type annotations in Python.
 | Show trial balance           | `Ledger` -> `Trial Balance`                                           |
 | Show account balances        | `Ledger` -> `BalancesDict`.                                           |
 
+# Architecture
+
+`abacus-minimal` focuses on enforcing the book-keeping rules, however minimal or trivial they are. 
+
+Unlike production accounting projects `abacus-minimal` is database-free. For `abacus-minimal` it would not  
+matter how entries are saved and where they are coming from -- this responsibilty should be taken by some other 
+part of software, eg the `medici` ledger. The `Book` class does offer saving of entries to a JSON file, 
+but this is done for demonstration purposes only. 
+
 # Limitations
 
 Several assumptions and simplifications are used to make `abacus-minimal` more manageable to develop.
@@ -207,7 +215,7 @@ The key assumptions are:
 - no intermediate accounts,
 - no changes in equity and cash flow statements.
 
-See [main.py](abacus/main.py) module docstring for more detail.
+See [main.py](abacus/main.py) module docstring for more details.
 
 # Alternatives
 
