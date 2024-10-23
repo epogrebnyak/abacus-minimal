@@ -15,7 +15,7 @@ from abacus.core import (
 
 
 class SaveLoadMixin:
-    """Class for loading and saving Pydantic models to files."""
+    """Class for loading and saving pydantic models to files."""
 
     @classmethod
     def load(cls, filename: str | Path):

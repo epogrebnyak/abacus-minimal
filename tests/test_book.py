@@ -1,4 +1,7 @@
+import pytest
 from abacus import Book, Entry, Chart
+from abacus.book import BalancesDict
+
 
 def test_book(tmp_path):
     chart = Chart(
@@ -28,3 +31,18 @@ def test_book(tmp_path):
         "equity": 10000,
         "retained_earnings": 5000,
     }
+
+
+@pytest.mark.report
+def test_balances_dict_json(toy_ledger):
+    content = BalancesDict(toy_ledger.balances).model_dump_json()
+    x = BalancesDict.model_validate_json(content)
+    assert x.root == dict(cash=10, equity=10, re=0)
+
+
+@pytest.mark.report
+def test_balances_load_save(tmp_path):
+    path = str(tmp_path / "b.json")
+    b = BalancesDict(a=1)
+    b.save(path)
+    assert b == BalancesDict.load(path)

@@ -27,7 +27,6 @@ def test_chart_assert_unique_on_repeated_account_name(chart: Chart):
         chart.assert_all_account_names_are_unique()
 
 
-@pytest.mark.chart
 def test_pydantic_will_not_accept_extra_fields():
     with pytest.raises(ValidationError):
         Chart(retained_earnings="re", haha=["equity"])
@@ -54,27 +53,8 @@ def test_chart_to_dict():
     )
 
 
-@pytest.fixture
-def chart():
-    return Chart(
-        retained_earnings="re",
-        assets=["cash", "inventory", "ar"],
-        capital=["equity"],
-        liabilities=["vat", "ap"],
-        income=["sales"],
-        expenses=["wages"],
-        contra_accounts={"sales": ["refunds", "voids"], "equity": ["ts"]},
-        names={
-            "vat": "VAT payable",
-            "ar": "Accounts receivable",
-            "ap": "Accounts payable",
-            "ts": "Treasury stock",
-        },
-    )
-
-
-def test_chart_closing_pairs(chart):
-    assert chart.closing_pairs == [
+def test_chart_closing_pairs(realistic_chart):
+    assert realistic_chart.closing_pairs == [
         # income
         ("refunds", "sales"),
         ("voids", "sales"),
