@@ -1,3 +1,3 @@
 from .book import Book
 from .chart import Chart
-from .main import Entry
+from .core import Entry

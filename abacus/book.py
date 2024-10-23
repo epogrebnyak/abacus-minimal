@@ -5,7 +5,7 @@ from typing import Dict, Sequence
 from pydantic import BaseModel, RootModel
 
 from abacus.chart import Chart, SaveLoadMixin
-from abacus.main import AbacusError, AccountName, Amount, Entry, Ledger
+from abacus.core import AbacusError, AccountName, Amount, Entry, Ledger
 
 
 class BalancesDict(RootModel[Dict[str, Amount]], SaveLoadMixin):

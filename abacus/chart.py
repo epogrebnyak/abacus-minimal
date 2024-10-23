@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from abacus.main import (
+from abacus.core import (
     T5,
     AbacusError,
     AccountName,

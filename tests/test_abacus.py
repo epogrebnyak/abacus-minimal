@@ -3,7 +3,7 @@ from pydantic import ValidationError
 
 from abacus import Book, Chart, Entry  # IncomeStatement
 from abacus.book import BalancesDict
-from abacus.main import (
+from abacus.core import (
     T5,
     AbacusError,
     BalanceSheet,
