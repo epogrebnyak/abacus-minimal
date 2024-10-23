@@ -3,9 +3,9 @@ exclude = ["__init__.py"]
 
 [tool.pytest.ini_options]
 markers = [
-    "chart: test chart of accounts",
     "chart_dict",
     "entry",
+    "ledger",
     "report",
     "mixed",
     "regression: something was wrong and got fixed",
@@ -26,14 +26,6 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.10"
-# pydantic = "^2.9.2"
-
-# [tool.poetry.group.dev.dependencies]
-# pytest = "^8.3.3"
-# mypy = "^1.12.0"
-# ruff = "^0.6.9"
-# black = "^24.10.0"
-# isort = "^5.13.2"
 pydantic = "^2.9.2"
 
 [tool.poetry.group.dev.dependencies]
@@ -41,6 +33,7 @@ pytest = "^8.3.3"
 isort = "^5.13.2"
 mypy = "^1.13.0"
 ruff = "^0.7.0"
+# must add black 
 
 [build-system]
 requires = ["poetry-core"]

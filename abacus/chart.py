@@ -40,18 +40,20 @@ class Chart(BaseModel, SaveLoadMixin):
     names: dict[str, str] = {}
 
     def __post_init__(self):
-        self.assert_unique()
-        self.dry_run()
+        self.assert_all_account_names_are_unique()
+        self.assert_no_invalid_contra_account_references()
+
+    @property
+    def regular_accounts(self):
+        return (
+            self.assets + self.capital + self.liabilities + self.income + self.expenses
+        )
 
     @property
     def accounts(self):
         """All accounts in this chart including the duplicates."""
         return (
-            self.assets
-            + self.capital
-            + self.liabilities
-            + self.income
-            + self.expenses
+            self.regular_accounts
             + [self.retained_earnings]
             + sum(self.contra_accounts.values(), [])
         )
@@ -64,14 +66,19 @@ class Chart(BaseModel, SaveLoadMixin):
             names.remove(name)
         return names
 
-    def assert_unique(self):
+    def assert_all_account_names_are_unique(self):
         """Raise error if any duplicate account names are found."""
         if names := self.duplicates:
             raise AbacusError(f"Account names are not unique: {names}")
 
-    def dry_run(self):
+    def assert_no_invalid_contra_account_references(self):
         """Verify chart by making an empty ledger and try closing it."""
-        self.to_ledger().close(chart=self)
+        regular_account_names = self.regular_accounts
+        for account_name in self.contra_accounts.keys():
+            if account_name not in regular_account_names:
+                raise AbacusError(
+                    f"Account name should exist before making contra account: {account_name}"
+                )
 
     def to_dict(self) -> ChartDict:
         """Create chart dictionary with unique account names."""
@@ -106,5 +113,3 @@ class Chart(BaseModel, SaveLoadMixin):
     def closing_pairs(self) -> list[Pair]:
         """Return list of tuples that allows to close ledger at period end."""
         return list(self.to_dict().closing_pairs(self.retained_earnings))
-
-

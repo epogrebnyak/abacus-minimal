@@ -84,7 +84,7 @@ class Book:
             entry = Entry(opening_entry_title).opening(starting_balances, chart_dict)
             self.ledger.post(entry)
         return self
-    
+
     def save(self, directory: str):
         self.save_chart(directory)
         self.save_store(directory)
