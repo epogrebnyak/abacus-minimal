@@ -2,6 +2,7 @@ import pytest  # type: ignore
 from pydantic import ValidationError
 
 from abacus import Book, Chart, Entry  # IncomeStatement
+from abacus.book import BalancesDict
 from abacus.main import (
     T5,
     AbacusError,
@@ -14,7 +15,6 @@ from abacus.main import (
     DebitEntry,
     Regular,
 )
-from abacus.book import BalancesDict
 
 
 @pytest.mark.chart_dict
@@ -140,6 +140,7 @@ def test_chart_to_dict():
 
 @pytest.mark.chart
 def test_end_to_end(chart):
+    chart_dict = chart.to_dict()
     ledger = chart.open()
     entries = [
         Entry("Start").debit("cash", 20).credit("equity", 20),
@@ -153,7 +154,8 @@ def test_end_to_end(chart):
     ]
     for entry in entries:
         ledger.post(entry)
-    ledger.close(chart)
+    closing_pairs = chart_dict.closing_pairs(chart.retained_earnings)
+    ledger.close(closing_pairs)
     assert ledger.balances == {
         "cash": 105,
         "inventory": 0,
@@ -222,14 +224,16 @@ def test_balance_sheet():
         income=["sales"],
         contra_accounts=dict(equity=["ts"], sales=["refunds"]),
     )
+    chart_dict = chart.to_dict()
     ledger = chart.open()
     ledger.post(Entry("Launch").debit("cash", 10).credit("equity", 10))
     ledger.post(Entry("Sold services").double(debit="cash", credit="sales", amount=50))
     ledger.post(Entry("Issued refund").debit("refunds", 40).credit("cash", 40))
     ledger.post(Entry("Made buyback").double(debit="ts", credit="cash", amount=8))
-    assert ledger.income_statement(chart).net_earnings == 10
-    ledger.close(chart)
-    assert ledger.balance_sheet(chart) == BalanceSheet(
+    assert ledger.income_statement(chart_dict).net_earnings == 10
+    closing_pairs = chart.closing_pairs
+    ledger.close(closing_pairs)
+    assert ledger.balance_sheet(chart_dict) == BalanceSheet(
         assets={"cash": 12}, capital={"equity": 2, "re": 10}, liabilities={}
     )
 
@@ -237,9 +241,10 @@ def test_balance_sheet():
 @pytest.mark.report
 def test_net_earnings():
     chart = Chart(retained_earnings="re", assets=["cash"], income=["sales"])
+    chart_dict = chart.to_dict()
     ledger = chart.open()
     ledger.post(Entry("Free cheese, no expenses").debit("cash", 10).credit("sales", 10))
-    assert ledger.income_statement(chart).net_earnings == 10
+    assert ledger.income_statement(chart_dict).net_earnings == 10
 
 
 @pytest.mark.entry

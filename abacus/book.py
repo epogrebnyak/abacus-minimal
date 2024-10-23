@@ -1,14 +1,12 @@
-import decimal
-from abc import ABC, abstractmethod
-from collections import UserDict
-from dataclasses import dataclass, fields
-from enum import Enum
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterator, Sequence
+from typing import Dict, Sequence
 
-from pydantic import BaseModel, ConfigDict, RootModel
+from pydantic import BaseModel, RootModel
 
-from abacus.main import Amount, SaveLoadMixin, Entry, Chart,  AccountName, AbacusError
+from abacus.chart import Chart, SaveLoadMixin
+from abacus.main import AbacusError, AccountName, Amount, Entry
+
 
 class BalancesDict(RootModel[Dict[str, Amount]], SaveLoadMixin):
     pass
@@ -98,18 +96,18 @@ class Book:
             self.post(entry)
 
     def close(self):
-        entries = self.ledger.close(self.chart)
+        entries = self.ledger.close(closing_pairs=self.chart.closing_pairs)
         self.store.entries.extend(entries)
 
     # FIXME: no income statement if account was closed
     @property
     def income_statement(self):
-        return self.ledger.income_statement(self.chart)
+        return self.ledger.income_statement(self.chart.to_dict())
 
     # FIXME: balance sheet is incomplete before accounts were closed
     @property
     def balance_sheet(self):
-        return self.ledger.balance_sheet(self.chart)
+        return self.ledger.balance_sheet(self.chart.to_dict())
 
     @property
     def trial_balance(self):
