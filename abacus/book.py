@@ -5,7 +5,7 @@ from typing import Dict, Sequence
 from pydantic import BaseModel, RootModel
 
 from abacus.chart import Chart, SaveLoadMixin
-from abacus.main import AbacusError, AccountName, Amount, Entry
+from abacus.main import AbacusError, AccountName, Amount, Entry, Ledger
 
 
 class BalancesDict(RootModel[Dict[str, Amount]], SaveLoadMixin):
@@ -54,7 +54,7 @@ class Book:
         self.chart = chart
         if opening_balances is None:
             opening_balances = {}
-        self.ledger = chart.open(opening_balances)
+        self.ledger = Ledger.open(chart.to_dict(), opening_balances)
         self.store = EntryStore()
 
     def save_chart(self, directory: str):
@@ -77,11 +77,14 @@ class Book:
         opening_balances = path.get_balances() if path.balances.exists() else {}
         return cls(chart, opening_balances)
 
-    def open(self, starting_balances=None):
-        if not starting_balances:
-            starting_balances = {}
-        self.ledger = self.chart.open(starting_balances)
-
+    def open(self, starting_balances=None, opening_entry_title="Opening entry"):
+        chart_dict = self.chart.to_dict()
+        self.ledger = chart_dict.to_ledger()
+        if starting_balances:
+            entry = Entry(opening_entry_title).opening(starting_balances, chart_dict)
+            self.ledger.post(entry)
+        return self
+    
     def save(self, directory: str):
         self.save_chart(directory)
         self.save_store(directory)

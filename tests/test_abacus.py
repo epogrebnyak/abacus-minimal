@@ -14,6 +14,7 @@ from abacus.main import (
     DebitAccount,
     DebitEntry,
     Regular,
+    Ledger
 )
 
 
@@ -74,7 +75,8 @@ def test_chart_closing_pairs(chart):
 
 @pytest.mark.chart
 def test_chart_to_ledger_keys():
-    ledger = Chart(retained_earnings="re", assets=["cash"], capital=["equity"]).open()
+    chart_dict = Chart(retained_earnings="re", assets=["cash"], capital=["equity"]).to_dict()
+    ledger = chart_dict.to_ledger()
     assert list(ledger.keys()) == ["cash", "equity", "re"]
 
 
@@ -92,7 +94,8 @@ def test_ledger_creation(account_name, cls):
     ledger = (
         Chart(retained_earnings="re", assets=["cash"], capital=["equity"])
         .offset("equity", "ts")
-        .open()
+        .to_dict()
+        .to_ledger()
     )
     assert isinstance(ledger[account_name], cls)
 
@@ -141,7 +144,7 @@ def test_chart_to_dict():
 @pytest.mark.chart
 def test_end_to_end(chart):
     chart_dict = chart.to_dict()
-    ledger = chart.open()
+    ledger = chart_dict.to_ledger()
     entries = [
         Entry("Start").debit("cash", 20).credit("equity", 20),
         Entry("Accepted payment")
@@ -170,7 +173,7 @@ def test_end_to_end(chart):
 
 @pytest.mark.chart
 def test_catch_negative_entry():
-    ledger = Chart(retained_earnings="re", assets=["cash"], capital=["equity"]).open()
+    ledger = Chart(retained_earnings="re", assets=["cash"], capital=["equity"]).to_dict().to_ledger()
     with pytest.raises(AbacusError):
         ledger.post(Entry("Invalid entry").credit("cash", 1))
 
@@ -225,7 +228,7 @@ def test_balance_sheet():
         contra_accounts=dict(equity=["ts"], sales=["refunds"]),
     )
     chart_dict = chart.to_dict()
-    ledger = chart.open()
+    ledger = chart_dict.to_ledger()
     ledger.post(Entry("Launch").debit("cash", 10).credit("equity", 10))
     ledger.post(Entry("Sold services").double(debit="cash", credit="sales", amount=50))
     ledger.post(Entry("Issued refund").debit("refunds", 40).credit("cash", 40))
@@ -242,7 +245,7 @@ def test_balance_sheet():
 def test_net_earnings():
     chart = Chart(retained_earnings="re", assets=["cash"], income=["sales"])
     chart_dict = chart.to_dict()
-    ledger = chart.open()
+    ledger = chart_dict.to_ledger()
     ledger.post(Entry("Free cheese, no expenses").debit("cash", 10).credit("sales", 10))
     assert ledger.income_statement(chart_dict).net_earnings == 10
 
@@ -262,7 +265,7 @@ def toy_chart():
 
 @pytest.fixture
 def toy_ledger(toy_chart):
-    ledger = toy_chart.open()
+    ledger = toy_chart.to_dict().to_ledger()
     ledger.post(Entry("Start company").amount(10).debit("cash").credit("equity"))
     return ledger
 
@@ -312,7 +315,7 @@ def test_opening_entry_fails(toy_chart):
 
 @pytest.mark.mixed
 def test_chart_open(toy_chart):
-    ledger = toy_chart.open(dict(cash=10, equity=10))
+    ledger = Ledger.open(toy_chart.to_dict(), dict(cash=10, equity=10))
     assert ledger.trial_balance == dict(
         re=(None, 0), cash=(10, None), equity=(None, 10)
     )

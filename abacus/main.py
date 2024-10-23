@@ -321,6 +321,20 @@ class CreditAccount(TAccount):
 
 
 class Ledger(UserDict[AccountName, TAccount]):
+
+    @classmethod
+    def empty(cls, chart_dict: ChartDict):
+        """Create empty ledger from chart dictionary."""
+        return chart_dict.to_ledger()
+
+    @classmethod
+    def open(cls, chart_dict: ChartDict, opening_balances: dict, opening_entry_title="Opening entry"):
+        """Create ledger using starting balances."""
+        self = cls.empty(chart_dict)
+        entry = Entry(opening_entry_title).opening(opening_balances, chart_dict)
+        self.post(entry)
+        return self
+
     def post_single(self, single_entry: SingleEntry):
         """Post single entry to ledger. Will raise `KeyError` if account name is not found."""
         match single_entry:

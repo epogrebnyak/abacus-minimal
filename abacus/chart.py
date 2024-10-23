@@ -60,7 +60,7 @@ class Chart(BaseModel, SaveLoadMixin):
     def duplicates(self):
         """Duplicate account names. Must be empty for valid chart."""
         names = self.accounts
-        for name in self.to_dict().keys():
+        for name in set(names):
             names.remove(name)
         return names
 
@@ -73,7 +73,7 @@ class Chart(BaseModel, SaveLoadMixin):
         """Verify chart by making an empty ledger and try closing it."""
         self.to_ledger().close(chart=self)
 
-    def to_dict(self) -> "ChartDict":
+    def to_dict(self) -> ChartDict:
         """Create chart dictionary with unique account names."""
         chart_dict = ChartDict()
         for t, attr in (
@@ -107,14 +107,4 @@ class Chart(BaseModel, SaveLoadMixin):
         """Return list of tuples that allows to close ledger at period end."""
         return list(self.to_dict().closing_pairs(self.retained_earnings))
 
-    def open(
-        self,
-        opening_balances: dict[AccountName, Amount] | None = None,
-        opening_entry_title="Opening entry",
-    ) -> "Ledger":
-        """Create ledger with opening balances."""
-        ledger = self.to_dict().to_ledger()
-        if opening_balances:
-            entry = Entry(opening_entry_title).opening(opening_balances, self.to_dict())
-            ledger.post(entry)
-        return ledger
+
