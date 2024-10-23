@@ -166,7 +166,7 @@ book.save(directory=".")
 
 ## Data structures, actions and architecture
 
-### Data structures 
+### Data structures
 
 Underneath `Chart`, `Entry` and `Book` clasees there are more primitive data
 structures that make up the core of `abacus-minimal`:
@@ -181,11 +181,11 @@ structures that make up the core of `abacus-minimal`:
 
 ### Actions
 
-The principal chain of actions in `abacus-minimal` is shown in a table below. 
-The function signature indicates waht variables participate in the transformations 
+The principal chain of actions in `abacus-minimal` is shown in a table below.
+The function signature indicates waht variables participate in the transformations
 and is close to type annotations in Python.
 
-| Action                       | Function signature                                                             |
+| Action                       | Function signature                                                    |
 | ---------------------------- | --------------------------------------------------------------------- |
 | Create ledger                | `ChartDict` -> `Ledger`                                               |
 | Post entries to ledger       | `Ledger` -> `[MultipleEntry]` -> `Ledger`                             |
@@ -197,12 +197,12 @@ and is close to type annotations in Python.
 
 # Architecture
 
-`abacus-minimal` focuses on enforcing the book-keeping rules, however minimal or trivial they are. 
+`abacus-minimal` focuses on enforcing the book-keeping rules, however minimal or trivial they are.
 
 Unlike production accounting projects `abacus-minimal` is database-free. For `abacus-minimal` it would not  
-matter how entries are saved and where they are coming from -- this responsibilty should be taken by some other 
-part of software, eg the `medici` ledger. The `Book` class does offer saving of entries to a JSON file, 
-but this is done for demonstration purposes only. 
+matter how entries are saved and where they are coming from -- this responsibilty should be taken by some other
+part of software, eg the `medici` ledger. The `Book` class does offer saving of entries to a JSON file,
+but this is done for demonstration purposes only.
 
 # Limitations
 
