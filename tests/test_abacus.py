@@ -5,7 +5,6 @@ from abacus import Book, Chart, Entry  # IncomeStatement
 from abacus.main import (
     T5,
     AbacusError,
-    BalancesDict,
     BalanceSheet,
     ChartDict,
     Contra,
@@ -15,6 +14,7 @@ from abacus.main import (
     DebitEntry,
     Regular,
 )
+from abacus.book import BalancesDict
 
 
 @pytest.mark.chart_dict
