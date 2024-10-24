@@ -22,23 +22,6 @@ Non-goals:
 - replacing SAP or QBO immediately with this Python code.
 -->
 
-## Changelog
-
-- `0.10.0` (2024-10-24) separates core, chart, entry and book code and tests.
-
-### For cleanup:
-
-- [ ] `book.income_statement` that works before and after period close
-- [ ] `book.balance_sheet` with `current_earnings` account when not closed, `Chart.current_earnings` attribute
-- [ ] dedupulicate `Book.open()`
-- [ ] cleaner `BalancesDict`
-- [ ] reorder `test_book.py`
-
-### New features:
-
-- [ ] `Book.increase()` and `Book.decrease()` methods
-- [ ] `Entry.explain()` and `Entry.validate()` methods
-
 ## Install
 
 ```bash
@@ -116,19 +99,18 @@ Code example:
 ```python
 from abacus import Book, Entry
 
-# Create book with opening balances
+# Create book with opening balances from previous period
 opening_balances = {"cash": 10_000, "equity": 8_000, "retained_earnings": 2_000}
 book = Book(chart, opening_balances)
 
-# Post entries
+# Create a list of entries
 entries = [
-    Entry("Sold services with VAT")
-    .debit("cash", 6000)
-    .credit("sales", 5000)
-    .credit("vat_payable", 1000),
-    Entry("Made client refund").double(debit="refunds", credit="cash", amount=500),
+    Entry("Sales with VAT").debit("cash", 6000).credit("sales", 5000).credit("vat_payable", 1000),
+    Entry("Сlient refund").double(debit="refunds", credit="cash", amount=500),
     Entry("Paid salaries").amount(1500).debit("salaries").credit("cash"),
 ]
+
+# Post entries to book and show trial balance
 book.post_many(entries)
 print(book.trial_balance)
 ```
@@ -213,7 +195,7 @@ there are more primitive data structures
 that make up the core of `abacus-minimal`:
 
 - `ChartDict` holds chart of accounts information and ensures uniqueness and consistency of account names.
-- `SingleEntry` specifies amount and debit or credit side.
+- `SingleEntry` specifies amount applied to debit or credit side of an account.
 - `MultipleEntry` is a list of `SingleEntry` items where sum of debit and credit entries should match.
 - `TAccount` is the base class for `DebitAccount` and `CreditAccount`.
 - `Ledger` is a dictionary that maps account names to accounts and accepts entries for posting.
@@ -223,8 +205,8 @@ that make up the core of `abacus-minimal`:
 ### Actions
 
 The principal chain of actions in `abacus-minimal` is shown in a table below.
-The function signatures (or type annotations) indicate want variables participate
-in the calculation.
+The function signatures (or type annotations) indicate what variables participate
+in the calculation as input parameters and results.
 
 | Action                       | Function signature                                                    |
 | ---------------------------- | --------------------------------------------------------------------- |
@@ -236,16 +218,14 @@ in the calculation.
 | Show trial balance           | `Ledger` -> `TrialBalance`                                            |
 | Show account balances        | `Ledger` -> `BalancesDict`.                                           |
 
-# Architecture
+## Architecture
 
 `abacus-minimal` focuses on enforcing the book-keeping rules, but not on not storing entires.
+For `abacus-minimal` it would not  matter how entries are saved and where they are coming 
+from -- this responsibility should be taken by some other parts of software, eg the `medici` ledger. 
+The `Book` class does offer saving of entries to a JSON file, but not too big.
 
-Unlike production accounting projects `abacus-minimal` is database-free. For `abacus-minimal` it would not  
-matter how entries are saved and where they are coming from -- this responsibility should be taken by some other
-part of software, eg the `medici` ledger. The `Book` class does offer saving of entries to a JSON file,
-but this is done for demonstration only.
-
-# Limitations
+## Limitations
 
 Several assumptions and simplifications are used to make `abacus-minimal` more manageable to develop.
 
@@ -258,7 +238,7 @@ The key assumptions are:
 
 See [main.py](abacus/main.py) module docstring for more details.
 
-# Alternatives
+## Alternatives
 
 `abacus-minimal` takes inspiration from the following great projects:
 
@@ -279,7 +259,7 @@ Many other office automation providers do also have accounting APIs (eg Zoho) an
 
 Several outlets advertise they provide IFRS-compliant charts of accounts, but usually as Excel files. There are account taxonomies for reporting, but the charts more seldom.
 
-# Accounting knowledge
+## Accounting knowledge
 
 If you are totally new to accounting the suggested friendly course is <https://www.accountingcoach.com/>.
 
@@ -288,7 +268,7 @@ ACCA and CPA are the international and the US professional qualifications and IF
 Part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf)
 talk about what `abacus-minimal` is designed for.
 
-# Project conventions
+## Project conventions
 
 I use [`just` command runner](https://github.com/casey/just) to automate
 code maintenance tasks in this project.
@@ -303,3 +283,23 @@ code maintenance tasks in this project.
 - `codedown` to extract Python code from README.md.
 
 `examples/readme.py` is overwritten by the `just readme` command.
+
+
+## Changelog
+
+- `0.10.0` (2024-10-24) separates core, chart, entry and book code and tests.
+
+## Roadmap 
+
+### For cleanup:
+
+- [ ] `book.income_statement` that works before and after period close
+- [ ] `book.balance_sheet` with `current_earnings` account when not closed, `Chart.current_earnings` attribute
+- [ ] dedupulicate `Book.open()`
+- [ ] cleaner `BalancesDict`
+- [ ] reorder `test_book.py`
+
+### New features:
+
+- [ ] `Book.increase()` and `Book.decrease()` methods
+- [ ] `Entry.explain()` and `Entry.validate()` methods
