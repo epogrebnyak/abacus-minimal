@@ -80,16 +80,6 @@ def test_balance_sheet_after_close(book_after_post):
         liabilities={},
     )
 
-def test_balances_before_close(book_after_post):
-    assert book_after_post.ledger.balances == {
-        "cash": 10_000,
-        "equity": 8_000,
-        "sales": 0,
-        "salaries": 0,
-        "retained_earnings": 2_000,
-        "current_earnings": 0,
-        "refunds": 0,
-    } 
 
 @pytest.fixture
 def book_after_close(book_after_post):
@@ -102,7 +92,7 @@ def test_balances_after_close(book_after_close):
         "cash": 350,
         "equity": 300,
         "retained_earnings": 50,
-    } 
+    }
 
 
 def test_balances_before_close(book_after_post):
@@ -114,10 +104,7 @@ def test_balances_before_close(book_after_post):
         "retained_earnings": 0,
         "current_earnings": 0,
         "refunds": 25,
-    } 
-
-
-
+    }
 
 
 def test_book_similar_to_readme(tmp_path):

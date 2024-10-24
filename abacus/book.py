@@ -53,13 +53,20 @@ class PathFinder:
 
 
 class Book:
-    def __init__(self, chart: Chart, opening_balances: dict | None = None):
+    def __init__(
+        self,
+        chart: Chart,
+        opening_balances: dict | None = None,
+        opening_entry_title: str = "Opening entry",
+    ):
         self.chart = chart
-        if opening_balances is None:
-            opening_balances = {}
-        self.ledger = Ledger.open(chart.mapping, opening_balances)
+        self.ledger = Ledger.empty(chart.mapping)
         self.store = EntryStore()
         self._income_statement = None
+        if opening_balances is not None:
+            self.ledger, me = self.ledger.post_opening(chart.mapping, opening_balances)
+            entry = Entry(title=opening_entry_title, data=me)
+            self.store.entries.append(entry)
 
     def is_closed(self):
         return self.ledger.is_closed(chart_dict=self.chart.mapping)
@@ -84,15 +91,6 @@ class Book:
         opening_balances = path.get_balances() if path.balances.exists() else {}
         return cls(chart, opening_balances)
 
-    def open(self, starting_balances=None, opening_entry_title="Opening entry"):
-        chart_dict = self.chart.mapping
-        self.ledger = chart_dict.to_ledger()
-        if starting_balances:
-            entry = Entry(opening_entry_title).opening(starting_balances, chart_dict)
-            self.ledger.post(entry)
-            self.entries.append(entry)
-        return self
-
     def save(self, directory: str):
         self.save_chart(directory)
         self.save_store(directory)
@@ -112,7 +110,7 @@ class Book:
         self._income_statement = self.income_statement
         # Make closing pairs
         closing_pairs = self.chart.make_closing_pairs(self.chart.retained_earnings)
-        # Trick for deleting the current_earnings account from the chart
+        # Trick for deleting the *current_earnings* account from the chart
         last_pair = self.chart.current_earnings, self.chart.current_earnings
         closing_pairs.append(last_pair)
         # Post closing entries
@@ -138,11 +136,10 @@ class Book:
         profit = self.chart.current_earnings
         closing_pairs = self.chart.make_closing_pairs(profit)
         ledger.close(closing_pairs)
-        balance_sheet = ledger.balance_sheet(self.chart.mapping)
-        return balance_sheet
+        return ledger.balance_sheet(self.chart.mapping)
 
     def _retained_earnings_balance_sheet(self):
-        # Keep both only retained_earnings in the balance sheet
+        # Keep only retained_earnings in the balance sheet
         return self.ledger.balance_sheet(self.chart.mapping)
 
     @property

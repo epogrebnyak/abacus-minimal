@@ -9,7 +9,7 @@
 - Make free web learning tools in accounting similar to [abacus-streamlit][ex].
 
 That should help to:
- 
+
 - explain book-keeping rules through code examples.
 - make pathways into accounting for programmers and into programming for accountants.
 - ultimately, lower the book-keeping and financial analytics costs for the businesses.
@@ -221,8 +221,8 @@ in the calculation as input parameters and results.
 ## Architecture
 
 `abacus-minimal` focuses on enforcing the book-keeping rules, but not on not storing entires.
-For `abacus-minimal` it would not  matter how entries are saved and where they are coming 
-from -- this responsibility should be taken by some other parts of software, eg the `medici` ledger. 
+For `abacus-minimal` it would not matter how entries are saved and where they are coming
+from -- this responsibility should be taken by some other parts of software, eg the `medici` ledger.
 The `Book` class does offer saving of entries to a JSON file, but not too big.
 
 ## Limitations
@@ -284,12 +284,11 @@ code maintenance tasks in this project.
 
 `examples/readme.py` is overwritten by the `just readme` command.
 
-
 ## Changelog
 
 - `0.10.0` (2024-10-24) separates core, chart, entry and book code and tests.
 
-## Roadmap 
+## Roadmap
 
 ### For cleanup:
 

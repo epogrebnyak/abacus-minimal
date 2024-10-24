@@ -278,13 +278,11 @@ class Ledger(UserDict[AccountName, TAccount]):
         """Create empty ledger from chart dictionary."""
         return chart_dict.to_ledger()
 
-    @classmethod
-    def open(cls, chart_dict: ChartDict, opening_balances: dict):
+    def post_opening(self, chart_dict: ChartDict, opening_balances: dict):
         """Create ledger using starting balances."""
-        self = cls.empty(chart_dict)
         entry = MultipleEntry.opening(opening_balances, chart_dict)
         self.post(entry)
-        return self
+        return self, entry
 
     def post_single(self, single_entry: SingleEntry):
         """Post single entry to ledger. Will raise `KeyError` if account name is not found."""
@@ -306,7 +304,7 @@ class Ledger(UserDict[AccountName, TAccount]):
             raise AbacusError(f"Accounts do not exist: {not_found}")
 
     def is_closed(self, chart_dict: ChartDict) -> bool:
-        for frm, _ in chart_dict.closing_pairs("any"):
+        for frm, _ in chart_dict.closing_pairs("_"):
             if frm in self.data.keys():
                 return False
         else:
@@ -376,7 +374,7 @@ def net_balances_factory(chart_dict: ChartDict, ledger: Ledger):
             try:
                 contra_accounts = chart_dict.find_contra_accounts(name)
                 result[name] = ledger.net_balance(name, contra_accounts)
-            except KeyError:  # protect from current account missing from ledger
+            except KeyError:  # protect from current account not in ledger
                 pass
         return result
 
@@ -405,7 +403,7 @@ class BalanceSheet(Report):
     liabilities: dict[AccountName, Amount]
 
     def is_balanced(self) -> bool:
-        def values(d: dict):
+        def sums(d: dict):
             return sum(d.values())
 
-        return values(self.assets) == values(self.capital) + values(self.liabilities)
+        return sums(self.assets) == sums(self.capital) + sums(self.liabilities)

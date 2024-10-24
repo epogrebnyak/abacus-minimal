@@ -18,19 +18,21 @@ chart.save("chart.json")
 chart = Chart.load("chart.json")
 
 
-# Create book with opening balances
+# Create book with opening balances from previous period
 opening_balances = {"cash": 10_000, "equity": 8_000, "retained_earnings": 2_000}
 book = Book(chart, opening_balances)
 
-# Post entries
+# Create a list of entries
 entries = [
-    Entry("Sold services with VAT")
+    Entry("Sales with VAT")
     .debit("cash", 6000)
     .credit("sales", 5000)
     .credit("vat_payable", 1000),
-    Entry("Made client refund").double(debit="refunds", credit="cash", amount=500),
+    Entry("Сlient refund").double(debit="refunds", credit="cash", amount=500),
     Entry("Paid salaries").amount(1500).debit("salaries").credit("cash"),
 ]
+
+# Post entries to book and show trial balance
 book.post_many(entries)
 print(book.trial_balance)
 
