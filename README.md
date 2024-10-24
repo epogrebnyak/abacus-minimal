@@ -1,27 +1,32 @@
 # abacus-minimal
 
-`abacus-minimal` aims to be as concise as possible in implementation of double entry book-keeping rules as applied in corporate accounting.
+`abacus-minimal` aims to be as concise and expressive as possible in implementation of double entry book-keeping rules as applied in corporate accounting.
 
 ## Project goals
 
 - Make valid accounting engine in fewer lines of code (Python or other languages).
-- Explain book-keeping rules through code examples.
-- Make pathways into accounting for programmers and into programming for accountants.
 - Curate various charts of accounts as JSON files and make conversions between them.
 - Make free web learning tools in accounting similar to [abacus-streamlit][ex].
-- Ultimately, lower the book-keeping and financial analytics costs for the businesses.
+
+That should help to:
+ 
+- explain book-keeping rules through code examples.
+- make pathways into accounting for programmers and into programming for accountants.
+- ultimately, lower the book-keeping and financial analytics costs for the businesses.
 
 [ex]: https://abacus.streamlit.app/
 
+<!--
 Non-goals:
 
 - replacing SAP or QBO immediately with this Python code.
+-->
 
 ## Changelog
 
 - `0.10.0` (2024-10-24) separates core, chart, entry and book code and tests.
 
-### Taregts - cleanup
+### For cleanup:
 
 - [ ] `book.income_statement` that works before and after period close
 - [ ] `book.balance_sheet` with `current_earnings` account when not closed, `Chart.current_earnings` attribute
@@ -29,7 +34,7 @@ Non-goals:
 - [ ] cleaner `BalancesDict`
 - [ ] reorder `test_book.py`
 
-### Targets - new features
+### New features:
 
 - [ ] `Book.increase()` and `Book.decrease()` methods
 - [ ] `Entry.explain()` and `Entry.validate()` methods
