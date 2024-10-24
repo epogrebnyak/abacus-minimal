@@ -292,9 +292,9 @@ code maintenance tasks in this project.
 
 ### For cleanup:
 
-- [ ] `book.income_statement` that works before and after period close
-- [ ] `book.balance_sheet` with `current_earnings` account when not closed, `Chart.current_earnings` attribute
-- [ ] dedupulicate `Book.open()`
+- [x] `book.income_statement` that works before and after period close
+- [x] `book.balance_sheet` with `current_earnings` account when not closed, `Chart.current_earnings` attribute
+- [x] dedupulicate `Book.open()`
 - [ ] cleaner `BalancesDict`
 - [ ] reorder `test_book.py`
 
