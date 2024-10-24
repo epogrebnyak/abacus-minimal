@@ -170,12 +170,9 @@ def sums(xs):
 @dataclass
 class MultipleEntry:
     """A multiple entry is similar to a list of single entries
-    that can be iterated over to post to ledger.
-
-    For a valid entry the sum of debits equals the sum of credits.
+    that can be iterated over when posting to ledger.
     """
 
-    title: str
     debits: list[tuple[AccountName, Amount]] = field(default_factory=list)
     credits: list[tuple[AccountName, Amount]] = field(default_factory=list)
 
@@ -195,73 +192,36 @@ class MultipleEntry:
             raise AbacusError("Sum of debits {a} does not equal to sum of credits {b}.")
         return self
 
-
-Numeric = int | float | Amount
-
-
-@dataclass
-class Entry(MultipleEntry):
-    """An Entry class is a user interface for creating a double or multiple entry
-    and also an opening or a closing entry.
-    """
-
-    is_closing: bool = False
-    _current_amount: Amount | None = None
-
-    def double(self, debit: str, credit: str, amount: Numeric):
-        """Create double entry."""
-        if self.debits or self.credits:
-            raise AbacusError("Cannot create double entry.")
-        return self.debit(debit, amount).credit(credit, amount)
-
-    def amount(self, amount: Numeric):
-        """Set amount for the entry."""
-        self._current_amount = Amount(amount)
-        return self
-
-    def _get_amount(self, amount: Numeric | None = None) -> Amount:
-        """Use provided amount, default amount or raise error if no suffient data."""
-        if amount is None:
-            if self._current_amount:
-                return self._current_amount
-            else:
-                raise AbacusError("Amount is not set.")
-        return Amount(amount)
-
-    def debit(self, account_name: str, amount: Numeric | None = None):
+    def debit(self, account_name: str, amount: Amount):
         """Add debit part to entry."""
-        self.debits.append((account_name, self._get_amount(amount)))
+        self.debits.append((account_name, amount))
         return self
 
-    def credit(self, account_name: str, amount: Numeric | None = None):
+    def credit(self, account_name: str, amount: Amount):
         """Add credit part to entry."""
-        self.credits.append((account_name, self._get_amount(amount)))
+        self.credits.append((account_name, amount))
         return self
 
+    @classmethod
     def opening(
-        self, opening_balances: dict[AccountName, Amount], chart_dict: "ChartDict"
+        cls, opening_balances: dict[AccountName, Amount], chart_dict: ChartDict
     ):
-        """Create opening entry."""
+        """Create an opening entry."""
+        entry = cls()
         for account_name, amount in opening_balances.items():
             if chart_dict.is_debit_account(account_name):
-                self.debit(account_name, amount)
+                entry.debit(account_name, amount)
             elif account_name in chart_dict.keys():
-                self.credit(account_name, amount)
+                entry.credit(account_name, amount)
             else:
                 raise AbacusError(f"Account not found in chart: {account_name}")
-        self.validate()
-        return self
+        entry.validate()
+        return entry
 
-    def transfer(self, frm: AccountName, to: AccountName, t_account: "TAccount"):
-        """Make entry to transfer account balances from one account to another."""
-        if isinstance(t_account, DebitAccount):
-            dr, cr = to, frm  # debit destination account
-        elif isinstance(t_account, CreditAccount):
-            dr, cr = frm, to  # credit destination account
-        self.is_closing = True
-        self.debit(dr, b := t_account.balance)
-        self.credit(cr, b)
-        return self
+    @classmethod
+    def double(cls, debit: str, credit: str, amount: Amount):
+        """Create double entry."""
+        return cls().debit(debit, amount).credit(credit, amount)
 
 
 @dataclass
@@ -284,14 +244,14 @@ class TAccount(ABC):
         """Add amount to credit side of T-account."""
         self.right += amount
 
+    @abstractmethod
+    def transfer(self, frm: AccountName, to: AccountName) -> MultipleEntry:
+        pass
+
     @property
     @abstractmethod
     def balance(self) -> Amount:
         pass
-
-    def closing_entry(self, frm: AccountName, to: AccountName, title: str) -> "Entry":
-        """Make closing entry to transfer balance to another account."""
-        return Entry(title).transfer(frm, to, self)
 
 
 class DebitAccount(TAccount):
@@ -299,12 +259,8 @@ class DebitAccount(TAccount):
     def balance(self) -> Amount:
         return self.left - self.right
 
-    def credit(self, amount: Amount):
-        if amount > self.balance:
-            raise AbacusError(
-                f"Account balance is {self.balance}, cannot credit {amount}."
-            )
-        self.right += amount
+    def transfer(self, frm: AccountName, to: AccountName):
+        return MultipleEntry.double(to, frm, self.balance)
 
 
 class CreditAccount(TAccount):
@@ -312,12 +268,8 @@ class CreditAccount(TAccount):
     def balance(self) -> Amount:
         return self.right - self.left
 
-    def debit(self, amount: Amount):
-        if amount > self.balance:
-            raise AbacusError(
-                f"Account balance is {self.balance}, cannot debit {amount}."
-            )
-        self.left += amount
+    def transfer(self, frm: AccountName, to: AccountName):
+        return MultipleEntry.double(frm, to, self.balance)
 
 
 class Ledger(UserDict[AccountName, TAccount]):
@@ -327,15 +279,10 @@ class Ledger(UserDict[AccountName, TAccount]):
         return chart_dict.to_ledger()
 
     @classmethod
-    def open(
-        cls,
-        chart_dict: ChartDict,
-        opening_balances: dict,
-        opening_entry_title="Opening entry",
-    ):
+    def open(cls, chart_dict: ChartDict, opening_balances: dict):
         """Create ledger using starting balances."""
         self = cls.empty(chart_dict)
-        entry = Entry(opening_entry_title).opening(opening_balances, chart_dict)
+        entry = MultipleEntry.opening(opening_balances, chart_dict)
         self.post(entry)
         return self
 
@@ -347,7 +294,7 @@ class Ledger(UserDict[AccountName, TAccount]):
             case CreditEntry(name, amount):
                 self.data[name].credit(Amount(amount))
 
-    def post(self, entry: Entry):
+    def post(self, entry: MultipleEntry):
         """Post a stream of single entries to ledger."""
         not_found = []
         cannot_post = []
@@ -388,22 +335,15 @@ class Ledger(UserDict[AccountName, TAccount]):
             self[contra_name].balance for contra_name in contra_names
         )
 
-    def close_by_pairs(self, pairs: Sequence[Pair], entry_title: str) -> list[Entry]:
-        """Close ledger by using closing pairs of accounts.
-        This method changes the existing ledger."""
-        closing_entries = []
-        for frm, to in pairs:
-            entry = self.data[frm].closing_entry(frm, to, entry_title)
-            closing_entries.append(entry)
-            self.post(entry)
-            del self.data[frm]
-        return closing_entries
+    def _close_one(self, frm: AccountName, to: AccountName):
+        entry = self.data[frm].transfer(frm, to)
+        self.post(entry)
+        del self.data[frm]
+        return entry
 
-    def close(
-        self, closing_pairs: Sequence[Pair], entry_title="Closing entry"
-    ) -> list[Entry]:
+    def close(self, closing_pairs: Sequence[Pair]) -> list[MultipleEntry]:
         """Close ledger at accounting period end."""
-        return self.close_by_pairs(closing_pairs, entry_title)
+        return [self._close_one(frm, to) for frm, to in closing_pairs]
 
     def balance_sheet(self, chart_dict: "ChartDict"):
         """Create balance sheet from ledger."""
@@ -425,8 +365,9 @@ class TrialBalance(UserDict[str, tuple[Amount, Amount]]):
 
 
 def net_balances_factory(chart_dict: ChartDict, ledger: Ledger):
-    """Create a function that calculates net balances for a given account type
-    based on the provided chart and ledger."""
+    """Create a function that calculates net balances
+    for a given account type based on the provided chart and ledger.
+    """
 
     def fill(t: T5):
         return {

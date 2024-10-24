@@ -1,8 +1,8 @@
 import pytest
+from pydantic import ValidationError
 
 from abacus import Chart
-from abacus.core import AbacusError, ChartDict, T5, Regular, Contra
-from pydantic import ValidationError
+from abacus.core import T5, AbacusError, ChartDict, Contra, Regular
 
 
 def test_all_contra_accounts_point_to_existing_accounts():

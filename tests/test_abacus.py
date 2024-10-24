@@ -5,13 +5,11 @@ from abacus.core import (
     AbacusError,
     ChartDict,
     Contra,
-    Entry,
     CreditAccount,
-    CreditEntry,
     DebitAccount,
-    DebitEntry,
-    Regular,
     Ledger,
+    MultipleEntry,
+    Regular,
 )
 
 
@@ -51,68 +49,13 @@ def test_ledger_creation(account_name, cls, toy_dict):
     assert isinstance(ledger[account_name], cls)
 
 
-def test_catch_negative_entry(toy_dict):
-    ledger = toy_dict.to_ledger()
-    with pytest.raises(AbacusError):
-        ledger.post(Entry("Invalid entry").credit("cash", 1))
-
-
-@pytest.mark.entry
-def test_entry_double():
-    entry = Entry("Double entry").double(debit="cash", credit="equity", amount=10)
-    assert entry.debits == [("cash", 10)]
-    assert entry.credits == [("equity", 10)]
-
-
-@pytest.mark.entry
-def test_entry_double_cannot_recycle():
-    entry = Entry("Double entry").double(debit="cash", credit="equity", amount=9)
-    with pytest.raises(AbacusError):
-        entry.double(debit="cash", credit="equity", amount=1)
-
-
-@pytest.mark.entry
-def test_entry_amount():
-    entry = Entry("Entry with amount").amount(10).debit("cash").credit("equity")
-    assert entry.debits == [("cash", 10)]
-    assert entry.credits == [("equity", 10)]
-
-
-@pytest.mark.entry
-def test_entry_no_amount_raises_error():
-    with pytest.raises(AbacusError):
-        Entry("Entry with no amount").debit("cash")
-
-
-@pytest.mark.entry
-def test_entry_chained():
-    entry = (
-        Entry("Chained entry")
-        .debit("cash", 6)
-        .debit("ar", 6)
-        .credit("sales", 10)
-        .credit("vat", 2)
-    )
-    assert entry.debits == [("cash", 6), ("ar", 6)]
-    assert entry.credits == [("sales", 10), ("vat", 2)]
-
-
 @pytest.mark.report
-def test_net_earnings():
-    chart_dict = (
-        ChartDict().set(T5.Capital, "re").set(T5.Asset, "cash").set(T5.Income, "sales")
-    )
+def test_net_earnings(toy_dict):
+    chart_dict = toy_dict.set(T5.Income, "sales")
     ledger = chart_dict.to_ledger()
-    ledger.post(Entry("Free cheese, no expenses").debit("cash", 10).credit("sales", 10))
+    sales_entry = MultipleEntry().debit("cash", 10).credit("sales", 10)
+    ledger.post(sales_entry)
     assert ledger.income_statement(chart_dict).net_earnings == 10
-
-
-@pytest.mark.entry
-def test_closing_entry_for_debit_account():
-    account = DebitAccount(20, 5)
-    assert account.closing_entry("this", "that", "close") == Entry(
-        "close", is_closing=True
-    ).debit("that", 15).credit("this", 15)
 
 
 @pytest.mark.report
@@ -130,8 +73,8 @@ def test_balances(toy_ledger):
 @pytest.mark.entry
 def test_opening_entry(toy_dict):
     opening_dict = dict(cash=10, equity=8, re=2)
-    entry = Entry("Will open").opening(opening_dict, toy_dict)
-    assert entry == Entry("Will open").debit("cash", 10).credit("equity", 8).credit(
+    entry = MultipleEntry.opening(opening_dict, toy_dict)
+    assert entry == MultipleEntry().debit("cash", 10).credit("equity", 8).credit(
         "re", 2
     )
 
@@ -139,7 +82,7 @@ def test_opening_entry(toy_dict):
 @pytest.mark.entry
 def test_opening_entry_fails(toy_dict):
     with pytest.raises(AbacusError):
-        Entry("Doomed by -2").opening(dict(cash=10, equity=8), toy_dict)
+        MultipleEntry.opening(dict(cash=10, equity=8), toy_dict)
 
 
 @pytest.mark.ledger

@@ -1,5 +1,6 @@
 import pytest
-from abacus import Book, Entry, Chart
+
+from abacus import Book, Chart, Entry
 from abacus.book import BalancesDict
 
 

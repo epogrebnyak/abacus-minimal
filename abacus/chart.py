@@ -2,16 +2,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from abacus.core import (
-    T5,
-    AbacusError,
-    AccountName,
-    Amount,
-    ChartDict,
-    Entry,
-    Ledger,
-    Pair,
-)
+from abacus.core import T5, AbacusError, ChartDict, Pair
 
 
 class SaveLoadMixin:
@@ -110,6 +101,6 @@ class Chart(BaseModel, SaveLoadMixin):
         return self
 
     @property
-    def closing_pairs(self) -> list[Pair]:
+    def closing_pairs(self) -> list["Pair"]:
         """Return list of tuples that allows to close ledger at period end."""
         return list(self.to_dict().closing_pairs(self.retained_earnings))

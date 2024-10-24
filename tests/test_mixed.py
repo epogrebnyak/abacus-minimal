@@ -1,5 +1,5 @@
 from abacus import Chart, Entry
-from abacus.core import BalanceSheet, DebitEntry, CreditEntry
+from abacus.core import BalanceSheet, CreditEntry, DebitEntry
 
 
 def test_readme():

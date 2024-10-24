@@ -1,6 +1,7 @@
 import pytest
-from abacus.core import ChartDict, T5, Entry
+
 from abacus.chart import Chart
+from abacus.core import T5, ChartDict, MultipleEntry
 
 
 @pytest.fixture
@@ -16,7 +17,7 @@ def toy_dict():
 @pytest.fixture
 def toy_ledger(toy_dict):
     ledger = toy_dict.to_ledger()
-    ledger.post(Entry("Start company").amount(10).debit("cash").credit("equity"))
+    ledger.post(MultipleEntry.double("cash", "equity", 10))
     return ledger
 
 
