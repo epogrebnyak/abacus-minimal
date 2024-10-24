@@ -2,10 +2,10 @@
 
 This module contains classes for:
 
-  - chart of accounts (Chart)
+  - chart of accounts (Chart, ChartDict)
   - general ledger (Ledger)
-  - accounting entry (DoubleEntry, Entry)
-  - account summaries (TrialBalance, BalancesDict), and
+  - accounting entry (MultipleEntry, Entry)
+  - account summaries (TrialBalance, BalancesDict)
   - reports (IncomeStatement, BalanceSheet)
 
 Accounting workflow:
@@ -86,7 +86,7 @@ class Contra:
 
 class ChartDict(UserDict[str, Regular | Contra]):
     """Dictionary of accounts with their definitions.
-    This ia a useful intermediate data structure between Chart and Ledger
+    This is an intermediate data structure between Chart and Ledger
     that ensures account names are unique.
     """
 
@@ -297,20 +297,13 @@ class Ledger(UserDict[AccountName, TAccount]):
     def post(self, entry: MultipleEntry):
         """Post a stream of single entries to ledger."""
         not_found = []
-        cannot_post = []
         for single_entry in iter(entry):
             try:
                 self.post_single(single_entry)
             except KeyError as e:
                 not_found.append((e, single_entry))
-            except AbacusError as e:
-                cannot_post.append((e, single_entry))
         if not_found:
             raise AbacusError(f"Accounts do not exist: {not_found}")
-        if cannot_post:
-            raise AbacusError(
-                f"Forbidden to make account balances negative: {cannot_post}"
-            )
 
     @property
     def trial_balance(self):

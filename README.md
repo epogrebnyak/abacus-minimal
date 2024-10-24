@@ -17,16 +17,20 @@ Non-goals:
 
 - replacing SAP or QBO immediately with this Python code.
 
-## Roadmap
+## Changelog
 
-### For the `0.10.0` version
+- `0.10.0` (2024-10-24) -- separates core, chart, entry and book code and tests.
+
+### For the `0.11.0` version
 
 - [ ] `book.income_statement` that works before and after period close
 - [ ] `book.balance_sheet` with `current_profit` account when not closed + `Chart.current_earnings` attribute
 
-### For the `0.11.0` version
+### Future versions
 
+- cleaner `BalancesDict`
 - [ ] `Book.increase()` and `Book.decrease()` methods
+- `Entry.explain()` and `Entry.validate()` methods
 
 ## Install
 
@@ -138,7 +142,7 @@ Closing accounts at period end involves:
 
 Closing accounts was probably the hardest part of the project
 where I had to refactor code several times
-to make it better understood for the reader.
+to make it more explicit and concise.
 
 ### 4. Reporting and saving
 
@@ -187,8 +191,8 @@ structures that make up the core of `abacus-minimal`:
 ### Actions
 
 The principal chain of actions in `abacus-minimal` is shown in a table below.
-The function signature indicates waht variables participate in the transformations
-and is close to type annotations in Python.
+The function signatures (or type annotations) indicate want variables participate
+in the calculation.
 
 | Action                       | Function signature                                                    |
 | ---------------------------- | --------------------------------------------------------------------- |
@@ -197,17 +201,18 @@ and is close to type annotations in Python.
 | Make a list of closing pairs | `(ChartDict, AccountName)` -> `[(AccountName, AccountName)]`          |
 | Close ledger at period end   | `(ChartDict, AccountName)` -> `Ledger` -> `(IncomeStatement, Ledger)` |
 | Report balance sheet         | `Ledger` -> `BalanceSheet`                                            |
-| Show trial balance           | `Ledger` -> `Trial Balance`                                           |
+| Show trial balance           | `Ledger` -> `TrialBalance`                                           |
 | Show account balances        | `Ledger` -> `BalancesDict`.                                           |
 
 # Architecture
 
-`abacus-minimal` focuses on enforcing the book-keeping rules, however minimal or trivial they are.
+`abacus-minimal` focuses on enforcing the book-keeping rules, but not on not storing entires.
+
 
 Unlike production accounting projects `abacus-minimal` is database-free. For `abacus-minimal` it would not  
-matter how entries are saved and where they are coming from -- this responsibilty should be taken by some other
+matter how entries are saved and where they are coming from -- this responsibility should be taken by some other
 part of software, eg the `medici` ledger. The `Book` class does offer saving of entries to a JSON file,
-but this is done for demonstration purposes only.
+but this is done for demonstration only.
 
 # Limitations
 
@@ -234,12 +239,14 @@ Plain text accounting tools are usually for personal finance while `abacus-minim
 `medici` is a high performance ledger, but does not enforce accounting rules on data entry.
 `python-accounting` is a production-grade project, tightly coupled to a database.
 
-Big players in accounting software are Intuit Quickbooks (US) and Xero (Australia) for small and middle-sized companies. There are ongoing debates which gives more hassle for the users
-and the value of provided services, especially when moving form desktop version to the cloud.
+Big players in accounting software for small and middle-sized companies
+are Intuit Quickbooks (US) and Xero (Australia). 
+Not everyone is happy with how they work or how much they cost, especially 
+when moving from a desktop version to the cloud.
 
 Many other office automation providers do also have accounting APIs (eg Zoho) and there are open source packages that have accounting functionality (eg Frappe).
 
-Several outlets advertise they provide IFRS-compliant charts of accounts, but usually as Excel files. Account taxonomies for reporting, but not charts are often published as well.
+Several outlets advertise they provide IFRS-compliant charts of accounts, but usually as Excel files. There are account taxonomies for reporting, but the charts more seldom.
 
 # Accounting knowledge
 
@@ -264,4 +271,4 @@ code maintenance tasks in this project.
 - `prettier` for markdown formatting
 - `codedown` to extract Python code from README.md.
 
-`readme.py` is overwritten by the `just readme` command.
+`examples/readme.py` is overwritten by the `just readme` command.
