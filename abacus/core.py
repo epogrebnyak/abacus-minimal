@@ -305,6 +305,13 @@ class Ledger(UserDict[AccountName, TAccount]):
         if not_found:
             raise AbacusError(f"Accounts do not exist: {not_found}")
 
+    def is_closed(self, chart_dict: ChartDict) -> bool:
+        for frm, _ in chart_dict.closing_pairs("any"):
+            if frm in self.data.keys():
+                return False
+        else:
+            return True
+
     @property
     def trial_balance(self):
         """Create trial balance from ledger."""

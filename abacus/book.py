@@ -58,6 +58,9 @@ class Book:
         self.ledger = Ledger.open(chart.to_dict(), opening_balances)
         self.store = EntryStore()
 
+    def is_closed(self):
+        return self.ledger.is_closed(self.chart.to_dict())
+
     def save_chart(self, directory: str):
         self.chart.save(PathFinder(directory).chart)
 

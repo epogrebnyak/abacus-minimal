@@ -4,6 +4,7 @@ from abacus import Book, Chart, Entry
 
 chart = Chart(
     retained_earnings="retained_earnings",
+    current_earnings="current_earnings",
     assets=["cash"],
     capital=["equity"],
     liabilities=["vat_payable"],

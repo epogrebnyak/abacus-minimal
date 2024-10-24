@@ -4,6 +4,42 @@ from abacus import Book, Chart, Entry
 from abacus.book import BalancesDict
 
 
+@pytest.fixture
+def this_chart():
+    chart = Chart(
+        retained_earnings="retained_earnings",
+        current_earnings="current_earnings",
+        assets=["cash"],
+        capital=["equity"],
+        income=["sales"],
+        expenses=["salaries"],
+    )
+    chart.offset("sales", "refunds")
+    return chart
+
+
+@pytest.fixture
+def book_after_post(this_chart):
+    entries = [
+        Entry("Initial investment").amount(300).debit("cash").credit("equity"),
+        Entry("Sold services with VAT").amount(125).debit("cash").credit("sales"),
+        Entry("Made refund").amount(25).debit("refunds").credit("cash"),
+        Entry("Paid salaries").amount(50).debit("salaries").credit("cash"),
+    ]
+    book = Book(this_chart)
+    book.post_many(entries)
+    return book
+
+
+def test_book_after_post_not_closed(book_after_post, this_chart):
+    assert book_after_post.ledger.is_closed(this_chart.to_dict()) is False
+
+
+def test_book_now_closed(book_after_post):
+    book_after_post.close()
+    assert book_after_post.is_closed() is True
+
+
 def test_book(tmp_path):
     chart = Chart(
         retained_earnings="retained_earnings",
