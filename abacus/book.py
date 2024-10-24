@@ -108,7 +108,8 @@ class Book:
 
     def close(self, closing_entry_title: str = "Closing entry"):
         self._income_statement = self.income_statement
-        entries = self.ledger.close(closing_pairs=self.chart.closing_pairs)
+        closing_pairs = self.chart.make_closing_pairs(self.chart.retained_earnings)
+        entries = self.ledger.close(closing_pairs)
         entries = [Entry(closing_entry_title, data=e, is_closing=True) for e in entries]
         self.store.entries.extend(entries)
 

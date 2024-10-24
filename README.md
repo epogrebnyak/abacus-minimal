@@ -265,7 +265,7 @@ Plain text accounting tools are usually for personal finance while `abacus-minim
 `python-accounting` is a production-grade project, tightly coupled to a database.
 
 Big players in accounting software for small and middle-sized companies
-are Intuit Quickbooks (US) and Xero (Australia).
+are Intuit QuickBooks (US) and Xero (Australia).
 Not everyone is happy with how they work or how much they cost, especially
 when moving from a desktop version to the cloud.
 

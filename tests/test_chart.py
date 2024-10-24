@@ -76,7 +76,8 @@ def test_chart_to_dict():
 
 
 def test_chart_closing_pairs(realistic_chart):
-    assert realistic_chart.closing_pairs == [
+    re = realistic_chart.retained_earnings
+    assert realistic_chart.make_closing_pairs(re) == [
         # income
         ("refunds", "sales"),
         ("voids", "sales"),

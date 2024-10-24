@@ -18,7 +18,7 @@ def test_readme():
     ledger.post(Entry("Issued refund").debit("refunds", 40).credit("cash", 40))
     ledger.post(Entry("Made buyback").double(debit="ts", credit="cash", amount=8))
     assert ledger.income_statement(chart_dict).net_earnings == 10
-    closing_pairs = chart.closing_pairs
+    closing_pairs = chart.make_closing_pairs(chart.retained_earnings)
     ledger.close(closing_pairs)
     assert ledger.balance_sheet(chart_dict) == BalanceSheet(
         assets={"cash": 12},
@@ -42,7 +42,9 @@ def test_end_to_end(realistic_chart):
     ]
     for entry in entries:
         ledger.post(entry)
-    closing_pairs = realistic_chart.closing_pairs
+    closing_pairs = realistic_chart.make_closing_pairs(
+        realistic_chart.retained_earnings
+    )
     ledger.close(closing_pairs)
     assert ledger.balances == {
         "cash": 105,

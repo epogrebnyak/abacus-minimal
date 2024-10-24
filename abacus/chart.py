@@ -116,7 +116,7 @@ class Chart(BaseModel, SaveLoadMixin):
         """Return list of tuples that allows to close ledger."""
         return list(self.mapping.closing_pairs(accumulation_account))
 
-    @property
-    def closing_pairs(self) -> list["Pair"]:
-        """Return list of tuples that allows to close ledger at period end."""
-        return self.make_closing_pairs(self.retained_earnings)
+    # @property
+    # def closing_pairs(self) -> list["Pair"]:
+    #     """Return list of tuples that allows to close ledger at period end."""
+    #     return self.make_closing_pairs(self.retained_earnings)
