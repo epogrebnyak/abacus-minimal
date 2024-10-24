@@ -32,6 +32,7 @@ def test_book(tmp_path):
         "equity": 10000,
         "retained_earnings": 5000,
     }
+    book.save(tmp_path)
 
 
 @pytest.mark.report

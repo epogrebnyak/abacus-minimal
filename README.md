@@ -17,11 +17,16 @@ Non-goals:
 
 - replacing SAP or QBO immediately with this Python code.
 
-## For the `0.10.0` version
+## Roadmap
+
+### For the `0.10.0` version
 
 - [ ] `book.income_statement` that works before and after period close
 - [ ] `book.balance_sheet` with `current_profit` account when not closed + `Chart.current_earnings` attribute
-- [ ] relax check for negative account balances, make warning instead of error
+
+### For the `0.11.0` version
+
+- [ ] `Book.increase()` and `Book.decrease()` methods
 
 ## Install
 
