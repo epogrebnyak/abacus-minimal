@@ -345,7 +345,7 @@ class Ledger(UserDict[AccountName, TAccount]):
         """Close ledger at accounting period end."""
         return [self._close_one(frm, to) for frm, to in closing_pairs]
 
-    def balance_sheet(self, chart_dict: "ChartDict"):
+    def balance_sheet(self, chart_dict: ChartDict):
         """Create balance sheet from ledger."""
         fill = net_balances_factory(chart_dict, self)
         return BalanceSheet(

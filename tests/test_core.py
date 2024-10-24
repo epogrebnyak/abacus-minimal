@@ -2,7 +2,8 @@ import pytest  # type: ignore
 
 from abacus.core import (
     T5,
-    AbacusError,
+    Amount,
+    BalanceSheet,
     ChartDict,
     Contra,
     CreditAccount,
@@ -31,10 +32,12 @@ def test_chart_dict_key_error():
         ChartDict().t_account("vat")
 
 
-def test_ledger_keys(toy_dict):
-    assert list(toy_dict.to_ledger().keys()) == ["cash", "equity", "re"]
+@pytest.mark.ledger
+def test_ledger_keys(toy_ledger):
+    assert list(toy_ledger.keys()) == ["cash", "equity", "re"]
 
 
+@pytest.mark.ledger
 @pytest.mark.parametrize(
     "account_name, cls",
     [
@@ -49,6 +52,14 @@ def test_ledger_creation(account_name, cls, toy_dict):
     assert isinstance(ledger[account_name], cls)
 
 
+@pytest.mark.ledger
+def test_ledger_open(toy_dict):
+    ledger = Ledger.open(chart_dict=toy_dict, opening_balances=dict(cash=10, equity=10))
+    assert ledger.trial_balance == dict(
+        re=(None, 0), cash=(10, None), equity=(None, 10)
+    )
+
+
 @pytest.mark.report
 def test_net_earnings(toy_dict):
     chart_dict = toy_dict.set(T5.Income, "sales")
@@ -56,6 +67,27 @@ def test_net_earnings(toy_dict):
     sales_entry = MultipleEntry().debit("cash", 10).credit("sales", 10)
     ledger.post(sales_entry)
     assert ledger.income_statement(chart_dict).net_earnings == 10
+
+
+@pytest.mark.report
+def test_balance_sheet(toy_dict):
+    ledger = Ledger(
+        {
+            "cash": DebitAccount(left=Amount("10"), right=Amount("0")),
+            "equity": CreditAccount(left=Amount("0"), right=Amount("10")),
+            "re": CreditAccount(left=Amount("0"), right=Amount("0")),
+        }
+    )
+    assert ledger.balance_sheet(toy_dict) == BalanceSheet(
+        assets=dict(cash=10), capital=dict(equity=10, re=0), liabilities=dict()
+    )
+
+
+@pytest.mark.report
+def test_balance_sheet_again(toy_ledger, toy_dict):
+    assert toy_ledger.balance_sheet(toy_dict) == BalanceSheet(
+        assets=dict(cash=10), capital=dict(equity=10, re=0), liabilities=dict()
+    )
 
 
 @pytest.mark.report
@@ -68,26 +100,3 @@ def test_trial_balance(toy_ledger):
 @pytest.mark.report
 def test_balances(toy_ledger):
     assert toy_ledger.balances == dict(cash=10, equity=10, re=0)
-
-
-@pytest.mark.entry
-def test_opening_entry(toy_dict):
-    opening_dict = dict(cash=10, equity=8, re=2)
-    entry = MultipleEntry.opening(opening_dict, toy_dict)
-    assert entry == MultipleEntry().debit("cash", 10).credit("equity", 8).credit(
-        "re", 2
-    )
-
-
-@pytest.mark.entry
-def test_opening_entry_fails(toy_dict):
-    with pytest.raises(AbacusError):
-        MultipleEntry.opening(dict(cash=10, equity=8), toy_dict)
-
-
-@pytest.mark.ledger
-def test_ledger_open(toy_dict):
-    ledger = Ledger.open(chart_dict=toy_dict, opening_balances=dict(cash=10, equity=10))
-    assert ledger.trial_balance == dict(
-        re=(None, 0), cash=(10, None), equity=(None, 10)
-    )

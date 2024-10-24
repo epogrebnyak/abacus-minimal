@@ -99,8 +99,9 @@ class Book:
         for entry in entries:
             self.post(entry)
 
-    def close(self):
+    def close(self, closing_entry_title: str = "Closing entry"):
         entries = self.ledger.close(closing_pairs=self.chart.closing_pairs)
+        entries = [Entry(closing_entry_title, data=e, is_closing=True) for e in entries]
         self.store.entries.extend(entries)
 
     # FIXME: no income statement if account was closed

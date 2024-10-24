@@ -39,7 +39,7 @@ def test_end_to_end(realistic_chart):
     ]
     for entry in entries:
         ledger.post(entry)
-    closing_pairs = chart_dict.closing_pairs(realistic_chart.retained_earnings)
+    closing_pairs = realistic_chart.closing_pairs
     ledger.close(closing_pairs)
     assert ledger.balances == {
         "cash": 105,
