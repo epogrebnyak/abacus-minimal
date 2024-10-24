@@ -21,7 +21,9 @@ def test_readme():
     closing_pairs = chart.closing_pairs
     ledger.close(closing_pairs)
     assert ledger.balance_sheet(chart_dict) == BalanceSheet(
-        assets={"cash": 12}, capital={"equity": 2, "re": 10}, liabilities={}
+        assets={"cash": 12},
+        capital={"equity": 2, "re": 10, "profit": 0},
+        liabilities={},
     )
 
 
@@ -50,5 +52,6 @@ def test_end_to_end(realistic_chart):
         "ap": 0,
         "equity": 20,
         "re": 85,
+        "profit": 0,
         "ts": 0,
     }

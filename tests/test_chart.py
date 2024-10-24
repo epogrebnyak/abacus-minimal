@@ -69,6 +69,7 @@ def test_chart_to_dict():
             "cash": Regular(T5.Asset),
             "equity": Regular(T5.Capital),
             "re": Regular(T5.Capital),
+            "profit": Regular(T5.Capital),
             "ts": Contra("equity"),
         }
     )
@@ -92,9 +93,9 @@ def test_chart_to_ledger_keys():
         current_earnings="profit",
         assets=["cash"],
         capital=["equity"],
-    ).to_dict() == ChartDict().set(T5.Capital, "re").set(T5.Asset, "cash").set(
-        T5.Capital, "equity"
-    )
+    ).to_dict() == ChartDict().set(T5.Capital, "re").set(T5.Capital, "profit").set(
+        T5.Asset, "cash"
+    ).set(T5.Capital, "equity")
 
 
 @pytest.mark.mixed

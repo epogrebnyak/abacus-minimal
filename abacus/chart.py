@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from abacus.core import T5, AbacusError, ChartDict, Pair
+from abacus.core import T5, AbacusError, AccountName, ChartDict, Pair
 
 
 class SaveLoadMixin:
@@ -75,7 +75,7 @@ class Chart(BaseModel, SaveLoadMixin):
         for account_name in self.contra_accounts.keys():
             if account_name not in regular_account_names:
                 raise AbacusError(
-                    f"Account name should exist before making contra account: {account_name}"
+                    f"Account name should exist before making a contra account: {account_name}"
                 )
 
     def to_dict(self) -> ChartDict:
@@ -91,6 +91,7 @@ class Chart(BaseModel, SaveLoadMixin):
             for account_name in getattr(self, attr):
                 chart_dict.set(t, account_name)
         chart_dict.set(T5.Capital, self.retained_earnings)
+        chart_dict.set(T5.Capital, self.current_earnings)
         # all regular accounts are added, now adding contra accounts
         for account_name, contra_names in self.contra_accounts.items():
             for contra_name in contra_names:
@@ -107,7 +108,11 @@ class Chart(BaseModel, SaveLoadMixin):
         self.names[account_name] = title
         return self
 
+    def make_closing_pairs(self, accumulation_account: AccountName) -> list[Pair]:
+        """Return list of tuples that allows to close ledger."""
+        return list(self.to_dict().closing_pairs(accumulation_account))
+
     @property
     def closing_pairs(self) -> list["Pair"]:
         """Return list of tuples that allows to close ledger at period end."""
-        return list(self.to_dict().closing_pairs(self.retained_earnings))
+        return self.make_closing_pairs(self.retained_earnings)

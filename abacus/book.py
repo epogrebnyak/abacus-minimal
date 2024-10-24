@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Sequence
@@ -47,7 +48,8 @@ class PathFinder:
         return EntryStore.load(self.store)
 
     def get_balances(self) -> dict[AccountName, Amount]:
-        return BalancesDict.load(self.balances).root  # note the root part
+        pydantic_data = BalancesDict.load(self.balances)
+        return pydantic_data.root
 
 
 class Book:
@@ -57,9 +59,10 @@ class Book:
             opening_balances = {}
         self.ledger = Ledger.open(chart.to_dict(), opening_balances)
         self.store = EntryStore()
+        self._income_statement = None
 
     def is_closed(self):
-        return self.ledger.is_closed(self.chart.to_dict())
+        return self.ledger.is_closed(chart_dict=self.chart.to_dict())
 
     def save_chart(self, directory: str):
         self.chart.save(PathFinder(directory).chart)
@@ -103,19 +106,37 @@ class Book:
             self.post(entry)
 
     def close(self, closing_entry_title: str = "Closing entry"):
+        self._income_statement = self.income_statement
         entries = self.ledger.close(closing_pairs=self.chart.closing_pairs)
         entries = [Entry(closing_entry_title, data=e, is_closing=True) for e in entries]
         self.store.entries.extend(entries)
 
-    # FIXME: no income statement if account was closed
     @property
     def income_statement(self):
+        if self.is_closed():
+            return self._income_statement
         return self.ledger.income_statement(self.chart.to_dict())
 
-    # FIXME: balance sheet is incomplete before accounts were closed
     @property
     def balance_sheet(self):
-        return self.ledger.balance_sheet(self.chart.to_dict())
+        if self.is_closed():
+            return self._retained_earnings_balance_sheet()
+        return self._current_profit_balance_sheet()
+
+    def _current_profit_balance_sheet(self):
+        # Keep both current_earnings and retained_earnings in the balance sheet
+        ledger = deepcopy(self.ledger)
+        profit = self.chart.current_earnings
+        closing_pairs = self.chart.make_closing_pairs(profit)
+        ledger.close(closing_pairs)
+        balance_sheet = ledger.balance_sheet(self.chart.to_dict())
+        return balance_sheet
+
+    def _retained_earnings_balance_sheet(self):
+        # Keep both only retained_earnings in the balance sheet
+        balance_sheet = self.ledger.balance_sheet(self.chart.to_dict())
+        del balance_sheet.capital[self.chart.current_earnings]
+        return balance_sheet
 
     @property
     def trial_balance(self):

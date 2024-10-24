@@ -19,7 +19,7 @@ Non-goals:
 
 ## Changelog
 
-- `0.10.0` (2024-10-24) -- separates core, chart, entry and book code and tests.
+- `0.10.0` (2024-10-24) separates core, chart, entry and book code and tests.
 
 ### For the `0.11.0` version
 
@@ -110,7 +110,7 @@ Code example:
 from abacus import Book, Entry
 
 # Create book with opening balances
-opening_balances = {"cash": 10_000, "equity": 10_000}
+opening_balances = {"cash": 10_000, "equity": 8_000, "retained_earnings": 2_000}
 book = Book(chart, opening_balances)
 
 # Post entries
@@ -120,13 +120,15 @@ entries = [
     .credit("sales", 5000)
     .credit("vat_payable", 1000),
     Entry("Made client refund").double(debit="refunds", credit="cash", amount=500),
-    Entry("Paid salaries").debit("salaries", 1500).credit("cash", 1500),
+    Entry("Paid salaries").amount(1500).debit("salaries").credit("cash"),
 ]
 book.post_many(entries)
 print(book.trial_balance)
 ```
 
+<!--
 Invalid entries will be rejected with `AbacusError` raised. The invalid entries are the ones that touch non-existent accounts or the entries where debits and credits are not balanced.
+-->
 
 ### 3. Closing accounts
 
@@ -157,17 +159,39 @@ Saving the book will write `chart.json`, `store.json` and `balances.json` files.
 Code example:
 
 ```python
-# Close at period end and show reports
+# Show reports before period end close.
+# The income statement will be identical to post-close.
+# The balance sheet will have current earnings account.
 print(book.income_statement)
-book.close()
 print(book.balance_sheet)
 
-# Check account balances match expected values
+# Check account balances match expected values.
+print(book.ledger.balances)
 assert book.ledger.balances == {
     "cash": 14000,
-    "equity": 10000,
+    "equity": 8000,
     "vat_payable": 1000,
-    "retained_earnings": 3000,
+    "sales": 5000,
+    "refunds": 500,
+    "salaries": 1500,
+    "current_earnings": 0,
+    "retained_earnings": 2000,
+}
+
+
+# Close at period end and show reports.
+book.close()
+print(book.income_statement)
+print(book.balance_sheet)
+
+# Check account balances match expected values.
+print(book.ledger.balances)
+assert book.ledger.balances == {
+    "cash": 14000,
+    "equity": 8000,
+    "vat_payable": 1000,
+    "retained_earnings": 5000,
+    "current_earnings": 0
 }
 
 # Save everything to JSON files in current folder
@@ -178,8 +202,9 @@ book.save(directory=".")
 
 ### Data structures
 
-Underneath `Chart`, `Entry` and `Book` clasees there are more primitive data
-structures that make up the core of `abacus-minimal`:
+Underneath `Chart`, `Entry` and `Book` classes
+there are more primitive data structures
+that make up the core of `abacus-minimal`:
 
 - `ChartDict` holds chart of accounts information and ensures uniqueness and consistency of account names.
 - `SingleEntry` specifies amount and debit or credit side.

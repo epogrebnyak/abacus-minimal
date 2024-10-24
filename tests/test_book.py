@@ -2,6 +2,7 @@ import pytest
 
 from abacus import Book, Chart, Entry
 from abacus.book import BalancesDict
+from abacus.core import BalanceSheet, IncomeStatement
 
 
 @pytest.fixture
@@ -16,6 +17,20 @@ def this_chart():
     )
     chart.offset("sales", "refunds")
     return chart
+
+
+def test_book_may_open_with_retained_earnings(this_chart):
+    opening_balances = {"cash": 10_000, "equity": 8_000, "retained_earnings": 2_000}
+    book = Book(this_chart, opening_balances)
+    assert book.ledger.balances == {
+        "cash": 10_000,
+        "equity": 8_000,
+        "sales": 0,
+        "salaries": 0,
+        "retained_earnings": 2_000,
+        "current_earnings": 0,
+        "refunds": 0,
+    }
 
 
 @pytest.fixture
@@ -40,7 +55,37 @@ def test_book_now_closed(book_after_post):
     assert book_after_post.is_closed() is True
 
 
-def test_book(tmp_path):
+def test_income_statement_before_close(book_after_post):
+    assert book_after_post.income_statement == IncomeStatement(
+        income={"sales": 100}, expenses={"salaries": 50}
+    )
+
+
+def test_income_statement_after_close(book_after_post):
+    book_after_post.close()
+    assert book_after_post.income_statement == IncomeStatement(
+        income={"sales": 100}, expenses={"salaries": 50}
+    )
+
+
+def test_balance_sheet_after_close(book_after_post):
+    book_after_post.close()
+    assert book_after_post.balance_sheet == BalanceSheet(
+        assets={"cash": 350},
+        capital={"equity": 300, "retained_earnings": 50},
+        liabilities={},
+    )
+
+
+def test_balance_sheet_before_close(book_after_post):
+    assert book_after_post.balance_sheet == BalanceSheet(
+        assets={"cash": 350},
+        capital={"equity": 300, "current_earnings": 50, "retained_earnings": 0},
+        liabilities={},
+    )
+
+
+def test_book_similar_to_readme(tmp_path):
     chart = Chart(
         retained_earnings="retained_earnings",
         current_earnings="current_earnings",
@@ -56,9 +101,7 @@ def test_book(tmp_path):
     del book
     book = Book.load(tmp_path)
     entries = [
-        Entry("Sold services with VAT").double(
-            amount=6500, debit="cash", credit="sales"
-        ),
+        Entry("Sold services with VAT").amount(6500).debit("cash").credit("sales"),
         Entry("Made refund").double(amount=500, debit="refunds", credit="cash"),
         Entry("Paid salaries").double(amount=1000, debit="salaries", credit="cash"),
     ]
@@ -68,6 +111,7 @@ def test_book(tmp_path):
         "cash": 15000,
         "equity": 10000,
         "retained_earnings": 5000,
+        "current_earnings": 0,
     }
     book.save(tmp_path)
 
