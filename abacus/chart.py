@@ -22,6 +22,7 @@ class Chart(BaseModel, SaveLoadMixin):
     model_config = ConfigDict(extra="forbid")
 
     retained_earnings: str
+    current_earnings: str
     assets: list[str] = []
     capital: list[str] = []
     liabilities: list[str] = []
@@ -29,6 +30,12 @@ class Chart(BaseModel, SaveLoadMixin):
     expenses: list[str] = []
     contra_accounts: dict[str, list[str]] = {}
     names: dict[str, str] = {}
+
+    @classmethod
+    def default(cls):
+        return cls(
+            retained_earnings="retained_earnings", current_earnings="current_earnings"
+        )
 
     def __post_init__(self):
         self.assert_all_account_names_are_unique()
@@ -45,7 +52,7 @@ class Chart(BaseModel, SaveLoadMixin):
         """All accounts in this chart including the duplicates."""
         return (
             self.regular_accounts
-            + [self.retained_earnings]
+            + [self.retained_earnings, self.current_earnings]
             + sum(self.contra_accounts.values(), [])
         )
 

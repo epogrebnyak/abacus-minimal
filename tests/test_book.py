@@ -7,6 +7,7 @@ from abacus.book import BalancesDict
 def test_book(tmp_path):
     chart = Chart(
         retained_earnings="retained_earnings",
+        current_earnings="current_earnings",
         assets=["cash"],
         capital=["equity"],
         income=["sales"],

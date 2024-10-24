@@ -25,6 +25,7 @@ def toy_ledger(toy_dict):
 def realistic_chart():
     return Chart(
         retained_earnings="re",
+        current_earnings="profit",
         assets=["cash", "inventory", "ar"],
         capital=["equity"],
         liabilities=["vat", "ap"],

@@ -5,6 +5,7 @@ from abacus.core import BalanceSheet, CreditEntry, DebitEntry
 def test_readme():
     chart = Chart(
         retained_earnings="re",
+        current_earnings="profit",
         assets=["cash"],
         capital=["equity"],
         income=["sales"],

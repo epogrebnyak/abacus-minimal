@@ -201,13 +201,12 @@ in the calculation.
 | Make a list of closing pairs | `(ChartDict, AccountName)` -> `[(AccountName, AccountName)]`          |
 | Close ledger at period end   | `(ChartDict, AccountName)` -> `Ledger` -> `(IncomeStatement, Ledger)` |
 | Report balance sheet         | `Ledger` -> `BalanceSheet`                                            |
-| Show trial balance           | `Ledger` -> `TrialBalance`                                           |
+| Show trial balance           | `Ledger` -> `TrialBalance`                                            |
 | Show account balances        | `Ledger` -> `BalancesDict`.                                           |
 
 # Architecture
 
 `abacus-minimal` focuses on enforcing the book-keeping rules, but not on not storing entires.
-
 
 Unlike production accounting projects `abacus-minimal` is database-free. For `abacus-minimal` it would not  
 matter how entries are saved and where they are coming from -- this responsibility should be taken by some other
@@ -240,8 +239,8 @@ Plain text accounting tools are usually for personal finance while `abacus-minim
 `python-accounting` is a production-grade project, tightly coupled to a database.
 
 Big players in accounting software for small and middle-sized companies
-are Intuit Quickbooks (US) and Xero (Australia). 
-Not everyone is happy with how they work or how much they cost, especially 
+are Intuit Quickbooks (US) and Xero (Australia).
+Not everyone is happy with how they work or how much they cost, especially
 when moving from a desktop version to the cloud.
 
 Many other office automation providers do also have accounting APIs (eg Zoho) and there are open source packages that have accounting functionality (eg Frappe).
