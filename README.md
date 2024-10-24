@@ -191,7 +191,6 @@ assert book.ledger.balances == {
     "equity": 8000,
     "vat_payable": 1000,
     "retained_earnings": 5000,
-    "current_earnings": 0
 }
 
 # Save everything to JSON files in current folder

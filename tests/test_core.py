@@ -59,6 +59,12 @@ def test_ledger_open(toy_dict):
         re=(None, 0), cash=(10, None), equity=(None, 10)
     )
 
+def test_balance_sheet_is_not_balanced():
+    assert  BalanceSheet(
+        assets={"cash": 350},
+        capital={"equity": 300, "retained_earnings": 50},
+        liabilities={"extra": 1},
+    ).is_balanced() is False 
 
 @pytest.mark.report
 def test_net_earnings(toy_dict):

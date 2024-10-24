@@ -336,6 +336,7 @@ class Ledger(UserDict[AccountName, TAccount]):
         )
 
     def _close_one(self, frm: AccountName, to: AccountName):
+        """Close account and move its balances to another account."""
         entry = self.data[frm].transfer(frm, to)
         self.post(entry)
         del self.data[frm]
@@ -370,10 +371,14 @@ def net_balances_factory(chart_dict: ChartDict, ledger: Ledger):
     """
 
     def fill(t: T5):
-        return {
-            name: ledger.net_balance(name, chart_dict.find_contra_accounts(name))
-            for name in chart_dict.by_type(t)
-        }
+        result = {}
+        for name in chart_dict.by_type(t):
+            try:
+                contra_accounts = chart_dict.find_contra_accounts(name)
+                result[name] = ledger.net_balance(name, contra_accounts)
+            except KeyError:  # protect from current account missing from ledger
+                pass
+        return result
 
     return fill
 
@@ -398,3 +403,9 @@ class BalanceSheet(Report):
     assets: dict[AccountName, Amount]
     capital: dict[AccountName, Amount]
     liabilities: dict[AccountName, Amount]
+
+    def is_balanced(self) -> bool:
+        def values(d: dict):
+            return sum(d.values())
+
+        return values(self.assets) == values(self.capital) + values(self.liabilities)

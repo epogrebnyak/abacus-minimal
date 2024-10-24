@@ -107,8 +107,15 @@ class Book:
             self.post(entry)
 
     def close(self, closing_entry_title: str = "Closing entry"):
+        """Close ledger"""
+        # Persist income statement
         self._income_statement = self.income_statement
+        # Make closing pairs
         closing_pairs = self.chart.make_closing_pairs(self.chart.retained_earnings)
+        # Trick for deleting the current_earnings account from the chart
+        last_pair = self.chart.current_earnings, self.chart.current_earnings
+        closing_pairs.append(last_pair)
+        # Post closing entries
         entries = self.ledger.close(closing_pairs)
         entries = [Entry(closing_entry_title, data=e, is_closing=True) for e in entries]
         self.store.entries.extend(entries)
@@ -136,9 +143,7 @@ class Book:
 
     def _retained_earnings_balance_sheet(self):
         # Keep both only retained_earnings in the balance sheet
-        balance_sheet = self.ledger.balance_sheet(self.chart.mapping)
-        del balance_sheet.capital[self.chart.current_earnings]
-        return balance_sheet
+        return self.ledger.balance_sheet(self.chart.mapping)
 
     @property
     def trial_balance(self):

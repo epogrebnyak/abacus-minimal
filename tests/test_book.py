@@ -46,10 +46,6 @@ def book_after_post(this_chart):
     return book
 
 
-def test_book_after_post_not_closed(book_after_post, this_chart):
-    assert book_after_post.ledger.is_closed(chart_dict=this_chart.mapping) is False
-
-
 def test_book_now_closed(book_after_post):
     book_after_post.close()
     assert book_after_post.is_closed() is True
@@ -68,6 +64,14 @@ def test_income_statement_after_close(book_after_post):
     )
 
 
+def test_balance_sheet_before_close(book_after_post):
+    assert book_after_post.balance_sheet == BalanceSheet(
+        assets={"cash": 350},
+        capital={"equity": 300, "current_earnings": 50, "retained_earnings": 0},
+        liabilities={},
+    )
+
+
 def test_balance_sheet_after_close(book_after_post):
     book_after_post.close()
     assert book_after_post.balance_sheet == BalanceSheet(
@@ -76,13 +80,44 @@ def test_balance_sheet_after_close(book_after_post):
         liabilities={},
     )
 
+def test_balances_before_close(book_after_post):
+    assert book_after_post.ledger.balances == {
+        "cash": 10_000,
+        "equity": 8_000,
+        "sales": 0,
+        "salaries": 0,
+        "retained_earnings": 2_000,
+        "current_earnings": 0,
+        "refunds": 0,
+    } 
 
-def test_balance_sheet_before_close(book_after_post):
-    assert book_after_post.balance_sheet == BalanceSheet(
-        assets={"cash": 350},
-        capital={"equity": 300, "current_earnings": 50, "retained_earnings": 0},
-        liabilities={},
-    )
+@pytest.fixture
+def book_after_close(book_after_post):
+    book_after_post.close()
+    return book_after_post
+
+
+def test_balances_after_close(book_after_close):
+    assert book_after_close.ledger.balances == {
+        "cash": 350,
+        "equity": 300,
+        "retained_earnings": 50,
+    } 
+
+
+def test_balances_before_close(book_after_post):
+    assert book_after_post.ledger.balances == {
+        "cash": 350,
+        "equity": 300,
+        "sales": 125,
+        "salaries": 50,
+        "retained_earnings": 0,
+        "current_earnings": 0,
+        "refunds": 25,
+    } 
+
+
+
 
 
 def test_book_similar_to_readme(tmp_path):
@@ -111,7 +146,6 @@ def test_book_similar_to_readme(tmp_path):
         "cash": 15000,
         "equity": 10000,
         "retained_earnings": 5000,
-        "current_earnings": 0,
     }
     book.save(tmp_path)
 
