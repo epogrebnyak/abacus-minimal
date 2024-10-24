@@ -21,16 +21,18 @@ Non-goals:
 
 - `0.10.0` (2024-10-24) separates core, chart, entry and book code and tests.
 
-### For the `0.11.0` version
+### Taregts - cleanup
 
 - [ ] `book.income_statement` that works before and after period close
-- [ ] `book.balance_sheet` with `current_profit` account when not closed + `Chart.current_earnings` attribute
+- [ ] `book.balance_sheet` with `current_earnings` account when not closed, `Chart.current_earnings` attribute
+- [ ] dedupulicate `Book.open()`
+- [ ] cleaner `BalancesDict`
+- [ ] reorder `test_book.py`
 
-### Future versions
+### Targets - new features
 
-- cleaner `BalancesDict`
 - [ ] `Book.increase()` and `Book.decrease()` methods
-- `Entry.explain()` and `Entry.validate()` methods
+- [ ] `Entry.explain()` and `Entry.validate()` methods
 
 ## Install
 
