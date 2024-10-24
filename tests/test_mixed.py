@@ -11,7 +11,7 @@ def test_readme():
         income=["sales"],
         contra_accounts=dict(equity=["ts"], sales=["refunds"]),
     )
-    chart_dict = chart.to_dict()
+    chart_dict = chart.mapping
     ledger = chart_dict.to_ledger()
     ledger.post(Entry("Launch").debit("cash", 10).credit("equity", 10))
     ledger.post(Entry("Sold services").double(debit="cash", credit="sales", amount=50))
@@ -28,7 +28,7 @@ def test_readme():
 
 
 def test_end_to_end(realistic_chart):
-    chart_dict = realistic_chart.to_dict()
+    chart_dict = realistic_chart.mapping
     ledger = chart_dict.to_ledger()
     entries = [
         Entry("Start").debit("cash", 20).credit("equity", 20),

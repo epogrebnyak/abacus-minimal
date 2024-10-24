@@ -64,7 +64,7 @@ def test_chart_to_dict():
         assets=["cash"],
         capital=["equity"],
         contra_accounts={"equity": ["ts"]},
-    ).to_dict() == ChartDict(
+    ).mapping == ChartDict(
         {
             "cash": Regular(T5.Asset),
             "equity": Regular(T5.Capital),
@@ -93,16 +93,14 @@ def test_chart_to_ledger_keys():
         current_earnings="profit",
         assets=["cash"],
         capital=["equity"],
-    ).to_dict() == ChartDict().set(T5.Capital, "re").set(T5.Capital, "profit").set(
+    ).mapping == ChartDict().set(T5.Capital, "re").set(T5.Capital, "profit").set(
         T5.Asset, "cash"
     ).set(T5.Capital, "equity")
 
 
 @pytest.mark.mixed
 def test_is_debit_account():
-    chart_dict = (
-        Chart(retained_earnings="re", current_earnings="profit")
-        .to_dict()
-        .offset("re", "drawing")
-    )
+    chart_dict = Chart(
+        retained_earnings="re", current_earnings="profit"
+    ).mapping.offset("re", "drawing")
     assert chart_dict.is_debit_account("drawing") is True

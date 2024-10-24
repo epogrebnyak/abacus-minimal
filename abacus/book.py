@@ -57,12 +57,12 @@ class Book:
         self.chart = chart
         if opening_balances is None:
             opening_balances = {}
-        self.ledger = Ledger.open(chart.to_dict(), opening_balances)
+        self.ledger = Ledger.open(chart.mapping, opening_balances)
         self.store = EntryStore()
         self._income_statement = None
 
     def is_closed(self):
-        return self.ledger.is_closed(chart_dict=self.chart.to_dict())
+        return self.ledger.is_closed(chart_dict=self.chart.mapping)
 
     def save_chart(self, directory: str):
         self.chart.save(PathFinder(directory).chart)
@@ -85,11 +85,12 @@ class Book:
         return cls(chart, opening_balances)
 
     def open(self, starting_balances=None, opening_entry_title="Opening entry"):
-        chart_dict = self.chart.to_dict()
+        chart_dict = self.chart.mapping
         self.ledger = chart_dict.to_ledger()
         if starting_balances:
             entry = Entry(opening_entry_title).opening(starting_balances, chart_dict)
             self.ledger.post(entry)
+            self.entries.append(entry)
         return self
 
     def save(self, directory: str):
@@ -115,7 +116,7 @@ class Book:
     def income_statement(self):
         if self.is_closed():
             return self._income_statement
-        return self.ledger.income_statement(self.chart.to_dict())
+        return self.ledger.income_statement(self.chart.mapping)
 
     @property
     def balance_sheet(self):
@@ -129,12 +130,12 @@ class Book:
         profit = self.chart.current_earnings
         closing_pairs = self.chart.make_closing_pairs(profit)
         ledger.close(closing_pairs)
-        balance_sheet = ledger.balance_sheet(self.chart.to_dict())
+        balance_sheet = ledger.balance_sheet(self.chart.mapping)
         return balance_sheet
 
     def _retained_earnings_balance_sheet(self):
         # Keep both only retained_earnings in the balance sheet
-        balance_sheet = self.ledger.balance_sheet(self.chart.to_dict())
+        balance_sheet = self.ledger.balance_sheet(self.chart.mapping)
         del balance_sheet.capital[self.chart.current_earnings]
         return balance_sheet
 

@@ -45,16 +45,12 @@ class Chart(BaseModel, SaveLoadMixin):
     def regular_accounts(self):
         return (
             self.assets + self.capital + self.liabilities + self.income + self.expenses
-        )
+        ) + [self.retained_earnings, self.current_earnings]
 
     @property
     def accounts(self):
         """All accounts in this chart including the duplicates."""
-        return (
-            self.regular_accounts
-            + [self.retained_earnings, self.current_earnings]
-            + sum(self.contra_accounts.values(), [])
-        )
+        return self.regular_accounts + sum(self.contra_accounts.values(), [])
 
     @property
     def duplicates(self):
@@ -78,9 +74,7 @@ class Chart(BaseModel, SaveLoadMixin):
                     f"Account name should exist before making a contra account: {account_name}"
                 )
 
-    def to_dict(self) -> ChartDict:
-        """Create chart dictionary with unique account names."""
-        chart_dict = ChartDict()
+    def _regular_accounts(self):
         for t, attr in (
             (T5.Asset, "assets"),
             (T5.Liability, "liabilities"),
@@ -89,13 +83,23 @@ class Chart(BaseModel, SaveLoadMixin):
             (T5.Expense, "expenses"),
         ):
             for account_name in getattr(self, attr):
-                chart_dict.set(t, account_name)
-        chart_dict.set(T5.Capital, self.retained_earnings)
-        chart_dict.set(T5.Capital, self.current_earnings)
-        # all regular accounts are added, now adding contra accounts
+                yield t, account_name
+
+    def _contra_accounts(self):
         for account_name, contra_names in self.contra_accounts.items():
             for contra_name in contra_names:
-                chart_dict.offset(account_name, contra_name)
+                yield account_name, contra_name
+
+    @property
+    def mapping(self) -> ChartDict:
+        """Create chart dictionary with unique account names."""
+        chart_dict = ChartDict()
+        for t, account_name in self._regular_accounts():
+            chart_dict.set(t, account_name)
+        chart_dict.set(T5.Capital, self.retained_earnings)
+        chart_dict.set(T5.Capital, self.current_earnings)
+        for account_name, contra_name in self._contra_accounts():
+            chart_dict.offset(account_name, contra_name)
         return chart_dict
 
     def offset(self, account_name: str, contra_name: str):
@@ -110,7 +114,7 @@ class Chart(BaseModel, SaveLoadMixin):
 
     def make_closing_pairs(self, accumulation_account: AccountName) -> list[Pair]:
         """Return list of tuples that allows to close ledger."""
-        return list(self.to_dict().closing_pairs(accumulation_account))
+        return list(self.mapping.closing_pairs(accumulation_account))
 
     @property
     def closing_pairs(self) -> list["Pair"]:

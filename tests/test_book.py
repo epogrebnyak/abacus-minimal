@@ -47,7 +47,7 @@ def book_after_post(this_chart):
 
 
 def test_book_after_post_not_closed(book_after_post, this_chart):
-    assert book_after_post.ledger.is_closed(this_chart.to_dict()) is False
+    assert book_after_post.ledger.is_closed(chart_dict=this_chart.mapping) is False
 
 
 def test_book_now_closed(book_after_post):
