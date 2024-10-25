@@ -1,26 +1,14 @@
 # abacus-minimal
 
-`abacus-minimal` aims to be as concise and expressive as possible in implementation of double entry book-keeping rules as applied in corporate accounting.
+`abacus-minimal` aims to be concise and expressive in implementation of double entry book-keeping rules for corporate accounting.
 
 ## Project goals
 
-- Make valid accounting engine in fewer lines of code (Python or other languages).
+- Make valid accounting engine in fewer lines of code (thus `minimal` in project name).
 - Curate various charts of accounts as JSON files and make conversions between them.
 - Make free web learning tools in accounting similar to [abacus-streamlit][ex].
 
-That should help to:
-
-- explain book-keeping rules through code examples.
-- make pathways into accounting for programmers and into programming for accountants.
-- ultimately, lower the book-keeping and financial analytics costs for the businesses.
-
 [ex]: https://abacus.streamlit.app/
-
-<!--
-Non-goals:
-
-- replacing SAP or QBO immediately with this Python code.
--->
 
 ## Install
 
@@ -39,22 +27,24 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 The steps for using `abacus-minimal` follow the steps of a typical accounting cycle:
 
 - create a chart of accounts,
+- open ledger for the current reporting period,
 - post business transactions to ledger,
-- make reconciliations and adjustments,
+- post reconciliation and adjustment entries,
 - close accounts at reporting period end,
 - show reports for the financial results,
-- save data for the next reporting period.
+- save the data for the next reporting period.
 
-The complete example code for the workflow is in [readme.py](examples/readme.py).
-For more implementation details see "Data structures, actions and architecture" section below.
+## Code example
+
+The complete code example is in [readme.py](examples/readme.py).
 
 ### 1. Create chart of accounts
 
 Steps involved:
 
-- specify name of the retained earnings account that will accumulate company profits less dividend,
+- specify names of current earning and retained earnings accouns,
 - add account names for assets, capital, liabilities, income and expenses,
-- add contra accounts (eg refunds is a contra account to sales).
+- add contra accounts (in example below `refunds` is a contra account to `sales`).
 
 Code example:
 
@@ -64,24 +54,21 @@ from abacus import Chart
 chart = Chart(
     retained_earnings="retained_earnings",
     current_earnings="current_earnings",
-    assets=["cash"],
+    assets=["cash", "ar"],
     capital=["equity"],
     liabilities=["vat_payable"],
     income=["sales"],
     expenses=["salaries"],
 )
 chart.offset("sales", "refunds")
+chart.name("ar", "Accounts receivable")
 ```
 
-`Chart` class is a `pydantic` model, which means it is easily converted to a JSON file:
+`Chart` class is a `pydantic` model, which means it is easily converted to a JSON file.
+You can save to and load froma JSON file.
 
 ```python
 chart.save("chart.json")
-```
-
-Equally, you can load an existing chart from file:
-
-```python
 chart = Chart.load("chart.json")
 ```
 
@@ -90,8 +77,8 @@ chart = Chart.load("chart.json")
 Steps involved:
 
 - create a data structure that represents state of accounts (ledger),
-- record account starting balances from the previous period (skip for a new company),
-- record accounting entries that represent business transactions,
+- record account starting balances from the previous period,
+- record entries that represent business transactions,
 - show state of ledger (trial balance or account balances) at any time.
 
 Code example:
@@ -99,62 +86,56 @@ Code example:
 ```python
 from abacus import Book, Entry
 
-# Create book with opening balances from previous period
-opening_balances = {"cash": 10_000, "equity": 8_000, "retained_earnings": 2_000}
+# Create book with account opening balances from previous period
+opening_balances = {"cash": 10_000,
+                    "equity": 8_000,
+                    "retained_earnings": 2_000}
 book = Book(chart, opening_balances)
 
-# Create a list of entries
+# Create a list of entries using a type notation you prefer
 entries = [
     Entry("Sales with VAT").debit("cash", 6000).credit("sales", 5000).credit("vat_payable", 1000),
     Entry("Сlient refund").double(debit="refunds", credit="cash", amount=500),
     Entry("Paid salaries").amount(1500).debit("salaries").credit("cash"),
 ]
 
-# Post entries to book and show trial balance
+# Post entries to book
 book.post_many(entries)
+
+# Show trial balance and account balances
 print(book.trial_balance)
+print(book.legder.balances)
 ```
-
-<!--
-Invalid entries will be rejected with `AbacusError` raised. The invalid entries are the ones that touch non-existent accounts or the entries where debits and credits are not balanced.
--->
-
-### 3. Closing accounts
-
-Steps before closing (not in current example):
-
-- make reconciliation entries,
-- make adjustment entries for accruals and deferrals.
+### 3. Closing accounts 
 
 Closing accounts at period end involves:
 
-- closing contra accounts to temporary accounts,
-- closing temporary accounts to the retained earnings account,
-- make post-close entries if applicable (not in current example).
+- closing contra accounts to income and expense accounts, and 
+- closing income and expense accounts to retained earnings.
 
-Closing accounts was probably the hardest part of the project
-where I had to refactor code several times
-to make it more explicit and concise.
+Steps not shown in current example:
 
-### 4. Reporting and saving
+1. Before closing there are reconciliation entries and adjustment entries for accruals and deferrals.
+2. After closing one can also make post-close entries that affect permanent accounts.
 
-Steps involved:
+### 4. Reporting financial statements 
 
-- show balance sheet and income statement,
-- save account balances for the next period.
+Financial reports can be shown before and after account closing:
 
-Saving the book will write `chart.json`, `store.json` and `balances.json` files.
+- income statement will be the same before and after account closing,
+- before closing the balance sheet will contain current earnings and retained earnings from previous periods,
+- after closing the balance sheet has just retained earnings, the current earnings account is removed from ledger.
+
+Trial balance and account balances can be shown at any time through the accounting cycle.
 
 Code example:
 
 ```python
-# Show reports before period end close.
-# The income statement will be identical to post-close.
-# The balance sheet will have current earnings account.
+# Income statement and balance sheet before closing
 print(book.income_statement)
 print(book.balance_sheet)
 
-# Check account balances match expected values.
+# Check account balances match expected values
 print(book.ledger.balances)
 assert book.ledger.balances == {
     "cash": 14000,
@@ -167,13 +148,14 @@ assert book.ledger.balances == {
     "retained_earnings": 2000,
 }
 
-
-# Close at period end and show reports.
+# Close accounts at period end
 book.close()
+
+# Show income statement and balance sheet after closing
 print(book.income_statement)
 print(book.balance_sheet)
 
-# Check account balances match expected values.
+# Check account balances match expected values. Т
 print(book.ledger.balances)
 assert book.ledger.balances == {
     "cash": 14000,
@@ -182,61 +164,27 @@ assert book.ledger.balances == {
     "retained_earnings": 5000,
 }
 
-# Save everything to JSON files in current folder
+### 5. Saving data for the next period
+
+Saving the book will write `chart.json`, `store.json` and `balances.json` files
+to specified folder.
+
+```python
+# Save JSON files in current folder
 book.save(directory=".")
 ```
 
-## Data structures, actions and architecture
-
-### Data structures
-
-Underneath `Chart`, `Entry` and `Book` classes
-there are more primitive data structures
-that make up the core of `abacus-minimal`:
-
-- `ChartDict` holds chart of accounts information and ensures uniqueness and consistency of account names.
-- `SingleEntry` specifies amount applied to debit or credit side of an account.
-- `MultipleEntry` is a list of `SingleEntry` items where sum of debit and credit entries should match.
-- `TAccount` is the base class for `DebitAccount` and `CreditAccount`.
-- `Ledger` is a dictionary that maps account names to accounts and accepts entries for posting.
-- `TrailBalance` and `BalancesDict` show account names and their balances.
-- `BalanceSheet` and `IncomeStatement` are financial reports based on ledger state.
-
-### Actions
-
-The principal chain of actions in `abacus-minimal` is shown in a table below.
-The function signatures (or type annotations) indicate what variables participate
-in the calculation as input parameters and results.
-
-| Action                       | Function signature                                                    |
-| ---------------------------- | --------------------------------------------------------------------- |
-| Create ledger                | `ChartDict` -> `Ledger`                                               |
-| Post entries to ledger       | `Ledger` -> `[MultipleEntry]` -> `Ledger`                             |
-| Make a list of closing pairs | `(ChartDict, AccountName)` -> `[(AccountName, AccountName)]`          |
-| Close ledger at period end   | `(ChartDict, AccountName)` -> `Ledger` -> `(IncomeStatement, Ledger)` |
-| Report balance sheet         | `Ledger` -> `BalanceSheet`                                            |
-| Show trial balance           | `Ledger` -> `TrialBalance`                                            |
-| Show account balances        | `Ledger` -> `BalancesDict`.                                           |
-
-## Architecture
-
-`abacus-minimal` focuses on enforcing the book-keeping rules, but not on not storing entires.
-For `abacus-minimal` it would not matter how entries are saved and where they are coming
-from -- this responsibility should be taken by some other parts of software, eg the `medici` ledger.
-The `Book` class does offer saving of entries to a JSON file, but not too big.
-
 ## Limitations
 
-Several assumptions and simplifications are used to make `abacus-minimal` more manageable to develop.
-
-The key assumptions are:
+Several assumptions and simplifications are used to make `abacus-minimal` easier to develop
+and reason about. The key assumptions are:
 
 - one currency,
 - one level of accounts in chart,
 - no intermediate accounts,
 - no changes in equity and cash flow statements.
 
-See [main.py](abacus/main.py) module docstring for more details.
+See [core.py](abacus/core.py) module docstring for more details.
 
 ## Alternatives
 
@@ -250,28 +198,17 @@ Plain text accounting tools are usually for personal finance while `abacus-minim
 `medici` is a high performance ledger, but does not enforce accounting rules on data entry.
 `python-accounting` is a production-grade project, tightly coupled to a database.
 
-Big players in accounting software for small and middle-sized companies
-are Intuit QuickBooks (US) and Xero (Australia).
-Not everyone is happy with how they work or how much they cost, especially
-when moving from a desktop version to the cloud.
-
-Many other office automation providers do also have accounting APIs (eg Zoho) and there are open source packages that have accounting functionality (eg Frappe).
-
-Several outlets advertise they provide IFRS-compliant charts of accounts, but usually as Excel files. There are account taxonomies for reporting, but the charts more seldom.
-
 ## Accounting knowledge
 
 If you are totally new to accounting the suggested friendly course is <https://www.accountingcoach.com/>.
 
 ACCA and CPA are the international and the US professional qualifications and IFRS and GAAP are the standards for accounting recognition, measurement and disclosure.
 
-Part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf)
-talk about what `abacus-minimal` is designed for.
+Part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf) talk about what `abacus-minimal` is designed for.
 
 ## Project conventions
 
-I use [`just` command runner](https://github.com/casey/just) to automate
-code maintenance tasks in this project.
+I use [`just` command runner](https://github.com/casey/just) to automate code maintenance tasks in this project.
 
 `just test` and `just fix` scripts will run the following tools:
 
@@ -284,13 +221,15 @@ code maintenance tasks in this project.
 
 `examples/readme.py` is overwritten by the `just readme` command.
 
+I use `poetry` as a package manager, but heard good things about `uv`. 
+
 ## Changelog
 
 - `0.10.0` (2024-10-24) separates core, chart, entry and book code and tests.
 
 ## Roadmap
 
-### For cleanup:
+### For cleanup
 
 - [x] `book.income_statement` that works before and after period close
 - [x] `book.balance_sheet` with `current_earnings` account when not closed, `Chart.current_earnings` attribute
@@ -298,7 +237,7 @@ code maintenance tasks in this project.
 - [ ] cleaner `BalancesDict`
 - [ ] reorder `test_book.py`
 
-### New features:
+### New features
 
 - [ ] `Book.increase()` and `Book.decrease()` methods
 - [ ] `Entry.explain()` and `Entry.validate()` methods
