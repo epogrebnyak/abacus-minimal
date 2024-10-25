@@ -2,11 +2,11 @@
 
 `abacus-minimal` aims to be concise and expressive in implementation of double entry book-keeping rules for corporate accounting.
 
-## Project goals
+Project goals are the following:
 
-- Make valid accounting engine in fewer lines of code (thus `minimal` in project name).
-- Curate various charts of accounts as JSON files and make conversions between them.
-- Make free web learning tools in accounting similar to [abacus-streamlit][ex].
+- make valid accounting engine in fewer lines of code (thus `minimal` in project name);
+- curate various charts of accounts as JSON files and make conversions between them;
+- make free web learning tools in accounting similar to [abacus-streamlit][ex].
 
 [ex]: https://abacus.streamlit.app/
 
@@ -28,7 +28,7 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 
 - create a chart of accounts,
 - open ledger for the current reporting period,
-- post business transactions to ledger,
+- post entries that reflect business transactions,
 - post reconciliation and adjustment entries,
 - close accounts at reporting period end,
 - show reports for the financial results,
@@ -42,7 +42,7 @@ The complete code example is in [readme.py](examples/readme.py).
 
 Steps involved:
 
-- specify names of current earning and retained earnings accouns,
+- specify names of the current earnings and retained earnings accounts,
 - add account names for assets, capital, liabilities, income and expenses,
 - add contra accounts (in example below `refunds` is a contra account to `sales`).
 
@@ -65,7 +65,7 @@ chart.name("ar", "Accounts receivable")
 ```
 
 `Chart` class is a `pydantic` model, which means it is easily converted to a JSON file.
-You can save to and load froma JSON file.
+You can save a chart to or load a chart from a JSON file.
 
 ```python
 chart.save("chart.json")
@@ -122,7 +122,7 @@ Steps not shown in current example:
 
 Financial reports can be shown before and after account closing:
 
-- income statement will be the same before and after account closing,
+- income statement will be the same before and after closing,
 - before closing the balance sheet will contain current earnings and retained earnings from previous periods,
 - after closing the balance sheet has just retained earnings, the current earnings account is removed from ledger.
 
@@ -132,6 +132,7 @@ Code example:
 
 ```python
 # Income statement and balance sheet before closing
+print("=== Before closing ===")
 print(book.income_statement)
 print(book.balance_sheet)
 
@@ -152,6 +153,7 @@ assert book.ledger.balances == {
 book.close()
 
 # Show income statement and balance sheet after closing
+print("=== After closing ===")
 print(book.income_statement)
 print(book.balance_sheet)
 
