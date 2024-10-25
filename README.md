@@ -31,7 +31,7 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 - post entries that reflect business transactions,
 - post reconciliation and adjustment entries,
 - close accounts at reporting period end,
-- show reports for the financial results,
+- show financial reports,
 - save the data for the next reporting period.
 
 ## Code example
