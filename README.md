@@ -233,8 +233,9 @@ I use `poetry` as a package manager, but heard good things about `uv`.
 
 ### For cleanup
 
+- [x] `Chart.current_earnings` attribute
 - [x] `book.income_statement` that works before and after period close
-- [x] `book.balance_sheet` with `current_earnings` account when not closed, `Chart.current_earnings` attribute
+- [x] `book.balance_sheet` with `current_earnings` account when not closed
 - [x] dedupulicate `Book.open()`
 - [ ] cleaner `BalancesDict`
 - [ ] reorder `test_book.py`
