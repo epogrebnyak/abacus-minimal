@@ -96,20 +96,26 @@ Steps involved:
 
 Trial balance and account balances can be displayed at any time.
 
-Code example:
+Let's create a book with opening balances known from previous period:
 
 ```python
-from abacus import Book, Entry
+from abacus import Book
 
-# Create book with account opening balances from previous period
 opening_balances = {
     "cash": 10_000,
     "equity": 8_000,
     "retained_earnings": 2_000
     }
 book = Book(chart, opening_balances)
+```
 
-# Create a list of entries using a notation you prefer
+At this point the book is ready ro record entries. Each entry has a title, and directions to alter the accounts, called debits and credits.
+The sum of debits should match the sum of credits.
+In a double entry only two accounts are affected, one by debit change and other by credit change with the same amount.
+The `Entry` class provies several ways to record the composition of an entry as shown below.
+
+```python 
+from abacus import Entry
 entries = [
     Entry("Invoice with VAT").debit("ar", 6000).credit("sales", 5000).credit("vat_payable", 1000),
     Entry("Cash payment").debit("cash", 6000).credit("ar", 6000),
@@ -154,13 +160,13 @@ but can be shown before closing as well.
 
 **The income statement** will be the same before and after closing.
 
-**The balance sheet*** before closing the will contain current earnings
+**The balance sheet** before closing the will contain current earnings
 and retained earnings from previous periods. 
 After closing the current earnings account will be transfered 
-to retained earnings account and removed from the ledger.
+to retained earnings account, the current earnings account
+is removed from the ledger and does not appear in balance sheet.
 
-Expect to see a lot of dictionary-like data structures in code example
-below:
+Expect to see a lot of dictionary-like data structures in code example below:
 
 ```python
 print("=== Before closing ===")
@@ -272,4 +278,3 @@ I use `poetry` as a package manager, but heard good things about `uv`.
 and allow conversions between national charts of accounts.
 
 [ex]: https://abacus.streamlit.app/
-
