@@ -36,10 +36,10 @@ book.post_many(entries)
 
 # Show trial balance and account balances
 print(book.trial_balance)
-print(book.ledger.balances)
+print(book.balances)
 
 # Check account balances match expected values
-assert book.ledger.balances == {
+assert book.balances == {
     "cash": 14000,
     "ar": 0,
     "equity": 8000,
@@ -54,6 +54,7 @@ assert book.ledger.balances == {
 print("=== Before closing ===")
 print(book.income_statement)
 print(book.balance_sheet)
+assert book.balance_sheet.capital["current_earnings"] == 3000
 
 # Close accounts at period end
 book.close()
@@ -63,8 +64,8 @@ print(book.income_statement)
 print(book.balance_sheet)
 
 # Check account balances match expected values
-print(book.ledger.balances)
-assert book.ledger.balances == {
+print(book.balances)
+assert book.balances == {
     "cash": 14000,
     "ar": 0,
     "equity": 8000,
@@ -72,5 +73,6 @@ assert book.ledger.balances == {
     "retained_earnings": 5000,
 }
 
-# Save JSON files in current folder
-book.save(directory=".")
+# Save JSON files
+book.store.save("./entries.json")
+book.balances.save("./end_balances.json")

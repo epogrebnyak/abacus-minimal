@@ -1,17 +1,37 @@
+import json
+from collections import UserDict
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Sequence
+from typing import Mapping, Sequence
 
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel
 
 from abacus.chart import Chart, SaveLoadMixin
-from abacus.core import AbacusError, AccountName, Amount, Ledger
+from abacus.core import AbacusError, Amount, Ledger
 from abacus.entry import Entry
 
 
-class BalancesDict(RootModel[Dict[str, Amount]], SaveLoadMixin):
-    pass
+class BalancesDict(UserDict[str, Amount]):
+    def json(self) -> str:
+        return json.dumps(self.data, default=str)
+
+    def save(self, path: str | Path):
+        with open(path, "w") as f:
+            f.write(self.json())
+
+    @classmethod
+    def coerce(cls, d: dict[str, int | float | str]):
+        return cls({k: Amount(v) for k, v in d.items()})
+
+    @classmethod
+    def loads(cls, s: str) -> "BalancesDict":
+        return cls.coerce(json.loads(s))
+
+    @classmethod
+    def load(cls, path: str | Path) -> "BalancesDict":
+        with open(path, "r") as f:
+            return cls.loads(f.read())
 
 
 class EntryStore(BaseModel, SaveLoadMixin):
@@ -47,23 +67,26 @@ class PathFinder:
     def get_store(self):
         return EntryStore.load(self.store)
 
-    def get_balances(self) -> dict[AccountName, Amount]:
-        pydantic_data = BalancesDict.load(self.balances)
-        return pydantic_data.root
+    def get_balances(self) -> BalancesDict:
+        return BalancesDict.load(self.balances)
 
 
 @dataclass
 class Book:
     chart: Chart
-    opening_balances: dict | None = None
+    opening_balances: Mapping[str, str | int | float | Amount] | None = None
     store: EntryStore = field(default_factory=EntryStore)
-    opening_entry_title: str = "Opening entry"
+
+    def set_opening_entry_title(self, text: str = "Opening entry"):
+        self.opening_entry_title = text
+        return self
 
     def __post_init__(self):
         self.ledger = Ledger.empty(self.chart.mapping)
-        self.store = EntryStore()
         self._income_statement = None
+        self.set_opening_entry_title()
         if self.opening_balances is not None:
+            self.opening_balances = BalancesDict.coerce(self.opening_balances)
             self._post_opening()
 
     def _post_opening(self):
@@ -74,31 +97,6 @@ class Book:
 
     def is_closed(self):
         return self.ledger.is_closed(chart_dict=self.chart.mapping)
-
-    @classmethod
-    def load(cls, directory: str):
-        """Load chart and starting balances from the directory."""
-        path = PathFinder(directory)
-        try:
-            chart = Chart.load(path.chart)
-        except FileNotFoundError:
-            raise AbacusError(f"Chart file not found: {path.chart}")
-        opening_balances = path.get_balances() if path.balances.exists() else {}
-        return cls(chart, opening_balances)
-
-    def save_chart(self, directory: str):
-        self.chart.save(PathFinder(directory).chart)
-
-    def save_store(self, directory: str):
-        self.store.save(PathFinder(directory).store)
-
-    def save_balances(self, directory: str):
-        BalancesDict(self.ledger.balances).save(PathFinder(directory).balances)
-
-    def save(self, directory: str):
-        self.save_chart(directory)
-        self.save_store(directory)
-        self.save_balances(directory)
 
     def post(self, entry: Entry):
         self.ledger.post(entry)
@@ -144,3 +142,22 @@ class Book:
     @property
     def trial_balance(self):
         return self.ledger.trial_balance
+
+    @property
+    def balances(self):
+        return BalancesDict(**self.ledger.balances)
+
+    @classmethod
+    def load(cls, directory: str):
+        """Load chart and starting balances from the directory."""
+        path = PathFinder(directory)
+        try:
+            chart = Chart.load(path.chart)
+        except FileNotFoundError:
+            raise AbacusError(f"Chart file not found: {path.chart}")
+        opening_balances = path.get_balances() if path.balances.exists() else {}
+        return cls(chart, opening_balances)
+
+    def save(self, directory: str):
+        self.store.save(PathFinder(directory).store)
+        self.balances.save(PathFinder(directory).balances)

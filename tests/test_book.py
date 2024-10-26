@@ -2,7 +2,22 @@ import pytest
 
 from abacus import Book, Chart, Entry
 from abacus.book import BalancesDict
-from abacus.core import BalanceSheet, IncomeStatement
+from abacus.core import Amount, BalanceSheet, IncomeStatement
+
+
+def test_balances_dict_loads():
+    d = BalancesDict(cash=Amount(50))
+    j = d.json()
+    d2 = BalancesDict.loads(j)
+    assert d2["cash"] == Amount(50)
+
+
+def test_balances_dict_load(tmp_path):
+    d = BalancesDict(cash=Amount(50))
+    path = tmp_path / "d.json"
+    d.save(path)
+    d3 = BalancesDict.load(path)
+    assert d3["cash"] == Amount(50)
 
 
 @pytest.fixture
@@ -119,7 +134,9 @@ def test_book_similar_to_readme(tmp_path):
     chart.offset("sales", "refunds")
     book = Book(chart)
     book.post(Entry("Initial investment").debit("cash", 10000).credit("equity", 10000))
-    book.save(tmp_path)
+    book.chart.save(tmp_path / "chart.json")
+    book.balances.save(tmp_path / "balances.json")
+    print(book.balances)
     del book
     book = Book.load(tmp_path)
     entries = [
@@ -139,9 +156,9 @@ def test_book_similar_to_readme(tmp_path):
 
 @pytest.mark.report
 def test_balances_dict_json(toy_ledger):
-    content = BalancesDict(toy_ledger.balances).model_dump_json()
-    x = BalancesDict.model_validate_json(content)
-    assert x.root == dict(cash=10, equity=10, re=0)
+    content = BalancesDict(toy_ledger.balances).json()
+    x = BalancesDict.loads(content)
+    assert x == dict(cash=10, equity=10, re=0)
 
 
 @pytest.mark.report

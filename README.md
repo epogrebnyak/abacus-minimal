@@ -130,10 +130,10 @@ After posting entries you can inspect the trial balance or account balances:
 ```python
 # Show trial balance and account balances
 print(book.trial_balance)
-print(book.ledger.balances)
+print(book.balances)
 
 # Check account balances match expected values
-assert book.ledger.balances == {
+assert book.balances == {
     "cash": 14000,
     "ar": 0,
     "equity": 8000,
@@ -168,12 +168,13 @@ After closing the current earnings account will be transfered
 to retained earnings account, the current earnings account
 is removed from the ledger and does not appear in balance sheet.
 
-Expect to see a lot of dictionary-like data structures in code example below:
+Expect to see a lot of dictionary-like data structures in code ouput below:
 
 ```python
 print("=== Before closing ===")
 print(book.income_statement)
 print(book.balance_sheet)
+assert book.balance_sheet.capital["current_earnings"] == 3000
 
 # Close accounts at period end
 book.close()
@@ -183,8 +184,8 @@ print(book.income_statement)
 print(book.balance_sheet)
 
 # Check account balances match expected values
-print(book.ledger.balances)
-assert book.ledger.balances == {
+print(book.balances)
+assert book.balances == {
     "cash": 14000,
     "ar": 0,
     "equity": 8000,
@@ -195,12 +196,13 @@ assert book.ledger.balances == {
 
 ### 5. Saving data for the next period
 
-Saving the book will write `chart.json`, `store.json` and `balances.json` files
-to specified folder. Existing files will be overwritten.
+If you have not altered the chart
+it makes sense to save the entries and period end account balances.
 
 ```python
-# Save JSON files in current folder
-book.save(directory=".")
+# Save JSON files
+book.store.save("./entries.json")
+book.balances.save("./end_balances.json")
 ```
 
 ## Limitations
@@ -253,11 +255,13 @@ I use [`just` command runner](https://github.com/casey/just) to automate code ma
 
 `examples/readme.py` is overwritten by the `just readme` command.
 
-I use `poetry` as a package manager, but heard good things about `uv`.
+I use `poetry` as a package manager, but heard good things about `uv` that I want to try.
 
 ## Changelog
 
-- `0.10.0` (2024-10-24) separates core, chart, entry and book code and tests.
+- `0.11.0` for this release version `0.10.4` is candidate. 
+- `0.10.4` (2024-10-27) Handles income statement and balances sheet before and after close. 
+- `0.10.0` (2024-10-24) Separates core, chart, entry and book code and tests.
 
 ## Roadmap
 
@@ -267,8 +271,8 @@ I use `poetry` as a package manager, but heard good things about `uv`.
 - [x] `book.income_statement` that works before and after period close
 - [x] `book.balance_sheet` with `current_earnings` account when not closed
 - [x] dedupulicate `Book.open()`
-- [ ] cleaner `BalancesDict`
-- [ ] reorder `test_book.py`
+- [x] cleaner `BalancesDict`
+- [ ] reorder tests in `test_book.py`, use assert's from README
 
 ### New features
 
@@ -277,7 +281,6 @@ I use `poetry` as a package manager, but heard good things about `uv`.
 
 ## Using `abacus-minimal` elsewhere
 
-`abacus-minimal` can run CLI tools (similar to `abacus-py`), online simulators (similar to [abacus-streamlit][ex])
-and allow conversions between national charts of accounts.
+`abacus-minimal` can run CLI tools (similar to `abacus-py`), online simulators (similar to [abacus-streamlit][ex]) and allow conversions between charts of accounts.
 
 [ex]: https://abacus.streamlit.app/
