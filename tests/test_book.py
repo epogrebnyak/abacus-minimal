@@ -151,7 +151,7 @@ def test_book_similar_to_readme(tmp_path):
         "equity": 10000,
         "retained_earnings": 5000,
     }
-    book.save(tmp_path)
+    book.save(tmp_path, overwrite = True)
 
 
 @pytest.mark.report
