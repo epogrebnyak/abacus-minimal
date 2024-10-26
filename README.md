@@ -110,9 +110,7 @@ book = Book(chart, opening_balances)
 ```
 
 At this point the book is ready ro record entries. Each entry has a title, and directions to alter the accounts, called debits and credits.
-The sum of debits should match the sum of credits.
-In a double entry only two accounts are affected, one by debit change and other by credit change with the same amount.
-The `Entry` class provies several ways to record the composition of an entry as shown below.
+The sum of debits should match the sum of credits. The `Entry` class provies several ways to record the composition of an entry as shown below.
 
 ```python 
 from abacus import Entry
@@ -125,7 +123,11 @@ entries = [
 
 # Post entries to book
 book.post_many(entries)
+```
 
+After posting entries you can inspect the trial balance or account balances: 
+
+```python 
 # Show trial balance and account balances
 print(book.trial_balance)
 print(book.ledger.balances)
@@ -209,9 +211,10 @@ easier to develop and reason about.
 The key assumptions are:
 
 - one currency,
+- unique account names,
 - one level of accounts in chart,
 - no intermediate accounts,
-- no changes in equity and cash flow statements.
+- no changes in equity and cash flow statements (at least yet).
 
 See [core.py](abacus/core.py) module docstring for more details.
 
