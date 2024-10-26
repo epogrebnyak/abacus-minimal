@@ -39,7 +39,7 @@ The inputs to this code are:
 
 - the chart of accounts,
 - account opening balances from previous period,
-- accounting entries that reflect what business transactions within the reporting period.
+- accounting entries that reflect business transactions within the reporting period.
 
 The resulting outputs are:
 
@@ -47,8 +47,7 @@ The resulting outputs are:
 - balance sheet,
 - income statement.
 
-There are no reconciliations, adjustments and post-close entries in this
-example.
+There are no reconciliations, adjustments and post-close entries in this example.
 
 The complete code example is in [readme.py](examples/readme.py).
 
@@ -95,6 +94,8 @@ Steps involved:
 - record entries that represent business transactions,
 - show state of ledger (trial balance or account balances) at any time.
 
+Trial balance and account balances can be displayed at any time.
+
 Code example:
 
 ```python
@@ -137,9 +138,6 @@ assert book.ledger.balances == {
 }
 ```
 
-Trial balance and account balances can be displayed at any time through
-the reporting period.
-
 ### 3. Closing accounts
 
 Closing accounts at period end involves:
@@ -147,20 +145,22 @@ Closing accounts at period end involves:
 - closing contra accounts to income and expense accounts, and
 - closing income and expense accounts to retained earnings.
 
-Code provided in the section below.
+Code to close accounts shown in the section below.
 
 ### 4. Reporting financial statements
 
-Financial reports can be shown before and after account closing.
+Financial reports are typically dslayed after account closing,
+but can be shown before closing as well.
 
-The income statement will be the same before and after closing.
+**The income statement** will be the same before and after closing.
 
-The balance sheet before closing the will contain current earnings
-and retained earnings from previous periods. After closing
-the current earnings account is removed from ledger
-and the the balance sheet will contain retained earnings.
+**The balance sheet*** before closing the will contain current earnings
+and retained earnings from previous periods. 
+After closing the current earnings account will be transfered 
+to retained earnings account and removed from the ledger.
 
-Code example:
+Expect to see a lot of dictionary-like data structures in code example
+below:
 
 ```python
 print("=== Before closing ===")
@@ -174,7 +174,7 @@ print("=== After closing ===")
 print(book.income_statement)
 print(book.balance_sheet)
 
-# Check account balances match expected values.
+# Check account balances match expected values
 print(book.ledger.balances)
 assert book.ledger.balances == {
     "cash": 14000,
@@ -188,7 +188,7 @@ assert book.ledger.balances == {
 ### 5. Saving data for the next period
 
 Saving the book will write `chart.json`, `store.json` and `balances.json` files
-to specified folder. Exsiting files willbe overwritten.
+to specified folder. Existing files will be overwritten.
 
 ```python
 # Save JSON files in current folder
