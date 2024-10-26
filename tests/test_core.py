@@ -54,9 +54,9 @@ def test_ledger_creation(account_name, cls, toy_dict):
 
 @pytest.mark.ledger
 def test_ledger_open(toy_dict):
-    ledger, _ = Ledger.empty(toy_dict).post_opening(
-        toy_dict, opening_balances=dict(cash=10, equity=10)
-    )
+    ledger = Ledger.empty(toy_dict)
+    entry = toy_dict.opening_entry(dict(cash=10, equity=10))
+    ledger.post(entry)
     assert ledger.trial_balance == dict(
         re=(None, 0), cash=(10, None), equity=(None, 10)
     )

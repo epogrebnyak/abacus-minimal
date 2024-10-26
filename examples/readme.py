@@ -5,47 +5,45 @@ from abacus import Book, Chart, Entry
 chart = Chart(
     retained_earnings="retained_earnings",
     current_earnings="current_earnings",
-    assets=["cash"],
+    assets=["cash", "ar"],
     capital=["equity"],
     liabilities=["vat_payable"],
     income=["sales"],
     expenses=["salaries"],
 )
 chart.offset("sales", "refunds")
+chart.name("ar", "Accounts receivable")
 
 chart.save("chart.json")
-
 chart = Chart.load("chart.json")
 
 
-# Create book with opening balances from previous period
+# Create book with account opening balances from previous period
 opening_balances = {"cash": 10_000, "equity": 8_000, "retained_earnings": 2_000}
 book = Book(chart, opening_balances)
 
-# Create a list of entries
+# Create a list of entries using a notation you prefer
 entries = [
-    Entry("Sales with VAT")
-    .debit("cash", 6000)
+    Entry("Invoice with VAT")
+    .debit("ar", 6000)
     .credit("sales", 5000)
     .credit("vat_payable", 1000),
-    Entry("Сlient refund").double(debit="refunds", credit="cash", amount=500),
+    Entry("Cash payment").debit("cash", 6000).credit("ar", 6000),
+    Entry("Cashback to client").double(debit="refunds", credit="cash", amount=500),
     Entry("Paid salaries").amount(1500).debit("salaries").credit("cash"),
 ]
 
-# Post entries to book and show trial balance
+# Post entries to book
 book.post_many(entries)
+
+# Show trial balance and account balances
 print(book.trial_balance)
-
-# Show reports before period end close.
-# The income statement will be identical to post-close.
-# The balance sheet will have current earnings account.
-print(book.income_statement)
-print(book.balance_sheet)
-
-# Check account balances match expected values.
 print(book.ledger.balances)
+
+# Check account balances match expected values
 assert book.ledger.balances == {
     "cash": 14000,
+    "ar": 0,
     "equity": 8000,
     "vat_payable": 1000,
     "sales": 5000,
@@ -55,9 +53,14 @@ assert book.ledger.balances == {
     "retained_earnings": 2000,
 }
 
+print("=== Before closing ===")
+print(book.income_statement)
+print(book.balance_sheet)
 
-# Close at period end and show reports.
+# Close accounts at period end
 book.close()
+
+print("=== After closing ===")
 print(book.income_statement)
 print(book.balance_sheet)
 
@@ -65,10 +68,11 @@ print(book.balance_sheet)
 print(book.ledger.balances)
 assert book.ledger.balances == {
     "cash": 14000,
+    "ar": 0,
     "equity": 8000,
     "vat_payable": 1000,
     "retained_earnings": 5000,
 }
 
-# Save everything to JSON files in current folder
+# Save JSON files in current folder
 book.save(directory=".")

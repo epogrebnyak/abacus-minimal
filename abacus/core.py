@@ -124,6 +124,10 @@ class ChartDict(UserDict[str, Regular | Contra]):
             {account_name: self.t_account(account_name) for account_name in self.keys()}
         )
 
+    def opening_entry(self, opening_balances: dict) -> "MultipleEntry":
+        """Create opening entry."""
+        return MultipleEntry.opening(opening_balances, self)
+
     def closing_pairs(self, retained_earnings_account: str) -> Iterator[Pair]:
         """Yield closing pairs for accounting period end."""
 
@@ -278,12 +282,6 @@ class Ledger(UserDict[AccountName, TAccount]):
         """Create empty ledger from chart dictionary."""
         return chart_dict.to_ledger()
 
-    def post_opening(self, chart_dict: ChartDict, opening_balances: dict):
-        """Create ledger using starting balances."""
-        entry = MultipleEntry.opening(opening_balances, chart_dict)
-        self.post(entry)
-        return self, entry
-
     def post_single(self, single_entry: SingleEntry):
         """Post single entry to ledger. Will raise `KeyError` if account name is not found."""
         match single_entry:
@@ -333,7 +331,7 @@ class Ledger(UserDict[AccountName, TAccount]):
             self[contra_name].balance for contra_name in contra_names
         )
 
-    def _close_one(self, frm: AccountName, to: AccountName):
+    def _close_one(self, frm: AccountName, to: AccountName) -> MultipleEntry:
         """Close account and move its balances to another account."""
         entry = self.data[frm].transfer(frm, to)
         self.post(entry)
@@ -385,6 +383,10 @@ class Report:
     """Base class for financial reports."""
 
 
+def sum_values(d: dict):
+    return sum(d.values())
+
+
 @dataclass
 class IncomeStatement(Report):
     income: dict[AccountName, Amount]
@@ -393,7 +395,7 @@ class IncomeStatement(Report):
     @property
     def net_earnings(self):
         """Calculate net earnings as income less expenses."""
-        return sum(self.income.values()) - sum(self.expenses.values())
+        return sum_values(self.income) - sum_values(self.expenses)
 
 
 @dataclass
@@ -403,7 +405,7 @@ class BalanceSheet(Report):
     liabilities: dict[AccountName, Amount]
 
     def is_balanced(self) -> bool:
-        def sums(d: dict):
-            return sum(d.values())
-
-        return sums(self.assets) == sums(self.capital) + sums(self.liabilities)
+        """Return True if assets equal liabilities plus capital."""
+        return sum_values(self.assets) == sum_values(self.capital) + sum_values(
+            self.liabilities
+        )

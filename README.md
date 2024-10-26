@@ -1,11 +1,13 @@
 # abacus-minimal
 
+![PyPI - Version](https://img.shields.io/pypi/v/abacus-minimal)
+
 `abacus-minimal` aims to be concise and expressive in implementation of double entry book-keeping rules for corporate accounting.
 
 Project goals are the following:
 
 - make valid accounting engine in fewer lines of code (thus `minimal` in project name);
-- curate various charts of accounts as JSON files and make conversions between them;
+- make conversions between charts of accounts;
 - make free web learning tools in accounting similar to [abacus-streamlit][ex].
 
 [ex]: https://abacus.streamlit.app/
@@ -35,6 +37,28 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 - save the data for the next reporting period.
 
 ## Code example
+
+In this code example we will programmatically run
+the accounting workflow within one reporting period
+using `abacus-minimal`.
+
+The inputs to this code are:
+
+- the chart of accounts,
+- account opening balances from previous period,
+- accounting entries that reflect what business transactions within the reporting period.
+
+The resulting outputs are:
+
+- account balances at period end,
+- balance sheet,
+- income statement.
+
+Trial balance and account balances can be displayed at any time through
+the reporting period.
+
+There are no reconciliations, adjustments and post-close entries in this
+example.
 
 The complete code example is in [readme.py](examples/readme.py).
 
@@ -87,15 +111,18 @@ Code example:
 from abacus import Book, Entry
 
 # Create book with account opening balances from previous period
-opening_balances = {"cash": 10_000,
-                    "equity": 8_000,
-                    "retained_earnings": 2_000}
+opening_balances = {
+    "cash": 10_000,
+    "equity": 8_000,
+    "retained_earnings": 2_000
+    }
 book = Book(chart, opening_balances)
 
-# Create a list of entries using a type notation you prefer
+# Create a list of entries using a notation you prefer
 entries = [
-    Entry("Sales with VAT").debit("cash", 6000).credit("sales", 5000).credit("vat_payable", 1000),
-    Entry("Сlient refund").double(debit="refunds", credit="cash", amount=500),
+    Entry("Invoice with VAT").debit("ar", 6000).credit("sales", 5000).credit("vat_payable", 1000),
+    Entry("Cash payment").debit("cash", 6000).credit("ar", 6000),
+    Entry("Cashback to client").double(debit="refunds", credit="cash", amount=500),
     Entry("Paid salaries").amount(1500).debit("salaries").credit("cash"),
 ]
 
@@ -104,42 +131,12 @@ book.post_many(entries)
 
 # Show trial balance and account balances
 print(book.trial_balance)
-print(book.legder.balances)
-```
-### 3. Closing accounts 
-
-Closing accounts at period end involves:
-
-- closing contra accounts to income and expense accounts, and 
-- closing income and expense accounts to retained earnings.
-
-Steps not shown in current example:
-
-1. Before closing there are reconciliation entries and adjustment entries for accruals and deferrals.
-2. After closing one can also make post-close entries that affect permanent accounts.
-
-### 4. Reporting financial statements 
-
-Financial reports can be shown before and after account closing:
-
-- income statement will be the same before and after closing,
-- before closing the balance sheet will contain current earnings and retained earnings from previous periods,
-- after closing the balance sheet has just retained earnings, the current earnings account is removed from ledger.
-
-Trial balance and account balances can be shown at any time through the accounting cycle.
-
-Code example:
-
-```python
-# Income statement and balance sheet before closing
-print("=== Before closing ===")
-print(book.income_statement)
-print(book.balance_sheet)
+print(book.ledger.balances)
 
 # Check account balances match expected values
-print(book.ledger.balances)
 assert book.ledger.balances == {
     "cash": 14000,
+    "ar": 0,
     "equity": 8000,
     "vat_payable": 1000,
     "sales": 5000,
@@ -148,28 +145,57 @@ assert book.ledger.balances == {
     "current_earnings": 0,
     "retained_earnings": 2000,
 }
+```
+
+### 3. Closing accounts
+
+Closing accounts at period end involves:
+
+- closing contra accounts to income and expense accounts, and
+- closing income and expense accounts to retained earnings.
+
+Code provided in the section below.
+
+### 4. Reporting financial statements
+
+Financial reports can be shown before and after account closing.
+
+The income statement will be the same before and after closing.
+
+The balance sheet before closing the will contain current earnings
+and retained earnings from previous periods. After closing
+the current earnings account is removed from ledger
+and the the balance sheet will contain retained earnings.
+
+Code example:
+
+```python
+print("=== Before closing ===")
+print(book.income_statement)
+print(book.balance_sheet)
 
 # Close accounts at period end
 book.close()
 
-# Show income statement and balance sheet after closing
 print("=== After closing ===")
 print(book.income_statement)
 print(book.balance_sheet)
 
-# Check account balances match expected values. Т
+# Check account balances match expected values.
 print(book.ledger.balances)
 assert book.ledger.balances == {
     "cash": 14000,
+    "ar": 0,
     "equity": 8000,
     "vat_payable": 1000,
     "retained_earnings": 5000,
 }
+```
 
 ### 5. Saving data for the next period
 
 Saving the book will write `chart.json`, `store.json` and `balances.json` files
-to specified folder.
+to specified folder. Exsiting files willbe overwritten.
 
 ```python
 # Save JSON files in current folder
@@ -178,8 +204,10 @@ book.save(directory=".")
 
 ## Limitations
 
-Several assumptions and simplifications are used to make `abacus-minimal` easier to develop
-and reason about. The key assumptions are:
+Several assumptions and simplifications are used to make `abacus-minimal`
+easier to develop and reason about.
+
+The key assumptions are:
 
 - one currency,
 - one level of accounts in chart,
@@ -223,7 +251,7 @@ I use [`just` command runner](https://github.com/casey/just) to automate code ma
 
 `examples/readme.py` is overwritten by the `just readme` command.
 
-I use `poetry` as a package manager, but heard good things about `uv`. 
+I use `poetry` as a package manager, but heard good things about `uv`.
 
 ## Changelog
 
