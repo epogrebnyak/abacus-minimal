@@ -4,11 +4,10 @@
 
 `abacus-minimal` aims to be concise and expressive in implementation of double entry book-keeping rules for corporate accounting.
 
-Project goals are the following:
+The project goals is to make a valid accounting engine in fewer lines of code (thus `minimal` in project name).
 
-- make valid accounting engine in fewer lines of code (thus `minimal` in project name);
-- make conversions between charts of accounts;
-- make free web learning tools in accounting similar to [abacus-streamlit][ex].
+`abacus-minimal` should running CLI tools, making conversions between charts of accounts,
+and powering online accounting simulators similar to [abacus-streamlit][ex].
 
 [ex]: https://abacus.streamlit.app/
 
