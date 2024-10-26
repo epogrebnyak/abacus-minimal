@@ -18,11 +18,9 @@ chart.save("chart.json")
 chart = Chart.load("chart.json")
 
 
-# Create book with account opening balances from previous period
 opening_balances = {"cash": 10_000, "equity": 8_000, "retained_earnings": 2_000}
 book = Book(chart, opening_balances)
 
-# Create a list of entries using a notation you prefer
 entries = [
     Entry("Invoice with VAT")
     .debit("ar", 6000)
@@ -64,7 +62,7 @@ print("=== After closing ===")
 print(book.income_statement)
 print(book.balance_sheet)
 
-# Check account balances match expected values.
+# Check account balances match expected values
 print(book.ledger.balances)
 assert book.ledger.balances == {
     "cash": 14000,

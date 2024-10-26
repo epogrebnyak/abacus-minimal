@@ -112,7 +112,7 @@ book = Book(chart, opening_balances)
 At this point the book is ready ro record entries. Each entry has a title, and directions to alter the accounts, called debits and credits.
 The sum of debits should match the sum of credits. The `Entry` class provies several ways to record the composition of an entry as shown below.
 
-```python 
+```python
 from abacus import Entry
 entries = [
     Entry("Invoice with VAT").debit("ar", 6000).credit("sales", 5000).credit("vat_payable", 1000),
@@ -125,9 +125,9 @@ entries = [
 book.post_many(entries)
 ```
 
-After posting entries you can inspect the trial balance or account balances: 
+After posting entries you can inspect the trial balance or account balances:
 
-```python 
+```python
 # Show trial balance and account balances
 print(book.trial_balance)
 print(book.ledger.balances)
@@ -163,8 +163,8 @@ but can be shown before closing as well.
 **The income statement** will be the same before and after closing.
 
 **The balance sheet** before closing the will contain current earnings
-and retained earnings from previous periods. 
-After closing the current earnings account will be transfered 
+and retained earnings from previous periods.
+After closing the current earnings account will be transfered
 to retained earnings account, the current earnings account
 is removed from the ledger and does not appear in balance sheet.
 
