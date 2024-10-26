@@ -5,11 +5,6 @@
 `abacus-minimal` aims to be concise and expressive in implementation of double entry book-keeping rules for corporate accounting.
 The project goals is to make a valid accounting engine in fewer lines of code (thus `minimal` in project name).
 
-`abacus-minimal` can run CLI tools (similar to `abacus-py`), online simulators (similar to [abacus-streamlit][ex])
-and allow conversions between national charts of accounts,
-
-[ex]: https://abacus.streamlit.app/
-
 ## Install
 
 ```bash
@@ -270,3 +265,11 @@ I use `poetry` as a package manager, but heard good things about `uv`.
 
 - [ ] `Book.increase()` and `Book.decrease()` methods
 - [ ] `Entry.explain()` and `Entry.validate()` methods
+
+## Using `abacus-minimal` elsewhere
+
+`abacus-minimal` can run CLI tools (similar to `abacus-py`), online simulators (similar to [abacus-streamlit][ex])
+and allow conversions between national charts of accounts.
+
+[ex]: https://abacus.streamlit.app/
+
