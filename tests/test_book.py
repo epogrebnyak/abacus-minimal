@@ -7,8 +7,8 @@ from abacus.core import Amount, BalanceSheet, IncomeStatement
 
 def test_balances_dict_loads():
     d = BalancesDict(cash=Amount(50))
-    j = d.json()
-    d2 = BalancesDict.loads(j)
+    j = d.model_dump_json()
+    d2 = BalancesDict.model_validate_json(j)
     assert d2["cash"] == Amount(50)
 
 
@@ -151,14 +151,13 @@ def test_book_similar_to_readme(tmp_path):
         "equity": 10000,
         "retained_earnings": 5000,
     }
-    book.save(tmp_path, overwrite = True)
+    book.save(tmp_path, overwrite=True)
 
 
 @pytest.mark.report
-def test_balances_dict_json(toy_ledger):
-    content = BalancesDict(toy_ledger.balances).json()
-    x = BalancesDict.loads(content)
-    assert x == dict(cash=10, equity=10, re=0)
+def test_balances_dict_serialisation(toy_ledger):
+    content = BalancesDict(toy_ledger.balances).model_dump_json()
+    assert BalancesDict.model_validate_json(content) == dict(cash=10, equity=10, re=0)
 
 
 @pytest.mark.report

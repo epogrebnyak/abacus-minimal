@@ -7,32 +7,22 @@ from typing import Mapping, Sequence
 
 from pydantic import BaseModel
 
-from abacus.chart import Chart, SaveLoadMixin, raise_if_exists
+from abacus.chart import Chart, SaveLoadMixin
 from abacus.core import AbacusError, Amount, Ledger
 from abacus.entry import Entry
 
-# FIXME: allow LoadSaveMixin to be used by this class
-class BalancesDict(UserDict[str, Amount]):
-    def json(self) -> str:
-        return json.dumps(self.data, default=str)
 
-    def save(self, path: str | Path, overwrite: bool = False):
-        if not overwrite:
-            raise_if_exists(path)
-        Path(path).write_text(self.json())
+class BalancesDict(UserDict[str, Amount], SaveLoadMixin):
+    def model_dump_json(self, indent=2) -> str:
+        return json.dumps(self.data, default=str, indent=indent)
 
     @classmethod
     def coerce(cls, d: dict[str, int | float | str]):
         return cls({k: Amount(v) for k, v in d.items()})
 
     @classmethod
-    def loads(cls, s: str) -> "BalancesDict":
+    def model_validate_json(cls, s: str) -> "BalancesDict":
         return cls.coerce(json.loads(s))
-
-    @classmethod
-    def load(cls, path: str | Path) -> "BalancesDict":
-        with open(path, "r") as f:
-            return cls.loads(f.read())
 
 
 class EntryStore(BaseModel, SaveLoadMixin):
@@ -159,6 +149,6 @@ class Book:
         opening_balances = path.get_balances() if path.balances.exists() else {}
         return cls(chart, opening_balances)
 
-    def save(self, directory: str, overwrite: bool = False):               
+    def save(self, directory: str, overwrite: bool = False):
         self.store.save(PathFinder(directory).store, overwrite)
         self.balances.save(PathFinder(directory).balances, overwrite)

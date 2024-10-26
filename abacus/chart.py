@@ -5,10 +5,6 @@ from pydantic import BaseModel, ConfigDict
 from abacus.core import T5, AbacusError, AccountName, ChartDict, Pair
 
 
-def raise_if_exists(filename):
-    if Path(filename).exists():
-        raise FileExistsError(f"File already exists: {filename}")
-
 class SaveLoadMixin:
     """Class for loading and saving pydantic models to files."""
 
@@ -17,8 +13,8 @@ class SaveLoadMixin:
         return cls.model_validate_json(Path(filename).read_text())  # type: ignore
 
     def save(self, filename: str | Path, overwrite: bool = False):
-        if not overwrite:
-            raise_if_exists(filename)
+        if not overwrite and Path(filename).exists():
+            raise FileExistsError(f"File already exists: {filename}")
         Path(filename).write_text(self.model_dump_json(indent=2))  # type: ignore
 
 
