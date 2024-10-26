@@ -3,7 +3,7 @@
 ![PyPI - Version](https://img.shields.io/pypi/v/abacus-minimal)
 
 `abacus-minimal` aims to be concise and expressive in implementation of double entry book-keeping rules for corporate accounting.
-The project goals is to make a valid accounting engine in fewer lines of code (thus `minimal` in project name).
+The project goals is to make a valid accounting engine in fewer lines of code.
 
 ## Install
 
