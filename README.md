@@ -54,9 +54,6 @@ The resulting outputs are:
 - balance sheet,
 - income statement.
 
-Trial balance and account balances can be displayed at any time through
-the reporting period.
-
 There are no reconciliations, adjustments and post-close entries in this
 example.
 
@@ -146,6 +143,9 @@ assert book.ledger.balances == {
     "retained_earnings": 2000,
 }
 ```
+
+Trial balance and account balances can be displayed at any time through
+the reporting period.
 
 ### 3. Closing accounts
 
