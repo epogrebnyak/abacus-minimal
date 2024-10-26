@@ -21,13 +21,14 @@ chart = Chart.load("chart.json")
 opening_balances = {"cash": 10_000, "equity": 8_000, "retained_earnings": 2_000}
 book = Book(chart, opening_balances)
 
+
 entries = [
     Entry("Invoice with VAT")
     .debit("ar", 6000)
     .credit("sales", 5000)
     .credit("vat_payable", 1000),
     Entry("Cash payment").debit("cash", 6000).credit("ar", 6000),
-    Entry("Cashback to client").double(debit="refunds", credit="cash", amount=500),
+    Entry("Cashback").double(debit="refunds", credit="cash", amount=500),
     Entry("Paid salaries").amount(1500).debit("salaries").credit("cash"),
 ]
 

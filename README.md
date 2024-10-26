@@ -1,9 +1,15 @@
 # abacus-minimal
 
+`abacus-minimal` aims to be concise and expressive in implementation of double entry book-keeping rules for corporate accounting.
+
+The project goals is to make a valid accounting engine in fewer lines of code.
+
+## Current version
+
 ![PyPI - Version](https://img.shields.io/pypi/v/abacus-minimal)
 
-`abacus-minimal` aims to be concise and expressive in implementation of double entry book-keeping rules for corporate accounting.
-The project goals is to make a valid accounting engine in fewer lines of code.
+`0.10.4` is a good candidate release for `1.0` -- I will be looking for
+comments and peer review on this version of `abacus-minimal` (reddit, HN, etc).
 
 ## Install
 
@@ -78,7 +84,7 @@ chart.name("ar", "Accounts receivable")
 ```
 
 `Chart` class is a `pydantic` model, which means it is easily converted to a JSON file.
-You can save a chart to or load a chart from a JSON file.
+You can save or load a chart from a file.
 
 ```python
 chart.save("chart.json")
@@ -109,15 +115,19 @@ opening_balances = {
 book = Book(chart, opening_balances)
 ```
 
-At this point the book is ready ro record entries. Each entry has a title, and directions to alter the accounts, called debits and credits.
-The sum of debits should match the sum of credits. The `Entry` class provies several ways to record the composition of an entry as shown below.
+At this point the book is ready ro record entries.
+Each entry has a title and directions to alter the accounts that are called debits and credits.
+The sum of debits should match the sum of credits.
+
+The `Entry` class provies several ways to record the composition of an entry as shown below:
 
 ```python
 from abacus import Entry
+
 entries = [
     Entry("Invoice with VAT").debit("ar", 6000).credit("sales", 5000).credit("vat_payable", 1000),
     Entry("Cash payment").debit("cash", 6000).credit("ar", 6000),
-    Entry("Cashback to client").double(debit="refunds", credit="cash", amount=500),
+    Entry("Cashback").double(debit="refunds", credit="cash", amount=500),
     Entry("Paid salaries").amount(1500).debit("salaries").credit("cash"),
 ]
 
@@ -217,6 +227,7 @@ The key assumptions are:
 - unique account names,
 - one level of accounts in chart,
 - no intermediate accounts,
+- no treatment of other comprehensive income,
 - no changes in equity and cash flow statements (at least yet).
 
 See [core.py](abacus/core.py) module docstring for more details.
@@ -273,15 +284,21 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 - [x] `book.balance_sheet` with `current_earnings` account when not closed
 - [x] dedupulicate `Book.open()`
 - [x] cleaner `BalancesDict`
-- [ ] reorder tests in `test_book.py`, use assert's from README
+- [x] reorder tests in `test_book.py`, use assert's from README
 
 ### New features
 
 - [ ] `Book.increase()` and `Book.decrease()` methods
-- [ ] `Entry.explain()` and `Entry.validate()` methods
+- [ ] `Entry.explain()` method
 
-## Using `abacus-minimal` elsewhere
+## Using `abacus-minimal` upstream
 
-`abacus-minimal` can run CLI tools (similar to `abacus-py`), online simulators (similar to [abacus-streamlit][ex]) and allow conversions between charts of accounts.
+`abacus-minimal` can run:
 
-[ex]: https://abacus.streamlit.app/
+- CLI tools similar to [abacus-py][cli],
+- online accounting simulators similar to [abacus-streamlit][app], and
+- may allow conversions between charts of accounts as requested in [#4][ras].
+
+[cli]: https://github.com/epogrebnyak/abacus
+[app]: https://abacus.streamlit.app/
+[ras]: https://github.com/epogrebnyak/abacus/issues/4

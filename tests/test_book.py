@@ -20,6 +20,18 @@ def test_balances_dict_load(tmp_path):
     assert d3["cash"] == Amount(50)
 
 
+def test_balances_dict_serialisation(toy_ledger):
+    content = BalancesDict(toy_ledger.balances).model_dump_json()
+    assert BalancesDict.model_validate_json(content) == dict(cash=10, equity=10, re=0)
+
+
+def test_balances_load_save(tmp_path):
+    path = str(tmp_path / "b.json")
+    b = BalancesDict(a=1)
+    b.save(path)
+    assert b == BalancesDict.load(path)
+
+
 @pytest.fixture
 def this_chart():
     chart = Chart(
@@ -37,7 +49,7 @@ def this_chart():
 def test_book_may_open_with_retained_earnings(this_chart):
     opening_balances = {"cash": 10_000, "equity": 8_000, "retained_earnings": 2_000}
     book = Book(this_chart, opening_balances)
-    assert book.ledger.balances == {
+    assert book.balances == {
         "cash": 10_000,
         "equity": 8_000,
         "sales": 0,
@@ -49,7 +61,7 @@ def test_book_may_open_with_retained_earnings(this_chart):
 
 
 @pytest.fixture
-def book_after_post(this_chart):
+def book_before_close(this_chart):
     entries = [
         Entry("Initial investment").amount(300).debit("cash").credit("equity"),
         Entry("Sold services with VAT").amount(125).debit("cash").credit("sales"),
@@ -61,57 +73,46 @@ def book_after_post(this_chart):
     return book
 
 
-def test_book_now_closed(book_after_post):
-    book_after_post.close()
-    assert book_after_post.is_closed() is True
+@pytest.fixture
+def book_after_close(book_before_close):
+    book_before_close.close()
+    return book_before_close
 
 
-def test_income_statement_before_close(book_after_post):
-    assert book_after_post.income_statement == IncomeStatement(
+def test_book_now_closed(book_after_close):
+    assert book_after_close.is_closed() is True
+
+
+def test_income_statement_before_close(book_before_close):
+    assert book_before_close.income_statement == IncomeStatement(
         income={"sales": 100}, expenses={"salaries": 50}
     )
 
 
-def test_income_statement_after_close(book_after_post):
-    book_after_post.close()
-    assert book_after_post.income_statement == IncomeStatement(
+def test_income_statement_after_close(book_after_close):
+    assert book_after_close.income_statement == IncomeStatement(
         income={"sales": 100}, expenses={"salaries": 50}
     )
 
 
-def test_balance_sheet_before_close(book_after_post):
-    assert book_after_post.balance_sheet == BalanceSheet(
+def test_balance_sheet_before_close(book_before_close):
+    assert book_before_close.balance_sheet == BalanceSheet(
         assets={"cash": 350},
         capital={"equity": 300, "current_earnings": 50, "retained_earnings": 0},
         liabilities={},
     )
 
 
-def test_balance_sheet_after_close(book_after_post):
-    book_after_post.close()
-    assert book_after_post.balance_sheet == BalanceSheet(
+def test_balance_sheet_after_close(book_after_close):
+    assert book_after_close.balance_sheet == BalanceSheet(
         assets={"cash": 350},
         capital={"equity": 300, "retained_earnings": 50},
         liabilities={},
     )
 
 
-@pytest.fixture
-def book_after_close(book_after_post):
-    book_after_post.close()
-    return book_after_post
-
-
-def test_balances_after_close(book_after_close):
-    assert book_after_close.ledger.balances == {
-        "cash": 350,
-        "equity": 300,
-        "retained_earnings": 50,
-    }
-
-
-def test_balances_before_close(book_after_post):
-    assert book_after_post.ledger.balances == {
+def test_balances_before_close(book_before_close):
+    assert book_before_close.ledger.balances == {
         "cash": 350,
         "equity": 300,
         "sales": 125,
@@ -119,6 +120,14 @@ def test_balances_before_close(book_after_post):
         "retained_earnings": 0,
         "current_earnings": 0,
         "refunds": 25,
+    }
+
+
+def test_balances_after_close(book_after_close):
+    assert book_after_close.ledger.balances == {
+        "cash": 350,
+        "equity": 300,
+        "retained_earnings": 50,
     }
 
 
@@ -151,18 +160,4 @@ def test_book_similar_to_readme(tmp_path):
         "equity": 10000,
         "retained_earnings": 5000,
     }
-    book.save(tmp_path, overwrite=True)
-
-
-@pytest.mark.report
-def test_balances_dict_serialisation(toy_ledger):
-    content = BalancesDict(toy_ledger.balances).model_dump_json()
-    assert BalancesDict.model_validate_json(content) == dict(cash=10, equity=10, re=0)
-
-
-@pytest.mark.report
-def test_balances_load_save(tmp_path):
-    path = str(tmp_path / "b.json")
-    b = BalancesDict(a=1)
-    b.save(path)
-    assert b == BalancesDict.load(path)
+    book.save(tmp_path, allow_overwrite=True)

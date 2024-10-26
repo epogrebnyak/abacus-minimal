@@ -70,7 +70,6 @@ class Book:
 
     def set_opening_entry_title(self, text: str = "Opening entry"):
         self.opening_entry_title = text
-        return self
 
     def __post_init__(self):
         self.ledger = Ledger.empty(self.chart.mapping)
@@ -78,16 +77,9 @@ class Book:
         self.set_opening_entry_title()
         if self.opening_balances is not None:
             self.opening_balances = BalancesDict.coerce(self.opening_balances)
-            self._post_opening()
-
-    def _post_opening(self):
-        raw_opening_entry = self.chart.mapping.opening_entry(self.opening_balances)
-        entry = Entry(title=self.opening_entry_title, data=raw_opening_entry)
-        self.ledger.post(entry)
-        self.store.entries.append(entry)
-
-    def is_closed(self):
-        return self.ledger.is_closed(chart_dict=self.chart.mapping)
+            raw_opening_entry = self.chart.mapping.opening_entry(self.opening_balances)
+            entry = Entry(title=self.opening_entry_title, data=raw_opening_entry)
+            self.post(entry)
 
     def post(self, entry: Entry):
         self.ledger.post(entry)
@@ -97,8 +89,11 @@ class Book:
         for entry in entries:
             self.post(entry)
 
+    def is_closed(self):
+        return self.ledger.is_closed(chart_dict=self.chart.mapping)
+
     def close(self, closing_entry_title: str = "Closing entry"):
-        """Close ledger"""
+        """Close ledger at period end."""
         # Persist income statement before income and expense accounts are deleted
         self._income_statement = self.income_statement
         # Make closing pairs
@@ -106,11 +101,12 @@ class Book:
         # Delete current earnings account from the chart
         last_pair = (self.chart.current_earnings, self.chart.current_earnings)
         closing_pairs.append(last_pair)
-        # Post closing entries
+        # Post closing entries to ledger
         entries = [
             Entry(closing_entry_title, data=me, is_closing=True)
             for me in self.ledger.close(closing_pairs)
         ]
+        # Store closing entries that were posted
         self.store.entries.extend(entries)
 
     @property
@@ -149,6 +145,7 @@ class Book:
         opening_balances = path.get_balances() if path.balances.exists() else {}
         return cls(chart, opening_balances)
 
-    def save(self, directory: str, overwrite: bool = False):
-        self.store.save(PathFinder(directory).store, overwrite)
-        self.balances.save(PathFinder(directory).balances, overwrite)
+    def save(self, directory: str, allow_overwrite: bool = False):
+        """Save entries and period end balances to the directory."""
+        self.store.save(PathFinder(directory).store, allow_overwrite)
+        self.balances.save(PathFinder(directory).balances, allow_overwrite)

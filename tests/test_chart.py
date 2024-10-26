@@ -105,3 +105,11 @@ def test_is_debit_account():
         retained_earnings="re", current_earnings="profit"
     ).mapping.offset("re", "drawing")
     assert chart_dict.is_debit_account("drawing") is True
+
+
+def test_cannot_overwrite_chart(tmp_path):
+    chart = Chart(retained_earnings="re", current_earnings="profit")
+    path = tmp_path / "chart.json"
+    chart.save(path)
+    with pytest.raises(FileExistsError):
+        chart.save(path)
