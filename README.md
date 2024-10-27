@@ -18,9 +18,9 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 
 ## Minimal example
 
-Start a company with initial shareholder investment (1000),
-pay office rent (100) and salaries (350), and accept cash for provided services (400).
-The company incurs a loss of 50. We display balance sheet and income statement.
+> Start a company with initial shareholder investment (1000),
+> pay office rent (100) and salaries (350), and accept cash for provided services (400).
+> Demostrate the company incurs a loss of 50.
 
 ```python
 from abacus import Book, Chart, Entry
