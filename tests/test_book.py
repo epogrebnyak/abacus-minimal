@@ -48,7 +48,8 @@ def this_chart():
 
 def test_book_may_open_with_retained_earnings(this_chart):
     opening_balances = {"cash": 10_000, "equity": 8_000, "retained_earnings": 2_000}
-    book = Book(this_chart, opening_balances)
+    book = Book(this_chart)
+    book.open(opening_balances)
     assert book.balances == {
         "cash": 10_000,
         "equity": 8_000,

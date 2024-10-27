@@ -13,16 +13,19 @@ from abacus.entry import Entry
 
 
 class BalancesDict(UserDict[str, Amount], SaveLoadMixin):
+    """Dictionary of account names and balances.
+    Mimics a pydantic model, so that SaveLoadMixin can apply."""
+
     def model_dump_json(self, indent=2) -> str:
         return json.dumps(self.data, default=str, indent=indent)
 
-    @classmethod
-    def coerce(cls, d: dict[str, int | float | str]):
-        return cls({k: Amount(v) for k, v in d.items()})
+    @staticmethod
+    def coerce(d: Mapping[str, int | float | str | Amount]):
+        return {k: Amount(v) for k, v in d.items()}
 
     @classmethod
     def model_validate_json(cls, s: str) -> "BalancesDict":
-        return cls.coerce(json.loads(s))
+        return cls(cls.coerce(json.loads(s)))
 
 
 class EntryStore(BaseModel, SaveLoadMixin):
@@ -31,6 +34,8 @@ class EntryStore(BaseModel, SaveLoadMixin):
 
 @dataclass
 class PathFinder:
+    """Deault paths for chart, store and balances files in a directory."""
+
     directory: str
     _chart: str = "chart.json"
     _store: str = "store.json"
@@ -68,18 +73,19 @@ class Book:
     opening_balances: Mapping[str, str | int | float | Amount] | None = None
     store: EntryStore = field(default_factory=EntryStore)
 
-    def set_opening_entry_title(self, text: str = "Opening entry"):
-        self.opening_entry_title = text
+    def open(
+        self,
+        opening_balances: Mapping[str, str | int | float | Amount],
+        opening_entry_title: str = "Opening entry",
+    ):
+        _opening_balances = BalancesDict.coerce(opening_balances)
+        raw_opening_entry = self.chart.mapping.opening_entry(_opening_balances)
+        entry = Entry(title=opening_entry_title, data=raw_opening_entry)
+        self.post(entry)
 
     def __post_init__(self):
         self.ledger = Ledger.empty(self.chart.mapping)
         self._income_statement = None
-        self.set_opening_entry_title()
-        if self.opening_balances is not None:
-            self.opening_balances = BalancesDict.coerce(self.opening_balances)
-            raw_opening_entry = self.chart.mapping.opening_entry(self.opening_balances)
-            entry = Entry(title=self.opening_entry_title, data=raw_opening_entry)
-            self.post(entry)
 
     def post(self, entry: Entry):
         self.ledger.post(entry)
@@ -142,8 +148,11 @@ class Book:
             chart = Chart.load(path.chart)
         except FileNotFoundError:
             raise AbacusError(f"Chart file not found: {path.chart}")
-        opening_balances = path.get_balances() if path.balances.exists() else {}
-        return cls(chart, opening_balances)
+        book = cls(chart)
+        if path.balances.exists():
+            opening_balances = path.get_balances()
+            book.open(opening_balances)
+        return book
 
     def save(self, directory: str, allow_overwrite: bool = False):
         """Save entries and period end balances to the directory."""

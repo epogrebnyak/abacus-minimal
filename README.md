@@ -19,8 +19,35 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 
 ## Minimal example
 
-```python
+In minimal example we start a company with initial shareholder investment (1000),
+pay rent (100) and salaries (350), and accept cash for provided services (400).
+At the end of reporting period we get company balance sheet and income statement.
 
+```python
+from abacus import Book, Chart, Entry
+
+chart = Chart(
+    retained_earnings="retained_earnings",
+    current_earnings="current_earnings",
+    assets=["cash"],
+    capital=["equity"],
+    income=["services"],
+    expenses=["salaries", "rent"],
+)
+book = Book(chart)
+entries = [
+    Entry("Initial shareholder investment").debit("cash", 1000).credit("equity", 1000),
+    Entry("Paid office rent").debit("rent", 100).credit("cash", 100),
+    Entry("Accept cash for services").debit("cash", 400).credit("services", 400),
+    Entry("Paid salaries in cash").debit("salaries", 350).credit("cash", 350),
+]
+book.post_many(entries)
+book.close()
+print(book.income_statement)
+print(book.balance_sheet)
+# Some checks
+assert book.income_statement.net_earnings == -50
+assert book.balances == {'cash': 950, 'equity': 1000, 'retained_earnings': -50}
 ```
 
 ## Accounting workflow
@@ -40,9 +67,9 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 
 In this code example we will programmatically run
 the accounting workflow within one reporting period
-using more features than the starting example above.
+using more features than in the first example above.
 
-The complete code example is in [readme.py](examples/readme.py).
+The complete code is in [readme.py](examples/readme.py).
 
 <details><summary>What are the code example inputs and outputs?</summary>
 
@@ -96,31 +123,36 @@ chart.save("chart.json")
 chart = Chart.load("chart.json")
 ```
 
-### 2. Post entries to ledger
+### 2. Start ledger
 
 Steps involved:
 
-- create a data structure that represents state of accounts (ledger),
+- create a data structure that represents state of accounts ('book', or ledger),
 - record account starting balances from the previous period,
-- record entries that represent business transactions,
-- show state of ledger (trial balance or account balances) at any time.
-
-Trial balance and account balances can be displayed at any time.
 
 Let's create a book with opening balances known from previous period:
 
 ```python
 from abacus import Book
 
+book = Book(chart)
 opening_balances = {
     "cash": 10_000,
     "equity": 8_000,
     "retained_earnings": 2_000
     }
-book = Book(chart, opening_balances)
+book.open(opening_balances)
 ```
 
 At this point the book is ready ro record entries.
+
+### 3. Post entries to ledger
+
+Steps involved:
+
+- record entries that represent business transactions,
+- show state of ledger (trial balance or account balances) at any time.
+
 Each entry has a title and directions to alter the accounts that are called debits and credits.
 The sum of debits should match the sum of credits.
 
@@ -161,7 +193,7 @@ assert book.balances == {
 }
 ```
 
-### 3. Closing accounts
+### 4. Closing accounts
 
 Closing accounts at period end involves:
 
@@ -170,7 +202,7 @@ Closing accounts at period end involves:
 
 Code to close accounts shown in the section below.
 
-### 4. Reporting financial statements
+### 5. Reporting financial statements
 
 Financial reports are typically dslayed after account closing,
 but can be shown before closing as well.
@@ -209,11 +241,11 @@ assert book.balances == {
 }
 ```
 
-### 5. Saving data for the next period
+### 6. Saving data for the next period
 
 It makes sense to save the entries and period end account balances
 to JSON files. You will not be able to save if files already exist,
-pick a different folder or filename in that case.
+in that case pick a different folder or filename.
 
 ```python
 # Save JSON files

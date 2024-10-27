@@ -1,5 +1,6 @@
 # In minimal example we start a company with initial shareholder investment (1000),
 # pay rent (100) and salaries (350), and accept cash for provided services (400).
+# After end of reporting period we get balance sheet and income statement.
 
 from abacus import Book, Chart, Entry
 
@@ -24,4 +25,4 @@ print(book.income_statement)
 print(book.balance_sheet)
 # Some checks
 assert book.income_statement.net_earnings == -50
-assert book.balances == {'cash': 950, 'equity': 1000, 'retained_earnings': -50}
+assert book.balances == {"cash": 950, "equity": 1000, "retained_earnings": -50}
