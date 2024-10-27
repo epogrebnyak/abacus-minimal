@@ -20,6 +20,7 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 ## Minimal example
 
 ```python
+
 ```
 
 ## Accounting workflow
@@ -35,13 +36,16 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 - show financial reports,
 - save account balances data for the next reporting period.
 
-## Extended code example
+## Extended example
 
 In this code example we will programmatically run
 the accounting workflow within one reporting period
-using `abacus-minimal`.
+using more features than the starting example above.
 
-<details><summary>What are the inputs and outputs?</summary>
+The complete code example is in [readme.py](examples/readme.py).
+
+<details><summary>What are the code example inputs and outputs?</summary>
+
 The inputs to this code are:
 
 - the chart of accounts,
@@ -55,9 +59,8 @@ The resulting outputs are:
 - income statement.
 
 There are no reconciliations, adjustments and post-close entries in this example.
-</details>
 
-The complete code example is in [readme.py](examples/readme.py).
+</details>
 
 ### 1. Create chart of accounts
 
