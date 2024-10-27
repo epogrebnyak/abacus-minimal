@@ -2,8 +2,7 @@
 
 ![PyPI - Version](https://img.shields.io/pypi/v/abacus-minimal)
 
-`abacus-minimal` is an accounting logic engine that runs with fewer lines of code.
-The project aims to be concise, correct and expressive in implementation of double entry book-keeping rules.
+`abacus-minimal` is an accounting logic engine that aims to be concise, correct and expressive in implementation of double entry book-keeping rules.
 
 ## Install
 
@@ -19,9 +18,9 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 
 ## Minimal example
 
-In minimal example we start a company with initial shareholder investment (1000),
-pay rent (100) and salaries (350), and accept cash for provided services (400).
-The company ends period with a loss of 50. We display balance sheet and income statement.
+Start a company with initial shareholder investment (1000),
+pay office rent (100) and salaries (350), and accept cash for provided services (400).
+The company incurs a loss of 50. We display balance sheet and income statement.
 
 ```python
 from abacus import Book, Chart, Entry
@@ -67,7 +66,13 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 
 In this code example we will programmatically run
 the accounting workflow within one reporting period
-using more features than in the first code snippet above.
+using more features including:
+
+- opening entry with account balances at start of period,
+- contra accounts specification,
+- various types of syntax for an entry,
+- multiple entries,
+- saving and loading data to JSON files.
 
 The complete code is in [readme.py](examples/readme.py).
 
@@ -77,7 +82,7 @@ Steps involved:
 
 - specify names of the current earnings and retained earnings accounts,
 - add account names for assets, capital, liabilities, income and expenses,
-- add contra accounts (in example below `refunds` is a contra account to `sales`).
+- add contra accounts (e.g. `refunds` is a contra account to `sales`).
 
 Code example:
 
@@ -126,19 +131,16 @@ opening_balances = {
 book.open(opening_balances)
 ```
 
-At this point the book is ready ro record entries.
+At this point the book is ready to record new entries.
 
 ### 3. Post entries to ledger
 
 Steps involved:
 
 - record entries that represent business transactions,
-- show state of ledger (trial balance or account balances) at any time.
+- show state of ledger (as trial balance or as account balances) at any time.
 
-Each entry has a title and directions to alter the accounts that are called debits and credits.
-The sum of debits should match the sum of credits.
-
-The `Entry` class provies several ways to record the composition of an entry as shown below:
+Each entry has a title and directions to alter the accounts that are called debits and credits. The sum of debits should match the sum of credits for a valid entry. The `Entry` class provides several ways to record the composition of an entry as shown below.
 
 ```python
 from abacus import Entry
@@ -175,31 +177,29 @@ assert book.balances == {
 }
 ```
 
-There are no reconciliations, adjustments and post-close entries in this example.
+Note: there are no reconciliations, adjustments and post-close entries in this example.
 
 ### 4. Closing accounts
 
 Closing accounts at period end involves:
 
-- closing contra accounts to income and expense accounts, and
+- closing contra accounts related to income and expense accounts, and
 - closing income and expense accounts to retained earnings.
 
-Code to close accounts shown in the section below.
+See section below for code for closing accounts.
+
+Note: account closing was a rather hard part of `abacus-minimal` code that I had to refactor several times. I ended up having both current earnings and retained earnings as mandatory fields in chart and for the implementation from the chart I issue pairs of accounts that need transfer the balances from one another (e.g. ‘refunds’ to ‘sales’, and then ‘sales’ to ‘current_earnings’ or ‘retained_earnings’), then post actual entries on a ledger using these pairs. I omitted intermediate accounts like a separate income summary account from this version of `abacus-minimal`.
 
 ### 5. Reporting financial statements
 
-Financial reports are typically dslayed after account closing,
-but can be shown before closing as well.
+Financial reports are typically displayed after account closing, but there are proxy income statement and balance sheets reports that can be shown before closing as well.
 
 **The income statement** will be the same before and after closing.
 
-**The balance sheet** before closing the will contain current earnings
-and retained earnings from previous periods.
-After closing the current earnings account will be transfered
-to retained earnings account, the current earnings account
-is removed from the ledger and does not appear in balance sheet.
+**The balance sheet** before closing the will contain current earnings account and retained earnings from previous periods.
+After closing the current earnings account will be transferred to the retained earnings account and removed from the ledger and will not appear in balance sheet.
 
-Expect to see a lot of dictionary-like data structures in code ouput below:
+Expect to see a lot of dictionary-like data structures in code output below:
 
 ```python
 print("=== Before closing ===")
@@ -227,9 +227,9 @@ assert book.balances == {
 
 ### 6. Saving data for the next period
 
-It makes sense to save the entries and period end account balances
-to JSON files. You will not be able to save if files already exist,
-in that case pick a different folder or filename.
+You can save the list of entries and period end account balances
+to JSON files, unless the files already exist. In that case you will need extra
+precaution – for example save to a different folder or under a different filename.
 
 ```python
 # Save JSON files
@@ -237,33 +237,36 @@ book.store.save("./entries.json")
 book.balances.save("./end_balances.json")
 ```
 
-## Limitations
+## Architecture
 
-Several assumptions and simplifications are used to make `abacus-minimal`
-easier to develop and reason about.
+### Core
 
-The key assumptions are:
+There is a small core of accounting engine that consists of `ChartDict` that maps account names to their types, a `Ledger` class that maps account names to debit normal and credit normal T-accounts and `MultipleEntry` class that can represent a double or a multiple entry. Ledger is created from `ChartDict`, incoming entries change state of ledger. There is also a way to issue closing entries at accounting period end. Trial balance, account balances, balance sheet and income statement are the ways to reflect the state of ledger that work before and after closing.
+
+### Limitations
+
+Several assumptions and simplifications are used to make `abacus-minimal` easier to develop and reason about. The key assumptions are:
 
 - one currency,
-- unique account names,
-- one level of accounts in chart,
+- globally unique account names,
+- one level of accounts in chart and no account aggregation for reports,
 - no intermediate accounts,
 - no treatment of other comprehensive income,
 - no changes in equity and cash flow statements (at least yet).
 
 See [core.py](abacus/core.py) module docstring for more details.
 
+### User interface
+
+As a user you do not have to interact with the core directly, there are `Chart`, `Entry` and `Book` classes. The `Book` class holds together a chart, store of entries, and a ledger and allows closing at period end, creating reports and saving and loading data from JSON.
+
 ## Alternatives
 
-`abacus-minimal` takes inspiration from the following great projects:
+`abacus-minimal` takes a lot of inspiration from the following great projects:
 
-- [hledger](https://github.com/simonmichael/hledger) and [plain text accounting tools](https://plaintextaccounting.org/),
-- [medici](https://github.com/flash-oss/medici) ledger in JavaScript using Mongo database,
-- [microbooks](https://microbooks.io/) API and [python-accounting](https://github.com/ekmungai/python-accounting).
-
-Plain text accounting tools are usually for personal finance while `abacus-minimal` targets accounting for a corporate entity.
-`medici` is a high performance ledger, but does not enforce accounting rules on data entry.
-`python-accounting` is a production-grade project, tightly coupled to a database.
+- [ledger](https://ledger-cli.org/), [hledger](https://github.com/simonmichael/hledger) and [plain text accounting tools](https://plaintextaccounting.org/),
+- [medici](https://github.com/flash-oss/medici) is a high performance ledger in JavaScript using Mongo database,
+- [microbooks](https://microbooks.io/) API and [python-accounting](https://github.com/ekmungai/python-accounting), a production-grade project, tightly coupled to a database.
 
 ## Accounting knowledge
 
@@ -298,27 +301,15 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 ## Roadmap
 
-### For cleanup
+### Using `abacus-minimal` upstream
 
-- [x] `Chart.current_earnings` attribute
-- [x] `book.income_statement` that works before and after period close
-- [x] `book.balance_sheet` with `current_earnings` account when not closed
-- [x] dedupulicate `Book.open()`
-- [x] cleaner `BalancesDict`
-- [x] reorder tests in `test_book.py`, use assert's from README
+- [ ] implanting as a dependency to [abacus-py][cli] and [abacus-streamlit][app],
+- [ ] allow conversions between charts of accounts as requested in [#4][ras].
 
 ### New features
 
 - [ ] `Book.increase()` and `Book.decrease()` methods
 - [ ] `Entry.explain()` method
-
-## Using `abacus-minimal` upstream
-
-`abacus-minimal` can run:
-
-- CLI tools similar to [abacus-py][cli],
-- online accounting simulators similar to [abacus-streamlit][app], and
-- may allow conversions between charts of accounts as requested in [#4][ras].
 
 [cli]: https://github.com/epogrebnyak/abacus
 [app]: https://abacus.streamlit.app/
