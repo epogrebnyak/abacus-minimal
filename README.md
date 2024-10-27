@@ -156,6 +156,8 @@ entries = [
 book.post_many(entries)
 ```
 
+### 4. Inspecting ledger
+
 After posting entries you can inspect the trial balance or account balances:
 
 ```python
@@ -179,7 +181,7 @@ assert book.balances == {
 
 Note: there are no reconciliations, adjustments and post-close entries in this example.
 
-### 4. Closing accounts
+### 5. Closing accounts
 
 Closing accounts at period end involves:
 
@@ -192,7 +194,7 @@ Note: account closing was a rather hard part of `abacus-minimal` code that I had
 (e.g. 'refunds' to 'sales', and then 'sales' to 'current_earnings' or 'retained_earnings'),
 then post actual closing entries to a ledger.
 
-### 5. Reporting financial statements
+### 6. Reporting financial statements
 
 Financial reports are typically displayed after account closing, but there are proxy income statement and balance sheets reports that can be shown before closing as well.
 
@@ -229,7 +231,7 @@ assert book.balances == {
 }
 ```
 
-### 6. Saving data for the next period
+### 7. Saving data for the next period
 
 You can save the list of entries and period end account balances
 to JSON files, unless the files already exist. In that case you will need extra
