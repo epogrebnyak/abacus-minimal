@@ -301,8 +301,7 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 ## Changelog
 
-- `0.11.0` for this release version `0.10.5` is candidate.
-- `0.10.4` (2024-10-27) Handles income statement and balances sheet before and after close.
+- `0.10.5` (2024-10-27) Handles income statement and balances sheet before and after close.
 - `0.10.0` (2024-10-24) Separates core, chart, entry and book code and tests.
 
 ## Roadmap
