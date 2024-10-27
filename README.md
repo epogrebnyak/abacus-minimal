@@ -21,7 +21,7 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 
 In minimal example we start a company with initial shareholder investment (1000),
 pay rent (100) and salaries (350), and accept cash for provided services (400).
-At the end of reporting period we get company balance sheet and income statement.
+The company ends period with a loss of 50. We display balance sheet and income statement.
 
 ```python
 from abacus import Book, Chart, Entry
@@ -36,10 +36,10 @@ chart = Chart(
 )
 book = Book(chart)
 entries = [
-    Entry("Initial shareholder investment").debit("cash", 1000).credit("equity", 1000),
-    Entry("Paid office rent").debit("rent", 100).credit("cash", 100),
-    Entry("Accept cash for services").debit("cash", 400).credit("services", 400),
-    Entry("Paid salaries in cash").debit("salaries", 350).credit("cash", 350),
+    Entry("Initial shareholder investment").amount(1000).debit("cash").credit("equity"),
+    Entry("Paid office rent").amount(100).debit("rent").credit("cash"),
+    Entry("Accepted cash for services").amount(400).debit("cash").credit("services"),
+    Entry("Paid salaries in cash").amount(350).debit("salaries").credit("cash"),
 ]
 book.post_many(entries)
 book.close()
