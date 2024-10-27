@@ -1,29 +1,27 @@
-"""Core double-entry accounting objects.
+"""Core accounting objects.
 
 This module contains classes for:
 
-  - chart of accounts (Chart, ChartDict)
-  - general ledger (Ledger)
-  - accounting entry (MultipleEntry, Entry)
-  - account summaries (TrialBalance, BalancesDict)
-  - reports (IncomeStatement, BalanceSheet)
+  - chart of accounts (ChartDict),
+  - general ledger (Ledger),
+  - accounting entry (MultipleEntry),
+  - summaries (TrialBalance) and financial reports (IncomeStatement, BalanceSheet).
 
 Accounting workflow:
 
-1. create chart of accounts and set retained earnings account
+1. create chart of accounts and set current and retained earnings accounts
 2. create ledger from chart with opening balances
 3. post entries to ledger
 4. show trial balance at any time
-5. show proxy income statement if necessary
+5. show proxy income statement and balance sheet if necessary
 6. close ledger at accounting period end and make income statement
 7. make post-close entries and make balance sheet
 8. save permanent account balances for next period
 
 Accounting conventions:
 
-- regular accounts of five types (asset, liability, capital, income, expense)
-- contra accounts to regular accounts are possible (eg depreciation, discounts, etc.)
-- account balance cannot go negative
+- regular accounts of five types (asset, liability, capital, income, expense),
+- contra accounts to regular accounts are possible (eg depreciation, discounts, etc.).
 
 Assumptions and simplifications (some may be relaxed in future versions):
 
@@ -35,9 +33,9 @@ Assumptions and simplifications (some may be relaxed in future versions):
 - other comprehensive income account (OCIA) not calculated
 - no journals, entries are posted to ledger directly
 - an entry can touch any accounts
-- entry amount can be positive or negative
+- entry amount can be positive, negative or even zero
 - net earnings are income less expenses, no gross profit or earnings before tax calculated
-- period end closing will transfer net earnings to retained earnings
+- period end closing will transfer current earnings to retained earnings
 - no cash flow statement
 - no statement of changes in equity
 - no date or any transaction metadata recorded
