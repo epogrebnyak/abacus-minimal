@@ -188,7 +188,9 @@ Closing accounts at period end involves:
 
 See section below for code for closing accounts.
 
-Note: account closing was a rather hard part of `abacus-minimal` code that I had to refactor several times. I ended up having both current earnings and retained earnings as mandatory fields in chart and for the implementation from the chart I issue pairs of accounts that need transfer the balances from one another (e.g. ‘refunds’ to ‘sales’, and then ‘sales’ to ‘current_earnings’ or ‘retained_earnings’), then post actual entries on a ledger using these pairs. I omitted intermediate accounts like a separate income summary account from this version of `abacus-minimal`.
+Note: account closing was a rather hard part of `abacus-minimal` code that I had to refactor several times. I ended up having both current earnings and retained earnings as mandatory fields in chart. From the chart I issue pairs of accounts that will transfer the balances from one another
+(e.g. 'refunds' to 'sales', and then 'sales' to 'current_earnings' or 'retained_earnings'),
+then post actual closing entries to a ledger.
 
 ### 5. Reporting financial statements
 
@@ -196,8 +198,10 @@ Financial reports are typically displayed after account closing, but there are p
 
 **The income statement** will be the same before and after closing.
 
-**The balance sheet** before closing the will contain current earnings account and retained earnings from previous periods.
-After closing the current earnings account will be transferred to the retained earnings account and removed from the ledger and will not appear in balance sheet.
+**The balance sheet** before closing the will contain current earnings account
+and retained earnings from previous periods.
+After closing the current earnings account will be transferred to the retained earnings account
+and removed from the ledger and will not appear in balance sheet.
 
 Expect to see a lot of dictionary-like data structures in code output below:
 
@@ -295,15 +299,15 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 ## Changelog
 
-- `0.11.0` for this release version `0.10.4` is candidate.
+- `0.11.0` for this release version `0.10.5` is candidate.
 - `0.10.4` (2024-10-27) Handles income statement and balances sheet before and after close.
 - `0.10.0` (2024-10-24) Separates core, chart, entry and book code and tests.
 
 ## Roadmap
 
-### Using `abacus-minimal` upstream
+### Using upstream
 
-- [ ] implanting as a dependency to [abacus-py][cli] and [abacus-streamlit][app],
+- [ ] implanting `abacus-minimal` as a dependency to [abacus-py][cli] and [abacus-streamlit][app],
 - [ ] allow conversions between charts of accounts as requested in [#4][ras].
 
 ### New features
