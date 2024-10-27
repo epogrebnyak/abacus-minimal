@@ -63,31 +63,13 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 - show financial reports,
 - save account balances data for the next reporting period.
 
-## Extended example
+## End-to-end example
 
 In this code example we will programmatically run
 the accounting workflow within one reporting period
-using more features than in the first example above.
+using more features than in the first code snippet above.
 
 The complete code is in [readme.py](examples/readme.py).
-
-<details><summary>What are the code example inputs and outputs?</summary>
-
-The inputs to this code are:
-
-- the chart of accounts,
-- account opening balances from previous period,
-- accounting entries that reflect business transactions within the reporting period.
-
-The resulting outputs are:
-
-- account balances at period end,
-- balance sheet,
-- income statement.
-
-There are no reconciliations, adjustments and post-close entries in this example.
-
-</details>
 
 ### 1. Create chart of accounts
 
@@ -192,6 +174,8 @@ assert book.balances == {
     "retained_earnings": 2000,
 }
 ```
+
+There are no reconciliations, adjustments and post-close entries in this example.
 
 ### 4. Closing accounts
 
