@@ -1,15 +1,9 @@
 # abacus-minimal
 
-`abacus-minimal` aims to be concise and expressive in implementation of double entry book-keeping rules for corporate accounting.
-
-The project goals is to make a valid accounting engine in fewer lines of code.
-
-## Current version
-
 ![PyPI - Version](https://img.shields.io/pypi/v/abacus-minimal)
 
-`0.10.4` is a good candidate release for `1.0` -- I will be looking for
-comments and peer review on this version of `abacus-minimal` (reddit, HN, etc).
+`abacus-minimal` is an accounting logic engine that runs with fewer lines of code.
+The project aims to be concise, correct and expressive in implementation of double entry book-keeping rules.
 
 ## Install
 
@@ -23,7 +17,12 @@ Latest:
 pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 ```
 
-## Workflow
+## Minimal example
+
+```python
+```
+
+## Accounting workflow
 
 The steps for using `abacus-minimal` follow the steps of a typical accounting cycle:
 
@@ -32,15 +31,17 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 - post entries that reflect business transactions,
 - post reconciliation and adjustment entries,
 - close accounts at reporting period end,
+- make post-close entries,
 - show financial reports,
-- save the data for the next reporting period.
+- save account balances data for the next reporting period.
 
-## Code example
+## Extended code example
 
 In this code example we will programmatically run
 the accounting workflow within one reporting period
 using `abacus-minimal`.
 
+<details><summary>What are the inputs and outputs?</summary>
 The inputs to this code are:
 
 - the chart of accounts,
@@ -54,6 +55,7 @@ The resulting outputs are:
 - income statement.
 
 There are no reconciliations, adjustments and post-close entries in this example.
+</details>
 
 The complete code example is in [readme.py](examples/readme.py).
 
