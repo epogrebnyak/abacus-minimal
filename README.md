@@ -114,7 +114,7 @@ chart = Chart.load("chart.json")
 
 Steps involved:
 
-- create a data structure that represents state of accounts ('book', or ledger),
+- create a data structure that represents state of accounts (a 'book'),
 - record account starting balances from the previous period,
 
 Let's create a book with opening balances known from previous period:
@@ -190,9 +190,8 @@ Closing accounts at period end involves:
 
 See section below for code for closing accounts.
 
-Note: account closing was a rather hard part of `abacus-minimal` code that I had to refactor several times. I ended up having both current earnings and retained earnings as mandatory fields in chart. From the chart I issue pairs of accounts that will transfer the balances from one another
-(e.g. 'refunds' to 'sales', and then 'sales' to 'current_earnings' or 'retained_earnings'),
-then post actual closing entries to a ledger.
+Note: account closing was a rather hard part of `abacus-minimal` code that I had to refactor several times. Both current earnings and retained earningsa are mandatory fields in chart. From the chart one can issue pairs of accounts thatwindicate direction of transfer of balances from one to another
+(e.g. 'refunds' to 'sales', and then 'sales' to 'current_earnings' or 'retained_earnings'). Pairs allow to post actual closing entries to a ledger.
 
 ### 6. Reporting financial statements
 
