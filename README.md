@@ -156,6 +156,8 @@ entries = [
 book.post_many(entries)
 ```
 
+Note: there are no reconciliations, adjustments and post-close entries in this example.
+
 ### 4. Inspecting ledger
 
 After posting entries you can inspect the trial balance or account balances:
@@ -178,8 +180,6 @@ assert book.balances == {
     "retained_earnings": 2000,
 }
 ```
-
-Note: there are no reconciliations, adjustments and post-close entries in this example.
 
 ### 5. Closing accounts
 
