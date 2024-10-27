@@ -1,6 +1,6 @@
 # abacus-minimal
 
-![PyPI - Version](https://img.shields.io/pypi/v/abacus-minimal)
+![PyPI - Version](https://img.shields.io/pypi/v/abacus-minimal?color=blue)
 
 `abacus-minimal` is an accounting logic engine that aims to be concise, correct and expressive in implementation of double entry book-keeping rules.
 
