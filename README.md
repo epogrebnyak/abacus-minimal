@@ -18,9 +18,9 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 
 ## Minimal example
 
-> Start a company with initial shareholder investment (1000),
-> pay office rent (100) and salaries (350), and accept cash for provided services (400).
-> Demostrate the company incurs a loss of 50.
+> Start a company with initial shareholder investment (500),
+> acquire and then sell stock of merchandise (worth 200 sold for 400)
+> and pay staff salaries (150). Demonstrate period earnings are 50.
 
 ```python
 from abacus import Book, Chart, Entry
@@ -28,25 +28,26 @@ from abacus import Book, Chart, Entry
 chart = Chart(
     retained_earnings="retained_earnings",
     current_earnings="current_earnings",
-    assets=["cash"],
+    assets=["cash", "inventory"],
     capital=["equity"],
-    income=["services"],
-    expenses=["salaries", "rent"],
+    income=["sales"],
+    expenses=["salaries", "cogs"],
 )
 book = Book(chart)
 entries = [
-    Entry("Initial shareholder investment").amount(1000).debit("cash").credit("equity"),
-    Entry("Paid office rent").amount(100).debit("rent").credit("cash"),
-    Entry("Accepted cash for services").amount(400).debit("cash").credit("services"),
-    Entry("Paid salaries in cash").amount(350).debit("salaries").credit("cash"),
+    Entry("Initial shareholder funds").debit("cash", 500).credit("equity", 500),
+    Entry("Acquired goods").debit("inventory", 200).credit("cash", 200),
+    Entry("Accepted payment for goods").debit("cash", 400).credit("sales", 400),
+    Entry("Shipped goods").debit("cogs", 200).credit("inventory", 200),
+    Entry("Paid salaries").debit("salaries", 150).credit("cash", 150),
 ]
 book.post_many(entries)
 book.close()
 print(book.income_statement)
 print(book.balance_sheet)
 # Some checks
-assert book.income_statement.net_earnings == -50
-assert book.balances == {'cash': 950, 'equity': 1000, 'retained_earnings': -50}
+assert book.income_statement.net_earnings == 50
+assert book.balances == {"cash": 550, "inventory": 0, "equity": 500, "retained_earnings": 50}
 ```
 
 ## Accounting workflow
@@ -55,7 +56,8 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 
 - create a chart of accounts,
 - open ledger for the current reporting period,
-- post entries that reflect business transactions,
+- post account balances for the previous period,
+- post entries that reflect business transactions within the period,
 - post reconciliation and adjustment entries,
 - close accounts at reporting period end,
 - make post-close entries,
@@ -64,14 +66,14 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 
 ## End-to-end example
 
-In this code example we will programmatically run
+In this example we will programmatically run
 the accounting workflow within one reporting period
-using more features including:
+using more `abacus-minimal` features including:
 
-- opening entry with account balances at start of period,
 - contra accounts specification,
-- various types of syntax for an entry,
-- multiple entries,
+- opening ledger with account balances at the start of reporting period,
+- posting multiple entries and using various types of syntax for an entry,
+- showing proxy income statement and balance sheet before closing,
 - saving and loading data to JSON files.
 
 The complete code is in [readme.py](examples/readme.py).
@@ -114,8 +116,8 @@ chart = Chart.load("chart.json")
 
 Steps involved:
 
-- create a data structure that represents state of accounts ('book', or ledger),
-- record account starting balances from the previous period,
+- create a data structure that represents state of accounts,
+- record account starting balances from the previous period.
 
 Let's create a book with opening balances known from previous period:
 
@@ -140,7 +142,9 @@ Steps involved:
 - record entries that represent business transactions,
 - show state of ledger (as trial balance or as account balances) at any time.
 
-Each entry has a title and directions to alter the accounts that are called debits and credits. The sum of debits should match the sum of credits for a valid entry. The `Entry` class provides several ways to record the composition of an entry as shown below.
+Each entry has a title and directions to alter the accounts that are called debits and credits.
+The sum of debits should match the sum of credits for a valid entry.
+The `Entry` class provides several ways to record the composition of an entry as shown below.
 
 ```python
 from abacus import Entry
@@ -190,20 +194,19 @@ Closing accounts at period end involves:
 
 See section below for code for closing accounts.
 
-Note: account closing was a rather hard part of `abacus-minimal` code that I had to refactor several times. I ended up having both current earnings and retained earnings as mandatory fields in chart. From the chart I issue pairs of accounts that will transfer the balances from one another
-(e.g. 'refunds' to 'sales', and then 'sales' to 'current_earnings' or 'retained_earnings'),
-then post actual closing entries to a ledger.
+Note: account closing was a rather hard part of `abacus-minimal` code that I had to refactor several times.
 
 ### 6. Reporting financial statements
 
-Financial reports are typically displayed after account closing, but there are proxy income statement and balance sheets reports that can be shown before closing as well.
+Financial reports are typically displayed after account closing,
+but proxy income statement and proxy balance sheet can be shown before closing as well.
 
 **The income statement** will be the same before and after closing.
 
-**The balance sheet** before closing the will contain current earnings account
+**The balance sheet before closing** the will contain current earnings account
 and retained earnings from previous periods.
-After closing the current earnings account will be transferred to the retained earnings account
-and removed from the ledger and will not appear in balance sheet.
+**After closing** the current earnings account will be transferred to the retained earnings account
+and removed from the ledger, it will not appear in the balance sheet.
 
 Expect to see a lot of dictionary-like data structures in code output below:
 
@@ -233,9 +236,9 @@ assert book.balances == {
 
 ### 7. Saving data for the next period
 
-You can save the list of entries and period end account balances
-to JSON files, unless the files already exist. In that case you will need extra
-precaution – for example save to a different folder or under a different filename.
+You can save the list of entries and the period end account balances
+to JSON files, unless these files already exist. In that case you will need extra
+precaution – for example, save to a different folder or under a different filename.
 
 ```python
 # Save JSON files
@@ -245,33 +248,44 @@ book.balances.save("./end_balances.json")
 
 ## Architecture
 
-### Core
+### Core library
 
-There is a small core of accounting engine that consists of `ChartDict` that maps account names to their types, a `Ledger` class that maps account names to debit normal and credit normal T-accounts and `MultipleEntry` class that can represent a double or a multiple entry. Ledger is created from `ChartDict`, incoming entries change state of ledger. There is also a way to issue closing entries at accounting period end. Trial balance, account balances, balance sheet and income statement are the ways to reflect the state of ledger that work before and after closing.
+There is a small core library that consists of:
+
+- `ChartDict` that maps account names to their types,
+- a `Ledger` class that maps account names to debit normal and credit normal T-accounts, and
+- `MultipleEntry` class that represents a double or a multiple entry.
+
+`Ledger` is created from `ChartDict` and incoming entries change the state of ledger.
+`ChartDict` allows to issue closing entries at accounting period end.
+Trial balance, account balances, balance sheet and income statement reports
+reflect the state of ledger.
 
 ### Limitations
 
-Several assumptions and simplifications are used to make `abacus-minimal` easier to develop and reason about. The key assumptions are:
+Several assumptions and simplifications are used to make `abacus-minimal` easier to develop and reason about.
+
+The key assumptions are:
 
 - one currency,
 - globally unique account names,
 - one level of accounts in chart and no account aggregation for reports,
 - no intermediate accounts,
 - no treatment of other comprehensive income,
-- no changes in equity and cash flow statements (at least yet).
+- no changes in equity and cash flow statements.
 
 See [core.py](abacus/core.py) module docstring for more details.
 
 ### User interface
 
-As a user you do not have to interact with the core directly, there are `Chart`, `Entry` and `Book` classes. The `Book` class holds together a chart, store of entries, and a ledger and allows closing at period end, creating reports and saving and loading data from JSON.
+As a user you do not have to interact with the core directly. `abacus-minmal` exports more convenient `Chart`, `Entry` and `Book` classes. The `Book` class holds together a chart, store of entries, and a ledger and allows posting entries, closing the accounts, creating reports and saving and loading JSON files.
 
 ## Alternatives
 
 `abacus-minimal` takes a lot of inspiration from the following great projects:
 
 - [ledger](https://ledger-cli.org/), [hledger](https://github.com/simonmichael/hledger) and [plain text accounting tools](https://plaintextaccounting.org/),
-- [medici](https://github.com/flash-oss/medici) is a high performance ledger in JavaScript using Mongo database,
+- [medici](https://github.com/flash-oss/medici), a high performance ledger in JavaScript using Mongo database,
 - [microbooks](https://microbooks.io/) API and [python-accounting](https://github.com/ekmungai/python-accounting), a production-grade project, tightly coupled to a database.
 
 ## Accounting knowledge
@@ -281,6 +295,8 @@ If you are totally new to accounting the suggested friendly course is <https://w
 ACCA and CPA are the international and the US professional qualifications and IFRS and GAAP are the standards for accounting recognition, measurement and disclosure.
 
 Part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf) talk about what `abacus-minimal` is designed for.
+
+A list of open source accounting textbooks is at <https://library.sacredheart.edu/opentextbooks/accounting>. Frank Wood "Business Accounting" textbook gets a good press.
 
 ## Project conventions
 
@@ -313,8 +329,15 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 ### New features
 
+- [ ] Business event layer `Event("Invoice", net_amount=200, vat=40)`
 - [ ] `Book.increase()` and `Book.decrease()` methods
 - [ ] `Entry.explain()` method
+
+### Application ideas
+
+- [ ] more examples from textbooks
+- [ ] chart repository
+- [ ] a quiz based on Book class
 
 [cli]: https://github.com/epogrebnyak/abacus
 [app]: https://abacus.streamlit.app/

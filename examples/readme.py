@@ -5,25 +5,31 @@ from abacus import Book, Chart, Entry
 chart = Chart(
     retained_earnings="retained_earnings",
     current_earnings="current_earnings",
-    assets=["cash"],
+    assets=["cash", "inventory"],
     capital=["equity"],
-    income=["services"],
-    expenses=["salaries", "rent"],
+    income=["sales"],
+    expenses=["salaries", "cogs"],
 )
 book = Book(chart)
 entries = [
-    Entry("Initial shareholder investment").amount(1000).debit("cash").credit("equity"),
-    Entry("Paid office rent").amount(100).debit("rent").credit("cash"),
-    Entry("Accepted cash for services").amount(400).debit("cash").credit("services"),
-    Entry("Paid salaries in cash").amount(350).debit("salaries").credit("cash"),
+    Entry("Initial shareholder funds").debit("cash", 500).credit("equity", 500),
+    Entry("Acquired goods").debit("inventory", 200).credit("cash", 200),
+    Entry("Accepted payment for goods").debit("cash", 400).credit("sales", 400),
+    Entry("Shipped goods").debit("cogs", 200).credit("inventory", 200),
+    Entry("Paid salaries").debit("salaries", 150).credit("cash", 150),
 ]
 book.post_many(entries)
 book.close()
 print(book.income_statement)
 print(book.balance_sheet)
 # Some checks
-assert book.income_statement.net_earnings == -50
-assert book.balances == {"cash": 950, "equity": 1000, "retained_earnings": -50}
+assert book.income_statement.net_earnings == 50
+assert book.balances == {
+    "cash": 550,
+    "inventory": 0,
+    "equity": 500,
+    "retained_earnings": 50,
+}
 
 
 chart = Chart(
