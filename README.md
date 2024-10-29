@@ -200,14 +200,14 @@ Note: account closing was a rather hard part of `abacus-minimal` code that I had
 ### 6. Reporting financial statements
 
 Financial reports are typically displayed after account closing,
-but proxy income statement and proxy balance sheet can be shown before closing as well.
+but proxy reports are available before closing as well.
 
 **The income statement** will be the same before and after closing.
 
 **The balance sheet before closing** the will contain current earnings account
 and retained earnings from previous periods.
 **After closing** the current earnings account will be transferred to the retained earnings account
-and removed from the ledger, it will not appear in the balance sheet.
+and removed from the ledger; it will not appear in the balance sheet.
 
 Expect to see a lot of dictionary-like data structures in code output below:
 
@@ -237,9 +237,8 @@ assert book.balances == {
 
 ### 7. Saving data for the next period
 
-You can save the list of entries and the period end account balances
-to JSON files, unless these files already exist. In that case you will need extra
-precaution – for example, save to a different folder or under a different filename.
+You can save the list of entries and the period end account balances to JSON files, unless these files already exist. 
+In that case you will need extra precaution – for example, save files to a different folder or under a different name.
 
 ```python
 # Save JSON files
@@ -253,14 +252,20 @@ book.balances.save("./end_balances.json")
 
 There is a small core library that consists of:
 
-- `ChartDict` that maps account names to their types,
-- a `Ledger` class that maps account names to debit normal and credit normal T-accounts, and
+- `ChartDict` maps account names to their types,
+- `Ledger` class maps account names to debit normal and credit normal T-accounts, and
 - `MultipleEntry` class that represents a double or a multiple entry.
 
 `Ledger` is created from `ChartDict` and incoming entries change the state of ledger.
-`ChartDict` allows to issue closing entries at accounting period end.
+`ChartDict` allows to create closing entries at accounting period end.
 Trial balance, account balances, balance sheet and income statement reports
 reflect the state of ledger.
+
+### User interface
+
+As a user you do not have to interact with the core directly. `abacus-minmal` exports `Chart`, `Entry` and `Book` classes. 
+The `Book` class holds together a chart, store of entries, and a ledger and allows posting entries, closing the accounts, 
+creating reports and saving and loading JSON files.
 
 ### Limitations
 
@@ -277,15 +282,14 @@ The key assumptions are:
 
 See [core.py](abacus/core.py) module docstring for more details.
 
-### User interface
-
-As a user you do not have to interact with the core directly. `abacus-minmal` exports more convenient `Chart`, `Entry` and `Book` classes. The `Book` class holds together a chart, store of entries, and a ledger and allows posting entries, closing the accounts, creating reports and saving and loading JSON files.
-
 ## Alternatives
 
-`abacus-minimal` takes a lot of inspiration from the following great projects:
+`abacus-minimal` takes a lot of inspiration from the following projects:
 
-- [ledger](https://ledger-cli.org/), [hledger](https://github.com/simonmichael/hledger) and [plain text accounting tools](https://plaintextaccounting.org/),
+- [ledger](https://ledger-cli.org/),
+  [hledger](https://github.com/simonmichael/hledger),
+  [beancount](https://github.com/beancount/beancount)
+  and other [plain text accounting tools](https://plaintextaccounting.org/),
 - [medici](https://github.com/flash-oss/medici), a high performance ledger in JavaScript using Mongo database,
 - [microbooks](https://microbooks.io/) API and [python-accounting](https://github.com/ekmungai/python-accounting), a production-grade project, tightly coupled to a database.
 
@@ -297,7 +301,10 @@ ACCA and CPA are the international and the US professional qualifications and IF
 
 Part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf) talk about what `abacus-minimal` is designed for.
 
-A list of open source accounting textbooks is at <https://library.sacredheart.edu/opentextbooks/accounting>. Frank Wood "Business Accounting" textbook gets a good press.
+Tetbooks:
+- [list of free and open source textbooks](https://library.sacredheart.edu/opentextbooks/accounting)
+- [Frank Wood "Business Accounting"](https://www.google.com/search?q=Frank+Wood+%22Business+Accounting)
+- ["200 Years of Accounting History Dates and Events"](https://maaw.info/AccountingHistoryDatesAndEvents.htm)
 
 ## Project conventions
 
@@ -336,6 +343,8 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 ### Application ideas
 
+- [ ] Walmart accounts
+- [ ] business simulation layer
 - [ ] more examples from textbooks
 - [ ] chart repository
 - [ ] a quiz based on Book class
