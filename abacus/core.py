@@ -26,9 +26,10 @@ Accounting conventions:
 Assumptions and simplifications (some may be relaxed in future versions):
 
 - one currency
+- one reporting period
 - one level of accounts, no sub-accounts
-- account names must be globally unique (eg cannot have two "other" accounts)
-- chart always has retained earnings account
+- account names must be globally unique (eg cannot have two accounts named "other")
+- chart always has current account and retained earnings account
 - no account durations (current vs non-current)
 - other comprehensive income account (OCIA) not calculated
 - no journals, entries are posted to ledger directly
@@ -55,6 +56,8 @@ class AbacusError(Exception):
 
 AccountName = str
 Amount = decimal.Decimal
+
+# fixme: maybe pair should be a dataclass
 Pair = tuple[AccountName, AccountName]
 
 
@@ -82,6 +85,7 @@ class Contra:
     name: str
 
 
+# fixme: may shut down __setitem__ for this class 
 class ChartDict(UserDict[str, Regular | Contra]):
     """Dictionary of accounts with their definitions.
     This is an intermediate data structure between Chart and Ledger
@@ -124,19 +128,22 @@ class ChartDict(UserDict[str, Regular | Contra]):
 
     def opening_entry(self, opening_balances: dict) -> "MultipleEntry":
         """Create opening entry."""
+        # fixme: move the logic here
         return MultipleEntry.opening(opening_balances, self)
 
-    def closing_pairs(self, retained_earnings_account: str) -> Iterator[Pair]:
-        """Yield closing pairs for accounting period end."""
+    def closing_pairs(self, earnings_account: AccountName) -> Iterator[Pair]:
+        """Yield closing pairs for accounting period end.
+           The closing pairs can poitn to the current earnings or retained earings account. 
+        """
 
-        def close_account(name: AccountName):
+        def close(account_name: AccountName):
             for contra_name in self.find_contra_accounts(name):
-                yield contra_name, name
-            yield name, retained_earnings_account
+                yield contra_name, account_name
+            yield account_name, earnings_account
 
         for t in (T5.Income, T5.Expense):
             for account_name in self.by_type(t):
-                yield from close_account(account_name)
+                yield from close(account_name)
 
     def by_type(self, t: T5) -> list[AccountName]:
         """Return account names for a given account type."""
@@ -191,7 +198,7 @@ class MultipleEntry:
         a = sums(self.debits)
         b = sums(self.credits)
         if a != b:
-            raise AbacusError("Sum of debits {a} does not equal to sum of credits {b}.")
+            raise AbacusError(f"Sum of debits {a} does not equal to sum of credits {b}.")
         return self
 
     def debit(self, account_name: str, amount: Amount):
@@ -204,6 +211,7 @@ class MultipleEntry:
         self.credits.append((account_name, amount))
         return self
 
+    # fixme: move to chart_dict
     @classmethod
     def opening(
         cls, opening_balances: dict[AccountName, Amount], chart_dict: ChartDict
@@ -220,6 +228,7 @@ class MultipleEntry:
         entry.validate()
         return entry
 
+    # fixme: may remove
     @classmethod
     def double(cls, debit: str, credit: str, amount: Amount):
         """Create double entry."""
@@ -275,12 +284,14 @@ class CreditAccount(TAccount):
 
 
 class Ledger(UserDict[AccountName, TAccount]):
+
+    # fixme: maybe not used
     @classmethod
     def empty(cls, chart_dict: ChartDict):
         """Create empty ledger from chart dictionary."""
         return chart_dict.to_ledger()
 
-    def post_single(self, single_entry: SingleEntry):
+    def post_single(self, single_entry: SingleEntry) -> None:
         """Post single entry to ledger. Will raise `KeyError` if account name is not found."""
         match single_entry:
             case DebitEntry(name, amount):
@@ -288,23 +299,28 @@ class Ledger(UserDict[AccountName, TAccount]):
             case CreditEntry(name, amount):
                 self.data[name].credit(Amount(amount))
 
-    def post(self, entry: MultipleEntry):
-        """Post a stream of single entries to ledger."""
+    def _post(self, entry: MultipleEntry) -> list[AccountName]:
+        """Post entry without raising errors.""" 
         not_found = []
         for single_entry in iter(entry):
             try:
                 self.post_single(single_entry)
-            except KeyError as e:
-                not_found.append((e, single_entry))
+            except KeyError:
+                not_found.append(single_entry.name)
+        return not_found     
+  
+    def post(self, entry: MultipleEntry):
+        """Post a stream of single entries to ledger."""
+        entry.validate() # fixme: must test here for unbalanced entry
+        not_found = self._post(entry)
         if not_found:
-            raise AbacusError(f"Accounts do not exist: {not_found}")
+            raise AbacusError(f"Accounts not found in ledger: {", ".join(not_found)}.")
 
     def is_closed(self, chart_dict: ChartDict) -> bool:
         for frm, _ in chart_dict.closing_pairs("_"):
             if frm in self.data.keys():
                 return False
-        else:
-            return True
+        return True
 
     @property
     def trial_balance(self):
@@ -329,7 +345,7 @@ class Ledger(UserDict[AccountName, TAccount]):
             self[contra_name].balance for contra_name in contra_names
         )
 
-    def _close_one(self, frm: AccountName, to: AccountName) -> MultipleEntry:
+    def close_one(self, frm: AccountName, to: AccountName) -> MultipleEntry:
         """Close account and move its balances to another account."""
         entry = self.data[frm].transfer(frm, to)
         self.post(entry)
@@ -338,7 +354,7 @@ class Ledger(UserDict[AccountName, TAccount]):
 
     def close(self, closing_pairs: Sequence[Pair]) -> list[MultipleEntry]:
         """Close ledger at accounting period end."""
-        return [self._close_one(frm, to) for frm, to in closing_pairs]
+        return [self.close_one(frm, to) for frm, to in closing_pairs]
 
     def balance_sheet(self, chart_dict: ChartDict):
         """Create balance sheet from ledger."""
