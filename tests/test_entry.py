@@ -4,13 +4,9 @@ from abacus.core import AbacusError, DebitAccount, MultipleEntry
 from abacus.entry import Entry
 
 
-def test_opening_entry_fails(toy_dict):
+def test_unbalanced_entry_will_not_pass(toy_ledger):
     with pytest.raises(AbacusError):
-        MultipleEntry.opening(dict(cash=10, equity=8), toy_dict)
-
-
-def test_single_entry_will_pass(toy_ledger):
-    toy_ledger.post(MultipleEntry().credit("cash", 1))
+        toy_ledger.post(MultipleEntry().credit("cash", 1))
 
 
 def test_entry_double():
@@ -36,15 +32,6 @@ def test_closing_entry_for_debit_account():
     account = DebitAccount(20, 5)
     assert account.transfer("this", "that") == MultipleEntry().debit("that", 15).credit(
         "this", 15
-    )
-
-
-@pytest.mark.entry
-def test_opening_entry(toy_dict):
-    opening_dict = dict(cash=10, equity=8, re=2)
-    entry = MultipleEntry.opening(opening_dict, toy_dict)
-    assert entry == MultipleEntry().debit("cash", 10).credit("equity", 8).credit(
-        "re", 2
     )
 
 

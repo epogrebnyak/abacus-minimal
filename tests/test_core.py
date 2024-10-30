@@ -2,6 +2,7 @@ import pytest  # type: ignore
 
 from abacus.core import (
     T5,
+    AbacusError,
     Amount,
     BalanceSheet,
     ChartDict,
@@ -113,3 +114,17 @@ def test_trial_balance(toy_ledger):
 @pytest.mark.report
 def test_balances(toy_ledger):
     assert toy_ledger.balances == dict(cash=10, equity=10, re=0)
+
+
+def test_opening_fails(toy_dict):
+    with pytest.raises(AbacusError):
+        toy_dict.opening_entry(dict(cash=10, equity=8))
+
+
+@pytest.mark.entry
+def test_opening_entry(toy_dict):
+    opening_dict = dict(cash=10, equity=8, re=2)
+    entry = toy_dict.opening_entry(opening_dict)
+    assert entry == MultipleEntry().debit("cash", 10).credit("equity", 8).credit(
+        "re", 2
+    )

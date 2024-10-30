@@ -48,5 +48,9 @@ class Entry:
         self.data = MultipleEntry.double(debit, credit, Amount(amount))
         return self
 
+    def validate(self):
+        """Validate the entry."""
+        self.data.validate()
+
     def __iter__(self):
         return iter(self.data)

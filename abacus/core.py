@@ -56,8 +56,6 @@ class AbacusError(Exception):
 
 AccountName = str
 Amount = decimal.Decimal
-
-# fixme: maybe pair should be a dataclass
 Pair = tuple[AccountName, AccountName]
 
 
@@ -85,7 +83,7 @@ class Contra:
     name: str
 
 
-# fixme: may shut down __setitem__ for this class 
+# fixme: may shut down __setitem__ for this class
 class ChartDict(UserDict[str, Regular | Contra]):
     """Dictionary of accounts with their definitions.
     This is an intermediate data structure between Chart and Ledger
@@ -128,16 +126,24 @@ class ChartDict(UserDict[str, Regular | Contra]):
 
     def opening_entry(self, opening_balances: dict) -> "MultipleEntry":
         """Create opening entry."""
-        # fixme: move the logic here
-        return MultipleEntry.opening(opening_balances, self)
+        entry = MultipleEntry()
+        for account_name, amount in opening_balances.items():
+            if self.is_debit_account(account_name):
+                entry.debit(account_name, amount)
+            elif account_name in self.keys():
+                entry.credit(account_name, amount)
+            else:
+                raise AbacusError(f"Account not found in chart: {account_name}")
+        entry.validate()
+        return entry
 
     def closing_pairs(self, earnings_account: AccountName) -> Iterator[Pair]:
         """Yield closing pairs for accounting period end.
-           The closing pairs can poitn to the current earnings or retained earings account. 
+        The closing pairs can poitn to the current earnings or retained earings account.
         """
 
         def close(account_name: AccountName):
-            for contra_name in self.find_contra_accounts(name):
+            for contra_name in self.find_contra_accounts(account_name):
                 yield contra_name, account_name
             yield account_name, earnings_account
 
@@ -198,7 +204,9 @@ class MultipleEntry:
         a = sums(self.debits)
         b = sums(self.credits)
         if a != b:
-            raise AbacusError(f"Sum of debits {a} does not equal to sum of credits {b}.")
+            raise AbacusError(
+                f"Sum of debits {a} does not equal to sum of credits {b}."
+            )
         return self
 
     def debit(self, account_name: str, amount: Amount):
@@ -211,24 +219,6 @@ class MultipleEntry:
         self.credits.append((account_name, amount))
         return self
 
-    # fixme: move to chart_dict
-    @classmethod
-    def opening(
-        cls, opening_balances: dict[AccountName, Amount], chart_dict: ChartDict
-    ):
-        """Create an opening entry."""
-        entry = cls()
-        for account_name, amount in opening_balances.items():
-            if chart_dict.is_debit_account(account_name):
-                entry.debit(account_name, amount)
-            elif account_name in chart_dict.keys():
-                entry.credit(account_name, amount)
-            else:
-                raise AbacusError(f"Account not found in chart: {account_name}")
-        entry.validate()
-        return entry
-
-    # fixme: may remove
     @classmethod
     def double(cls, debit: str, credit: str, amount: Amount):
         """Create double entry."""
@@ -284,8 +274,6 @@ class CreditAccount(TAccount):
 
 
 class Ledger(UserDict[AccountName, TAccount]):
-
-    # fixme: maybe not used
     @classmethod
     def empty(cls, chart_dict: ChartDict):
         """Create empty ledger from chart dictionary."""
@@ -300,18 +288,19 @@ class Ledger(UserDict[AccountName, TAccount]):
                 self.data[name].credit(Amount(amount))
 
     def _post(self, entry: MultipleEntry) -> list[AccountName]:
-        """Post entry without raising errors.""" 
+        """Post entry without raising errors."""
         not_found = []
         for single_entry in iter(entry):
             try:
                 self.post_single(single_entry)
             except KeyError:
                 not_found.append(single_entry.name)
-        return not_found     
-  
+        return not_found
+
     def post(self, entry: MultipleEntry):
-        """Post a stream of single entries to ledger."""
-        entry.validate() # fixme: must test here for unbalanced entry
+        """Post multiple entry to ledger."""
+        entry.validate()
+        # fixme: this will post part of the entry, wrong!
         not_found = self._post(entry)
         if not_found:
             raise AbacusError(f"Accounts not found in ledger: {", ".join(not_found)}.")

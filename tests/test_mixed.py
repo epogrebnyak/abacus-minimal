@@ -1,5 +1,5 @@
 from abacus import Chart, Entry
-from abacus.core import BalanceSheet, CreditEntry, DebitEntry
+from abacus.core import BalanceSheet
 
 
 def test_readme():
@@ -36,7 +36,7 @@ def test_end_to_end(realistic_chart):
         .debit("cash", 120)
         .credit("sales", 100)
         .credit("vat", 20),
-        [DebitEntry("refunds", 5), CreditEntry("cash", 5)],
+        Entry("Refund").double("refunds", "cash", 5),
         Entry("Paid salaries").double(debit="wages", credit="cash", amount=10),
         Entry("Paid VAT due").double(debit="vat", credit="cash", amount=20),
     ]

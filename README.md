@@ -194,20 +194,17 @@ Closing accounts at period end involves:
 
 See section below for code for closing accounts.
 
-Note: account closing was a rather hard part of `abacus-minimal` code that I had to refactor several times. Both current earnings and retained earningsa are mandatory fields in chart. From the chart one can issue pairs of accounts thatwindicate direction of transfer of balances from one to another
-(e.g. 'refunds' to 'sales', and then 'sales' to 'current_earnings' or 'retained_earnings'). Pairs allow to post actual closing entries to a ledger.
+Note: account closing was a surprisingly hard part of `abacus-minimal` code that I had to refactor several times.
 
 ### 6. Reporting financial statements
 
 Financial reports are typically displayed after account closing,
-but proxy reports are available before closing as well.
+but proxy reports are available before closing as well:
 
-**The income statement** will be the same before and after closing.
-
-**The balance sheet before closing** the will contain current earnings account
+- **The income statement** will be the same before and after closing.
+- **The balance sheet before closing** the will contain current earnings account
 and retained earnings from previous periods.
-**After closing** the current earnings account will be transferred to the retained earnings account
-and removed from the ledger; it will not appear in the balance sheet.
+- **After closing** the current earnings account will be transferred to the retained earnings account and removed from the ledger; it will not appear in the balance sheet.
 
 Expect to see a lot of dictionary-like data structures in code output below:
 
