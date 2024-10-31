@@ -1,23 +1,25 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from abacus.core import AbacusError, AccountName, Amount, MultipleEntry
 
 Numeric = int | float | Amount
 
 
-@dataclass
+@dataclass  # make class serialisable for EntryStore
 class Entry:
     """An Entry class is a user interface for creatting and manipulating a multiple entry."""
 
-    title: str
-    data: MultipleEntry = field(default_factory=MultipleEntry)
-    is_closing: bool = False
-    _current_amount: Amount | None = None
-
-    @classmethod
-    def new(cls, multiple_entry: MultipleEntry, title: str):
-        """Create new entry."""
-        return cls(title, data=multiple_entry)
+    def __init__(
+        self,
+        title: str,
+        data: MultipleEntry | None = None,
+        is_closing: bool = False,
+        amount: Numeric | None = None,
+    ):
+        self.title = title
+        self.data = data if data else MultipleEntry()
+        self.is_closing = is_closing
+        self._current_amount = Amount(amount) if amount else None
 
     def amount(self, amount: Numeric):
         """Set amount for the entry."""
@@ -25,7 +27,7 @@ class Entry:
         return self
 
     def _get_amount(self, amount: Numeric | None = None) -> Amount:
-        """Use provided amount, default amount or raise error if no sufficient data for amount."""
+        """Use provided amount, default amount or raise error if no data about amount."""
         if amount is None:
             if self._current_amount:
                 return self._current_amount
@@ -47,10 +49,3 @@ class Entry:
         """Create double entry."""
         self.data = MultipleEntry.double(debit, credit, Amount(amount))
         return self
-
-    def assert_is_balanced(self):
-        """Validate the entry."""
-        self.data.assert_is_balanced()
-
-    def __iter__(self):
-        return iter(self.data)

@@ -88,7 +88,7 @@ class Book:
         self._income_statement = None
 
     def post(self, entry: Entry):
-        self.ledger.post(entry)
+        self.ledger.post(entry.data)
         self.store.entries.append(entry)
 
     def post_many(self, entries: Sequence[Entry]):

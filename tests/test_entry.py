@@ -44,3 +44,15 @@ def test_entry_amount():
 def test_entry_no_amount_raises_error():
     with pytest.raises(AbacusError):
         Entry("Entry with no amount").debit("cash")
+
+
+def test_entry_has_amount_in_constructor():
+    assert Entry("Aha", amount=10).debit("cash").data == MultipleEntry().debit(
+        "cash", 10
+    )
+
+
+def test_entry_amount_may_change():
+    assert Entry("Bis", amount=10).amount(200).debit(
+        "cash"
+    ).data == MultipleEntry().debit("cash", 200)
