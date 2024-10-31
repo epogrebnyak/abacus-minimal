@@ -139,7 +139,7 @@ class ChartDict(UserDict[str, Regular | Contra]):
 
     def closing_pairs(self, earnings_account: AccountName) -> Iterator[Pair]:
         """Yield closing pairs for accounting period end.
-        The closing pairs can poitn to the current earnings or retained earings account.
+        The closing pairs can poitn to the current earnings or retained earnings account.
         """
 
         def close(account_name: AccountName):
