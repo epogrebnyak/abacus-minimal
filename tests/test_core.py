@@ -116,6 +116,7 @@ def test_balances(toy_ledger):
     assert toy_ledger.balances == dict(cash=10, equity=10, re=0)
 
 
+@pytest.mark.entry
 def test_opening_fails(toy_dict):
     with pytest.raises(AbacusError):
         toy_dict.opening_entry(dict(cash=10, equity=8))
@@ -128,3 +129,19 @@ def test_opening_entry(toy_dict):
     assert entry == MultipleEntry().debit("cash", 10).credit("equity", 8).credit(
         "re", 2
     )
+
+
+def test_assert_is_balanced():
+    entry = MultipleEntry().debit("cash", 10).credit("equity", 9)
+    with pytest.raises(AbacusError):
+        entry.assert_is_balanced()
+
+
+@pytest.mark.entry
+def test_how_it_fails(toy_dict):
+    ledger = toy_dict.to_ledger()
+    entry = MultipleEntry().debit("cash", 10).credit("equity", 12).debit("ts", 2)
+    with pytest.raises(AbacusError):
+        ledger.post(entry)
+    assert ledger["cash"].balance == 0
+    assert ledger["equity"].balance == 0

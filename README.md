@@ -203,7 +203,7 @@ but proxy reports are available before closing as well:
 
 - **The income statement** will be the same before and after closing.
 - **The balance sheet before closing** the will contain current earnings account
-and retained earnings from previous periods.
+  and retained earnings from previous periods.
 - **After closing** the current earnings account will be transferred to the retained earnings account and removed from the ledger; it will not appear in the balance sheet.
 
 Expect to see a lot of dictionary-like data structures in code output below:
@@ -234,7 +234,7 @@ assert book.balances == {
 
 ### 7. Saving data for the next period
 
-You can save the list of entries and the period end account balances to JSON files, unless these files already exist. 
+You can save the list of entries and the period end account balances to JSON files, unless these files already exist.
 In that case you will need extra precaution – for example, save files to a different folder or under a different name.
 
 ```python
@@ -260,8 +260,8 @@ reflect the state of ledger.
 
 ### User interface
 
-As a user you do not have to interact with the core directly. `abacus-minmal` exports `Chart`, `Entry` and `Book` classes. 
-The `Book` class holds together a chart, store of entries, and a ledger and allows posting entries, closing the accounts, 
+As a user you do not have to interact with the core directly. `abacus-minmal` exports `Chart`, `Entry` and `Book` classes.
+The `Book` class holds together a chart, store of entries, and a ledger and allows posting entries, closing the accounts,
 creating reports and saving and loading JSON files.
 
 ### Limitations
@@ -299,6 +299,7 @@ ACCA and CPA are the international and the US professional qualifications and IF
 Part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf) talk about what `abacus-minimal` is designed for.
 
 Tetbooks:
+
 - [list of free and open source textbooks](https://library.sacredheart.edu/opentextbooks/accounting)
 - [Frank Wood "Business Accounting"](https://www.google.com/search?q=Frank+Wood+%22Business+Accounting)
 - ["200 Years of Accounting History Dates and Events"](https://maaw.info/AccountingHistoryDatesAndEvents.htm)

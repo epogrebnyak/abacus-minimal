@@ -134,7 +134,7 @@ class ChartDict(UserDict[str, Regular | Contra]):
                 entry.credit(account_name, amount)
             else:
                 raise AbacusError(f"Account not found in chart: {account_name}")
-        entry.validate()
+        entry.assert_is_balanced()
         return entry
 
     def closing_pairs(self, earnings_account: AccountName) -> Iterator[Pair]:
@@ -199,7 +199,7 @@ class MultipleEntry:
         for name, amount in self.credits:
             yield CreditEntry(name, amount)
 
-    def validate(self):
+    def assert_is_balanced(self):
         """Raise error if sum of debits and sum credits are not equal."""
         a = sums(self.debits)
         b = sums(self.credits)
@@ -287,23 +287,17 @@ class Ledger(UserDict[AccountName, TAccount]):
             case CreditEntry(name, amount):
                 self.data[name].credit(Amount(amount))
 
-    def _post(self, entry: MultipleEntry) -> list[AccountName]:
-        """Post entry without raising errors."""
+    def post(self, entry: MultipleEntry) -> None:
+        """Post entry to ledger."""
+        entry.assert_is_balanced()
         not_found = []
         for single_entry in iter(entry):
-            try:
-                self.post_single(single_entry)
-            except KeyError:
-                not_found.append(single_entry.name)
-        return not_found
-
-    def post(self, entry: MultipleEntry):
-        """Post multiple entry to ledger."""
-        entry.validate()
-        # fixme: this will post part of the entry, wrong!
-        not_found = self._post(entry)
+            if (name := single_entry.name) not in self.keys():
+                not_found.append(name)
         if not_found:
             raise AbacusError(f"Accounts not found in ledger: {", ".join(not_found)}.")
+        for single_entry in iter(entry):
+            self.post_single(single_entry)
 
     def is_closed(self, chart_dict: ChartDict) -> bool:
         for frm, _ in chart_dict.closing_pairs("_"):

@@ -7,7 +7,7 @@ Numeric = int | float | Amount
 
 @dataclass
 class Entry:
-    """An Entry class is a user interface for manipulating a multiple entry."""
+    """An Entry class is a user interface for creatting and manipulating a multiple entry."""
 
     title: str
     data: MultipleEntry = field(default_factory=MultipleEntry)
@@ -48,9 +48,9 @@ class Entry:
         self.data = MultipleEntry.double(debit, credit, Amount(amount))
         return self
 
-    def validate(self):
+    def assert_is_balanced(self):
         """Validate the entry."""
-        self.data.validate()
+        self.data.assert_is_balanced()
 
     def __iter__(self):
         return iter(self.data)
