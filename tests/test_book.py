@@ -64,10 +64,10 @@ def test_book_may_open_with_retained_earnings(this_chart):
 @pytest.fixture
 def book_before_close(this_chart):
     entries = [
-        Entry("Initial investment").amount(300).debit("cash").credit("equity"),
-        Entry("Sold services with VAT").amount(125).debit("cash").credit("sales"),
-        Entry("Made refund").amount(25).debit("refunds").credit("cash"),
-        Entry("Paid salaries").amount(50).debit("salaries").credit("cash"),
+        Entry("Initial investment").set_amount(300).debit("cash").credit("equity"),
+        Entry("Sold services with VAT").set_amount(125).debit("cash").credit("sales"),
+        Entry("Made refund").set_amount(25).debit("refunds").credit("cash"),
+        Entry("Paid salaries").set_amount(50).debit("salaries").credit("cash"),
     ]
     book = Book(this_chart)
     book.post_many(entries)
@@ -150,7 +150,7 @@ def test_book_similar_to_readme(tmp_path):
     del book
     book = Book.load(tmp_path)
     entries = [
-        Entry("Sold services with VAT").amount(6500).debit("cash").credit("sales"),
+        Entry("Sold services with VAT").set_amount(6500).debit("cash").credit("sales"),
         Entry("Made refund").double(amount=500, debit="refunds", credit="cash"),
         Entry("Paid salaries").double(amount=1000, debit="salaries", credit="cash"),
     ]

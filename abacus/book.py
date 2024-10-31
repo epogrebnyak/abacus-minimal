@@ -14,7 +14,7 @@ from abacus.entry import Entry
 
 class BalancesDict(UserDict[str, Amount], SaveLoadMixin):
     """Dictionary of account names and balances.
-    Mimics a pydantic model, so that SaveLoadMixin can apply."""
+    Mimics a pydantic model so that SaveLoadMixin can apply."""
 
     def model_dump_json(self, indent=2) -> str:
         return json.dumps(self.data, default=str, indent=indent)
@@ -58,7 +58,10 @@ class PathFinder:
         return self.base / self._balances
 
     def get_chart(self):
-        return Chart.load(self.chart)
+        try:
+            return Chart.load(self.chart)
+        except FileNotFoundError:
+            raise AbacusError(f"Chart file not found: {self.chart}")
 
     def get_store(self):
         return EntryStore.load(self.store)
@@ -70,22 +73,25 @@ class PathFinder:
 @dataclass
 class Book:
     chart: Chart
-    opening_balances: Mapping[str, str | int | float | Amount] | None = None
     store: EntryStore = field(default_factory=EntryStore)
+
+    def __post_init__(self):
+        self.ledger = Ledger.empty(self.chart.mapping)
+        self.opening_balances = {}
+        self._income_statement = None
 
     def open(
         self,
         opening_balances: Mapping[str, str | int | float | Amount],
         opening_entry_title: str = "Opening entry",
     ):
-        _opening_balances = BalancesDict.coerce(opening_balances)
-        raw_opening_entry = self.chart.mapping.opening_entry(_opening_balances)
-        entry = Entry(title=opening_entry_title, data=raw_opening_entry)
+        self.opening_balances = BalancesDict.coerce(opening_balances)
+        entry = Entry(
+            title=opening_entry_title,
+            data=self.chart.mapping.opening_entry(self.opening_balances),
+        )
         self.post(entry)
-
-    def __post_init__(self):
-        self.ledger = Ledger.empty(self.chart.mapping)
-        self._income_statement = None
+        return self
 
     def post(self, entry: Entry):
         self.ledger.post(entry.data)
@@ -103,16 +109,15 @@ class Book:
         # Persist income statement before income and expense accounts are deleted
         self._income_statement = self.income_statement
         # Make closing pairs
-        closing_pairs = self.chart.make_closing_pairs(self.chart.retained_earnings)
-        # Delete current earnings account from the chart
-        last_pair = (self.chart.current_earnings, self.chart.current_earnings)
+        closing_pairs = self.chart.make_closing_pairs(self.chart.current_earnings)
+        last_pair = (self.chart.current_earnings, self.chart.retained_earnings)
         closing_pairs.append(last_pair)
         # Post closing entries to ledger
         entries = [
             Entry(closing_entry_title, data=me, is_closing=True)
             for me in self.ledger.close(closing_pairs)
         ]
-        # Store closing entries that were posted
+        # Store closing entries that were already posted to ledger
         self.store.entries.extend(entries)
 
     @property
@@ -144,10 +149,7 @@ class Book:
     def load(cls, directory: str):
         """Load chart and starting balances from the directory."""
         path = PathFinder(directory)
-        try:
-            chart = Chart.load(path.chart)
-        except FileNotFoundError:
-            raise AbacusError(f"Chart file not found: {path.chart}")
+        chart = path.get_chart()
         book = cls(chart)
         if path.balances.exists():
             opening_balances = path.get_balances()
@@ -156,5 +158,6 @@ class Book:
 
     def save(self, directory: str, allow_overwrite: bool = False):
         """Save entries and period end balances to the directory."""
-        self.store.save(PathFinder(directory).store, allow_overwrite)
-        self.balances.save(PathFinder(directory).balances, allow_overwrite)
+        path = PathFinder(directory)
+        self.store.save(path.store, allow_overwrite)
+        self.balances.save(path.balances, allow_overwrite)

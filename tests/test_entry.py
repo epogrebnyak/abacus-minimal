@@ -36,7 +36,7 @@ def test_closing_entry_for_debit_account():
 
 
 def test_entry_amount():
-    entry = Entry("Entry with amount").amount(10).debit("cash").credit("equity")
+    entry = Entry("Entry with amount", amount=10).debit("cash").credit("equity")
     assert entry.data.debits == [("cash", 10)]
     assert entry.data.credits == [("equity", 10)]
 
@@ -53,6 +53,6 @@ def test_entry_has_amount_in_constructor():
 
 
 def test_entry_amount_may_change():
-    assert Entry("Bis", amount=10).amount(200).debit(
+    assert Entry("Bis", amount=10).set_amount(200).debit(
         "cash"
     ).data == MultipleEntry().debit("cash", 200)

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from abacus.core import AbacusError, AccountName, Amount, MultipleEntry
 
@@ -9,40 +9,33 @@ Numeric = int | float | Amount
 class Entry:
     """An Entry class is a user interface for creatting and manipulating a multiple entry."""
 
-    def __init__(
-        self,
-        title: str,
-        data: MultipleEntry | None = None,
-        is_closing: bool = False,
-        amount: Numeric | None = None,
-    ):
-        self.title = title
-        self.data = data if data else MultipleEntry()
-        self.is_closing = is_closing
-        self._current_amount = Amount(amount) if amount else None
+    title: str
+    data: MultipleEntry = field(default_factory=MultipleEntry)
+    is_closing: bool = False
+    amount: Numeric | None = None
 
-    def amount(self, amount: Numeric):
+    def set_amount(self, amount: Numeric):
         """Set amount for the entry."""
-        self._current_amount = Amount(amount)
+        self.amount = Amount(amount)
         return self
 
-    def _get_amount(self, amount: Numeric | None = None) -> Amount:
+    def get_amount(self, amount: Numeric | None = None) -> Amount:
         """Use provided amount, default amount or raise error if no data about amount."""
         if amount is None:
-            if self._current_amount:
-                return self._current_amount
+            if self.amount:
+                return Amount(self.amount)
             else:
                 raise AbacusError("Amount is not set.")
         return Amount(amount)
 
     def debit(self, account_name: AccountName, amount: Numeric | None = None):
         """Add debit part to entry."""
-        self.data.debit(account_name, self._get_amount(amount))
+        self.data.debit(account_name, self.get_amount(amount))
         return self
 
     def credit(self, account_name: AccountName, amount: Numeric | None = None):
         """Add credit part to entry."""
-        self.data.credit(account_name, self._get_amount(amount))
+        self.data.credit(account_name, self.get_amount(amount))
         return self
 
     def double(self, debit: AccountName, credit: AccountName, amount: Numeric):
