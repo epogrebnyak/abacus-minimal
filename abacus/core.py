@@ -102,14 +102,14 @@ class ChartDict(UserDict[str, Regular | Contra]):
 
     def set(self, t: T5, account_name: str):
         """Add regular account."""
-        self[account_name] = Regular(t)
+        self.data[account_name] = Regular(t)
         return self
 
     def offset(self, account_name: str, contra_account_name: str):
         """Add contra account."""
         if account_name not in self.keys():
             raise AbacusError(f"Account not found in chart: {account_name}")
-        self[contra_account_name] = Contra(account_name)
+        self.data[contra_account_name] = Contra(account_name)
         return self
 
     def t_account_class(self, account_name: str) -> Type["TAccount"]:
@@ -196,19 +196,24 @@ class MultipleEntry:
         for name, amount in self.credits:
             yield CreditEntry(name, amount)
 
+    @staticmethod
+    def _sums(xs):
+        return Amount(sum(amount for _, amount in xs))
+
+    @property
+    def sum_debits(self) -> Amount:
+        return self._sums(self.debits)
+
+    @property
+    def sum_credits(self) -> Amount:
+        return self._sums(self.credits)
+
     def assert_is_balanced(self):
         """Raise error if sum of debits and sum credits are not equal."""
-
-        def sums(xs):
-            return sum(amount for _, amount in xs)
-
-        ds = sums(self.debits)
-        cs = sums(self.credits)
-        if ds != cs:
+        if (ds := self.sum_debits) != (cs := self.sum_credits):
             raise AbacusError(
                 f"Sum of debits {ds} is not equal to sum of credits {cs}."
             )
-        return self
 
     def debit(self, account_name: str, amount: Amount):
         """Add debit part to entry."""
@@ -223,7 +228,7 @@ class MultipleEntry:
     @classmethod
     def double(cls, debit: str, credit: str, amount: Amount):
         """Create double entry."""
-        return cls(debits=[(debit, amount)], credits=credit[(credit, amount)])
+        return cls(debits=[(debit, amount)], credits=[(credit, amount)])
 
 
 @dataclass
@@ -288,15 +293,20 @@ class Ledger(UserDict[AccountName, TAccount]):
             case CreditEntry(name, amount):
                 self.data[name].credit(Amount(amount))
 
+    def assert_all_found(self, entry):
+        """Raise error if account name is not found in ledger."""
+        not_found = [
+            n
+            for single_entry in iter(entry)
+            if (n := single_entry.name) not in self.keys()
+        ]
+        if not_found:
+            raise AbacusError(f"Accounts not found in ledger: {", ".join(not_found)}.")
+
     def post(self, entry: MultipleEntry) -> None:
         """Post entry to ledger."""
         entry.assert_is_balanced()
-        not_found = []
-        for single_entry in iter(entry):
-            if (name := single_entry.name) not in self.keys():
-                not_found.append(name)
-        if not_found:
-            raise AbacusError(f"Accounts not found in ledger: {", ".join(not_found)}.")
+        self.assert_all_found(entry)
         for single_entry in iter(entry):
             self.post_single(single_entry)
 
