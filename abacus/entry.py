@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from abacus.core import AbacusError, AccountName, Amount, MultipleEntry
+from abacus.core import AbacusError, AccountName, Amount, Credit, Debit, Posting, double
 
 Numeric = int | float | Amount
 
@@ -10,7 +10,7 @@ class Entry:
     """An Entry class is a user interface for creatting and manipulating a multiple entry."""
 
     title: str
-    data: MultipleEntry = field(default_factory=MultipleEntry)
+    posting: Posting = field(default_factory=list)
     is_closing: bool = False
     amount: Numeric | None = None
 
@@ -30,15 +30,15 @@ class Entry:
 
     def debit(self, account_name: AccountName, amount: Numeric | None = None):
         """Add debit part to entry."""
-        self.data.debit(account_name, self.get_amount(amount))
+        self.posting.append(Debit(account_name, self.get_amount(amount)))
         return self
 
     def credit(self, account_name: AccountName, amount: Numeric | None = None):
         """Add credit part to entry."""
-        self.data.credit(account_name, self.get_amount(amount))
+        self.posting.append(Credit(account_name, self.get_amount(amount)))
         return self
 
     def double(self, debit: AccountName, credit: AccountName, amount: Numeric):
         """Create double entry."""
-        self.data = MultipleEntry.double(debit, credit, Amount(amount))
+        self.posting.extend(double(debit, credit, Amount(amount)))
         return self

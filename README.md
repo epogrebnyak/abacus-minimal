@@ -251,7 +251,7 @@ There is a small core library that consists of:
 
 - `ChartDict` maps account names to their types,
 - `Ledger` class maps account names to debit normal and credit normal T-accounts, and
-- `MultipleEntry` class that represents a double or a multiple entry.
+- `Posting` class that represents a double or a multiple entry.
 
 `Ledger` is created from `ChartDict` and incoming entries change the state of ledger.
 `ChartDict` allows to create closing entries at accounting period end.

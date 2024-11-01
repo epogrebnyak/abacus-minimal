@@ -88,13 +88,13 @@ class Book:
         self.opening_balances = BalancesDict.coerce(opening_balances)
         entry = Entry(
             title=opening_entry_title,
-            data=self.chart.mapping.opening_entry(self.opening_balances),
+            posting=self.chart.mapping.opening_entry(self.opening_balances),
         )
         self.post(entry)
         return self
 
     def post(self, entry: Entry):
-        self.ledger.post(entry.data)
+        self.ledger.post(entry.posting)
         self.store.entries.append(entry)
 
     def post_many(self, entries: Sequence[Entry]):
@@ -114,7 +114,7 @@ class Book:
         closing_pairs.append(last_pair)
         # Post closing entries to ledger
         entries = [
-            Entry(closing_entry_title, data=me, is_closing=True)
+            Entry(closing_entry_title, posting=me, is_closing=True)
             for me in self.ledger.close(closing_pairs)
         ]
         # Store closing entries that were already posted to ledger

@@ -4,7 +4,7 @@ This module contains classes for:
 
   - chart of accounts (ChartDict),
   - general ledger (Ledger),
-  - accounting entry (MultipleEntry),
+  - accounting entry (Posting),
   - summaries (TrialBalance) and financial reports (IncomeStatement, BalanceSheet).
 
 Accounting workflow:
@@ -45,7 +45,7 @@ Assumptions and simplifications (some may be relaxed in future versions):
 import decimal
 from abc import ABC, abstractmethod
 from collections import UserDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Iterator, Sequence, Type
 
@@ -125,17 +125,17 @@ class ChartDict(UserDict[str, Regular | Contra]):
             }
         )
 
-    def opening_entry(self, opening_balances: dict) -> "MultipleEntry":
+    def opening_entry(self, opening_balances: dict) -> "Posting":
         """Create opening entry."""
-        entry = MultipleEntry()
+        entry: Posting = []
         for account_name, amount in opening_balances.items():
             if self.is_debit_account(account_name):
-                entry.debit(account_name, amount)
+                entry.append(Debit(account_name, amount))
             elif account_name in self.keys():
-                entry.credit(account_name, amount)
+                entry.append(Credit(account_name, amount))
             else:
                 raise AbacusError(f"Account not found in chart: {account_name}")
-        entry.assert_is_balanced()
+        raise_if_not_balanced(entry)
         return entry
 
     def closing_pairs(self, earnings_account: AccountName) -> Iterator[Pair]:
@@ -179,56 +179,28 @@ class Credit(SingleEntry):
     """An entry that increases the credit side of an account."""
 
 
-@dataclass
-class MultipleEntry:
-    """A multiple entry is similar to a list of single entries
-    that can be iterated over when posting to ledger.
-    """
+Posting = list[Debit | Credit]
 
-    debits: list[tuple[AccountName, Amount]] = field(default_factory=list)
-    credits: list[tuple[AccountName, Amount]] = field(default_factory=list)
 
-    def __iter__(self) -> Iterator[SingleEntry]:
-        """A multiple entry is behaves like a list of single entries
-        that can be iterated when posting to ledger."""
-        for name, amount in self.debits:
-            yield Debit(name, amount)
-        for name, amount in self.credits:
-            yield Credit(name, amount)
+def sum_of(posting: Posting, cls) -> Posting:
+    """Return debit or credit amount sum."""
+    return sum(entry.amount for entry in posting if isinstance(entry, cls))
 
-    @staticmethod
-    def _sums(xs):
-        return Amount(sum(amount for _, amount in xs))
 
-    @property
-    def sum_debits(self) -> Amount:
-        return self._sums(self.debits)
+def is_balanced(posting: Posting) -> bool:
+    """Return True if posting is balanced."""
+    return sum_of(posting, Debit) == sum_of(posting, Credit)
 
-    @property
-    def sum_credits(self) -> Amount:
-        return self._sums(self.credits)
 
-    def assert_is_balanced(self):
-        """Raise error if sum of debits and sum credits are not equal."""
-        if (ds := self.sum_debits) != (cs := self.sum_credits):
-            raise AbacusError(
-                f"Sum of debits {ds} is not equal to sum of credits {cs}."
-            )
+def raise_if_not_balanced(posting: Posting):
+    """Raise error if posting is not balanced."""
+    if not is_balanced(posting):
+        raise AbacusError(f"Posting is not balanced: {posting}")
 
-    def debit(self, account_name: str, amount: Amount):
-        """Add debit part to entry."""
-        self.debits.append((account_name, amount))
-        return self
 
-    def credit(self, account_name: str, amount: Amount):
-        """Add credit part to entry."""
-        self.credits.append((account_name, amount))
-        return self
-
-    @classmethod
-    def double(cls, debit: str, credit: str, amount: Amount):
-        """Create double entry."""
-        return cls(debits=[(debit, amount)], credits=[(credit, amount)])
+def double(debit: str, credit: str, amount: Amount) -> Posting:
+    """Create double entry."""
+    return [Debit(debit, amount), Credit(credit, amount)]
 
 
 @dataclass
@@ -251,8 +223,15 @@ class TAccount(ABC):
         """Add amount to credit side of T-account."""
         self.right += amount
 
+    def apply(self, single_entry: SingleEntry):
+        """Apply single entry to T-account."""
+        if isinstance(single_entry, Debit):
+            self.debit(single_entry.amount)
+        elif isinstance(single_entry, Credit):
+            self.credit(single_entry.amount)
+
     @abstractmethod
-    def transfer(self, frm: AccountName, to: AccountName) -> MultipleEntry:
+    def transfer(self, frm: AccountName, to: AccountName) -> Posting:
         pass
 
     @property
@@ -267,7 +246,7 @@ class DebitAccount(TAccount):
         return self.left - self.right
 
     def transfer(self, frm: AccountName, to: AccountName):
-        return MultipleEntry.double(to, frm, self.balance)
+        return double(to, frm, self.balance)
 
 
 class CreditAccount(TAccount):
@@ -276,7 +255,7 @@ class CreditAccount(TAccount):
         return self.right - self.left
 
     def transfer(self, frm: AccountName, to: AccountName):
-        return MultipleEntry.double(frm, to, self.balance)
+        return double(frm, to, self.balance)
 
 
 class Ledger(UserDict[AccountName, TAccount]):
@@ -287,27 +266,18 @@ class Ledger(UserDict[AccountName, TAccount]):
 
     def post_single(self, single_entry: SingleEntry) -> None:
         """Post single entry to ledger. Will raise `KeyError` if account name is not found."""
-        match single_entry:
-            case Debit(name, amount):
-                self.data[name].debit(Amount(amount))
-            case Credit(name, amount):
-                self.data[name].credit(Amount(amount))
+        self.data[single_entry.name].apply(single_entry)
 
-    def assert_all_found(self, entry):
-        """Raise error if account name is not found in ledger."""
-        not_found = [
-            n
-            for single_entry in iter(entry)
-            if (n := single_entry.name) not in self.keys()
-        ]
-        if not_found:
-            raise AbacusError(f"Accounts not found in ledger: {", ".join(not_found)}.")
+    def assert_key(self, key: AccountName) -> None:
+        if key not in self.keys():
+            raise AbacusError(f"Account not found in ledger: {key}")
 
-    def post(self, entry: MultipleEntry) -> None:
+    def post(self, entry: Posting) -> None:
         """Post entry to ledger."""
-        entry.assert_is_balanced()
-        self.assert_all_found(entry)
-        for single_entry in iter(entry):
+        raise_if_not_balanced(entry)
+        for single_entry in entry:
+            self.assert_key(single_entry.name)
+        for single_entry in entry:
             self.post_single(single_entry)
 
     def is_closed(self, chart_dict: ChartDict) -> bool:
@@ -339,14 +309,14 @@ class Ledger(UserDict[AccountName, TAccount]):
             self[contra_name].balance for contra_name in contra_names
         )
 
-    def close_one(self, frm: AccountName, to: AccountName) -> MultipleEntry:
+    def close_one(self, frm: AccountName, to: AccountName) -> Posting:
         """Close account and move its balances to another account."""
         entry = self.data[frm].transfer(frm, to)
         self.post(entry)
         del self.data[frm]
         return entry
 
-    def close(self, closing_pairs: Sequence[Pair]) -> list[MultipleEntry]:
+    def close(self, closing_pairs: Sequence[Pair]) -> list[Posting]:
         """Close ledger at accounting period end."""
         return [self.close_one(frm, to) for frm, to in closing_pairs]
 

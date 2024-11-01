@@ -7,11 +7,13 @@ from abacus.core import (
     BalanceSheet,
     ChartDict,
     Contra,
+    Credit,
     CreditAccount,
+    Debit,
     DebitAccount,
     Ledger,
-    MultipleEntry,
     Regular,
+    is_balanced,
 )
 
 
@@ -78,7 +80,7 @@ def test_balance_sheet_is_not_balanced():
 def test_net_earnings(toy_dict):
     chart_dict = toy_dict.set(T5.Income, "sales")
     ledger = chart_dict.to_ledger()
-    sales_entry = MultipleEntry().debit("cash", 10).credit("sales", 10)
+    sales_entry = [Debit("cash", 10), Credit("sales", 10)]
     ledger.post(sales_entry)
     assert ledger.income_statement(chart_dict).net_earnings == 10
 
@@ -126,21 +128,18 @@ def test_opening_fails(toy_dict):
 def test_opening_entry(toy_dict):
     opening_dict = dict(cash=10, equity=8, re=2)
     entry = toy_dict.opening_entry(opening_dict)
-    assert entry == MultipleEntry().debit("cash", 10).credit("equity", 8).credit(
-        "re", 2
-    )
+    assert entry == [Debit("cash", 10), Credit("equity", 8), Credit("re", 2)]
 
 
 def test_assert_is_balanced():
-    entry = MultipleEntry().debit("cash", 10).credit("equity", 9)
-    with pytest.raises(AbacusError):
-        entry.assert_is_balanced()
+    entry = [Debit("cash", 10), Credit("equity", 9)]
+    assert not is_balanced(entry)
 
 
 @pytest.mark.entry
 def test_how_it_fails(toy_dict):
     ledger = toy_dict.to_ledger()
-    entry = MultipleEntry().debit("cash", 10).credit("equity", 12).debit("ts", 2)
+    entry = [Debit("cash", 10), Credit("equity", 12), Debit("ts", 2)]
     with pytest.raises(AbacusError):
         ledger.post(entry)
     assert ledger["cash"].balance == 0
