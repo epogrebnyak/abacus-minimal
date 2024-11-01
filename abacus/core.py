@@ -171,11 +171,11 @@ class SingleEntry(ABC):
     amount: Amount
 
 
-class DebitEntry(SingleEntry):
+class Debit(SingleEntry):
     """An entry that increases the debit side of an account."""
 
 
-class CreditEntry(SingleEntry):
+class Credit(SingleEntry):
     """An entry that increases the credit side of an account."""
 
 
@@ -192,9 +192,9 @@ class MultipleEntry:
         """A multiple entry is behaves like a list of single entries
         that can be iterated when posting to ledger."""
         for name, amount in self.debits:
-            yield DebitEntry(name, amount)
+            yield Debit(name, amount)
         for name, amount in self.credits:
-            yield CreditEntry(name, amount)
+            yield Credit(name, amount)
 
     @staticmethod
     def _sums(xs):
@@ -288,9 +288,9 @@ class Ledger(UserDict[AccountName, TAccount]):
     def post_single(self, single_entry: SingleEntry) -> None:
         """Post single entry to ledger. Will raise `KeyError` if account name is not found."""
         match single_entry:
-            case DebitEntry(name, amount):
+            case Debit(name, amount):
                 self.data[name].debit(Amount(amount))
-            case CreditEntry(name, amount):
+            case Credit(name, amount):
                 self.data[name].credit(Amount(amount))
 
     def assert_all_found(self, entry):
