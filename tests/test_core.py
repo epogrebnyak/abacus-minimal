@@ -18,19 +18,19 @@ from abacus.core import (
 @pytest.mark.chart_dict
 def test_chart_dict_for_regular():
     cd = ChartDict([("sales", Regular(T5.Income)), ("cashback", Contra("sales"))])
-    assert isinstance(cd.t_account("sales"), CreditAccount)
+    assert isinstance(cd.t_account_class("sales")(), CreditAccount)
 
 
 @pytest.mark.chart_dict
 def test_chart_dict_for_contra():
     cd = ChartDict([("sales", Regular(T5.Income)), ("cashback", Contra("sales"))])
-    assert isinstance(cd.t_account("cashback"), DebitAccount)
+    assert isinstance(cd.t_account_class("cashback")(), DebitAccount)
 
 
 @pytest.mark.chart_dict
-def test_chart_dict_key_error():
+def test_chart_dict_key_error_on_empty():
     with pytest.raises(KeyError):
-        ChartDict().t_account("vat")
+        ChartDict().t_account_class("vat")
 
 
 @pytest.mark.ledger

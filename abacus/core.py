@@ -47,7 +47,7 @@ from abc import ABC, abstractmethod
 from collections import UserDict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Iterator, Sequence
+from typing import Iterator, Sequence, Type
 
 
 class AbacusError(Exception):
@@ -83,7 +83,7 @@ class Contra:
     name: str
 
 
-# fixme: may shut down __setitem__ for this class
+# suggestion: may shut down __setitem__ for this class
 class ChartDict(UserDict[str, Regular | Contra]):
     """Dictionary of accounts with their definitions.
     This is an intermediate data structure between Chart and Ledger
@@ -112,16 +112,17 @@ class ChartDict(UserDict[str, Regular | Contra]):
         self[contra_account_name] = Contra(account_name)
         return self
 
-    def t_account(self, account_name: str) -> "TAccount":
-        """Return T-account for a given account name."""
-        return (
-            DebitAccount() if self.is_debit_account(account_name) else CreditAccount()
-        )
+    def t_account_class(self, account_name: str) -> Type["TAccount"]:
+        """Return T-account class for a given account name."""
+        return DebitAccount if self.is_debit_account(account_name) else CreditAccount
 
     def to_ledger(self) -> "Ledger":
         """Create ledger."""
         return Ledger(
-            {account_name: self.t_account(account_name) for account_name in self.keys()}
+            {
+                account_name: self.t_account_class(account_name)()
+                for account_name in self.keys()
+            }
         )
 
     def opening_entry(self, opening_balances: dict) -> "MultipleEntry":
@@ -178,10 +179,6 @@ class CreditEntry(SingleEntry):
     """An entry that increases the credit side of an account."""
 
 
-def sums(xs):
-    return sum(amount for _, amount in xs)
-
-
 @dataclass
 class MultipleEntry:
     """A multiple entry is similar to a list of single entries
@@ -201,11 +198,15 @@ class MultipleEntry:
 
     def assert_is_balanced(self):
         """Raise error if sum of debits and sum credits are not equal."""
-        a = sums(self.debits)
-        b = sums(self.credits)
-        if a != b:
+
+        def sums(xs):
+            return sum(amount for _, amount in xs)
+
+        ds = sums(self.debits)
+        cs = sums(self.credits)
+        if ds != cs:
             raise AbacusError(
-                f"Sum of debits {a} does not equal to sum of credits {b}."
+                f"Sum of debits {ds} is not equal to sum of credits {cs}."
             )
         return self
 
@@ -222,7 +223,7 @@ class MultipleEntry:
     @classmethod
     def double(cls, debit: str, credit: str, amount: Amount):
         """Create double entry."""
-        return cls().debit(debit, amount).credit(credit, amount)
+        return cls(debits=[(debit, amount)], credits=credit[(credit, amount)])
 
 
 @dataclass
@@ -403,6 +404,6 @@ class BalanceSheet(Report):
 
     def is_balanced(self) -> bool:
         """Return True if assets equal liabilities plus capital."""
-        return sum_values(self.assets) == sum_values(self.capital) + sum_values(
-            self.liabilities
+        return sum_values(self.assets) == (
+            sum_values(self.capital) + sum_values(self.liabilities)
         )
