@@ -307,12 +307,9 @@ class Ledger(UserDict[AccountName, TAccount]):
             {name: as_tuple(t_account) for name, t_account in self.items()}
         )
 
+    # note: output similar to ReportDict, but .total() would be not meaningful
     @property
-    def balances(
-        self,
-    ) -> dict[
-        AccountName, Amount
-    ]:  # note: similar to ReportDict, but .total() is not meaningful
+    def balances(self) -> dict[AccountName, Amount]:
         """Return account balances."""
         return {name: account.balance for name, account in self.items()}
 
