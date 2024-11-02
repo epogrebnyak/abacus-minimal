@@ -18,9 +18,12 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 
 ## Minimal example
 
-> Start a company with initial shareholder investment (500),
-> acquire and then sell stock of merchandise (worth 200 sold for 400)
-> and pay staff salaries (150). Demonstrate period earnings are 50.
+A company receives initial shareholder investment of 500 USD in cash,
+acquires a stock of merchandise for 200 USD and then sells it for 400 USD 
+and pays 150 USD as staff salaries. 
+
+We programmatically run the accounting workflow within 
+one reporting period for this company and show some reports.
 
 ```python
 from abacus import Book, Chart, Entry
@@ -46,9 +49,53 @@ book.close()
 print(book.income_statement)
 print(book.balance_sheet)
 # Some checks
+assert book.balance_sheet.assets.total = 550
 assert book.income_statement.net_earnings == 50
 assert book.balances == {"cash": 550, "inventory": 0, "equity": 500, "retained_earnings": 50}
 ```
+
+## Accounting concepts
+
+`abacus-minimal` adheres to the following interpretation of double-entry book keeping rules.
+
+1. Company property, or assets, equal to shareholder and creditor claims on the company,
+   known as capital (or equity) and liabilities respectively:
+
+```
+Assets = Capital + Liabilities                                                        (1)
+```
+
+2. Company current earnings, or profit, equal to income less expenses associated with
+   generating the income:
+
+
+```
+Current earnings = Income - Expenses                                                  (2) 
+```
+
+3. Capital consists of paid-in capital (or shareholder equity), other capital accounts and
+   retained earnings:   
+
+```
+Capital = Shareholder Equity + Other Capital + Retained earnings                      (3)
+```
+
+4. Current earnings accumulate to retained earnings:
+
+```
+Retained earnings = Retained earnings from previous period + Current earnings         (4)  
+```
+
+Substituting we get a form of extended accounting equation:
+
+```
+Assets + Expenses = Shareholder Equity + Other Capital + Retained Earnings + Income + Liabilities
+                                                                                      (5)  
+```
+
+Our book keeping goal is to reflect business events as changes to the variables in this 
+equation while maintaining the identity between the left and the right sides of the equation,
+as well as following the accounting principles for recognition, measurement and reporting.
 
 ## Accounting workflow
 
@@ -64,11 +111,21 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 - show financial reports,
 - save account balances data for the next reporting period.
 
+Accounts survive these transformations quite differently, here is the best summary I can give:
+
+Step  | Assets | Expenses | Shareholder Equity | Retained Earnings | Current Earnings | Income | Liabilities
+------|:------:|:--------:|:------------------:|:-------------:|:-----------------:|:----------------:|:------:
+Account type               | permanent | temporary |   permanent| permanent | temporary | temporary  | permanent  
+Empty ledger has zero balances | 0 | 0 |         0             | 0                 | 0                | 0 | 0
+Opening balances restore permanent accounts             | **+** | 0 |        **+**             | **r**                 | 0                | 0 | **+**
+Business entries affect all accounts except earnings          | + | e |          +             | r                 | 0                | i | +
+Closing income and expense to current earnings  | + | **closed**  |         +             | r                 | **i-e**              | **closed** | + 
+Closing to retained earings  | + |   |         +             | **r + i -e**          |  **closed**                |   | +
+Saving permanent account balances  | + |   |        +             | +          |                  |   | +
+
 ## End-to-end example
 
-In this example we will programmatically run
-the accounting workflow within one reporting period
-using more `abacus-minimal` features including:
+In this example we use more `abacus-minimal` features including:
 
 - contra accounts specification,
 - opening ledger with account balances at the start of reporting period,
@@ -247,11 +304,11 @@ book.balances.save("./end_balances.json")
 
 ### Core library
 
-There is a small core library that consists of:
+In `abacus-minimal` there is a small core library that consists of:
 
 - `ChartDict` maps account names to their types,
 - `Ledger` class maps account names to debit normal and credit normal T-accounts, and
-- `Posting` class that represents a double or a multiple entry.
+- `Posting` type that represents a double or a multiple entry.
 
 `Ledger` is created from `ChartDict` and incoming entries change the state of ledger.
 `ChartDict` allows to create closing entries at accounting period end.
@@ -260,8 +317,9 @@ reflect the state of ledger.
 
 ### User interface
 
-As a user you do not have to interact with the core directly. `abacus-minmal` exports `Chart`, `Entry` and `Book` classes.
-The `Book` class holds together a chart, store of entries, and a ledger and allows posting entries, closing the accounts,
+As a user you do not have to interact with the core directly. `abacus-minmal` exports `Chart`, `Entry` and `Book` classes
+that we used in the examples. 
+The `Book` class holds together a chart, a store of entries, and a ledger and allows posting entries, closing the accounts,
 creating reports and saving and loading JSON files.
 
 ### Limitations
@@ -298,7 +356,7 @@ ACCA and CPA are the international and the US professional qualifications and IF
 
 Part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf) talk about what `abacus-minimal` is designed for.
 
-Tetbooks:
+Textbooks:
 
 - [list of free and open source textbooks](https://library.sacredheart.edu/opentextbooks/accounting)
 - [Frank Wood "Business Accounting"](https://www.google.com/search?q=Frank+Wood+%22Business+Accounting)
@@ -323,6 +381,7 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 ## Changelog
 
+- `0.10.7` (2024-11-02) Simplified `abacus.core`:`Posting` type is a list of single entries.
 - `0.10.5` (2024-10-27) Handles income statement and balances sheet before and after close.
 - `0.10.0` (2024-10-24) Separates core, chart, entry and book code and tests.
 
@@ -330,8 +389,10 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 ### Using upstream
 
-- [ ] implanting `abacus-minimal` as a dependency to [abacus-py][cli] and [abacus-streamlit][app],
-- [ ] allow conversions between charts of accounts as requested in [#4][ras].
+Implanting `abacus-minimal` as a dependency to:
+
+- [ ]  [abacus-py][cli],
+- [ ]  [abacus-streamlit][app].
 
 ### New features
 
@@ -341,11 +402,11 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 ### Application ideas
 
-- [ ] Walmart accounts
-- [ ] business simulation layer
+- [ ] real company - eg Walmart accounts
+- [ ] business simulation layer - stream of entries
 - [ ] more examples from textbooks
-- [ ] chart repository
-- [ ] a quiz based on Book class
+- [ ] chart repository and conversions between charts of accounts as requested in [#4][ras].
+- [ ] a quiz based on Book class - play entries and expect the use picks correct debit and credit
 
 [cli]: https://github.com/epogrebnyak/abacus
 [app]: https://abacus.streamlit.app/
