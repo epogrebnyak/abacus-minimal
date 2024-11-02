@@ -140,17 +140,13 @@ class ChartDict(UserDict[str, Regular | Contra]):
 
     def closing_pairs(self, earnings_account: AccountName) -> Iterator[Pair]:
         """Yield closing pairs for accounting period end.
-        The closing pairs can poinе to сurrent earnings or retained earnings account.
+        The closing pairs can point to сurrent earnings or retained earnings account.
         """
-
-        def close(account_name: AccountName):
-            for contra_name in self.find_contra_accounts(account_name):
-                yield contra_name, account_name
-            yield account_name, earnings_account
-
         for t in (T5.Income, T5.Expense):
             for account_name in self.by_type(t):
-                yield from close(account_name)
+                for contra_name in self.find_contra_accounts(account_name):
+                    yield contra_name, account_name
+                yield account_name, earnings_account
 
     def by_type(self, t: T5) -> list[AccountName]:
         """Return account names for a given account type."""
@@ -182,7 +178,7 @@ Posting = list[Debit | Credit]
 
 
 def sum_of(posting: Posting, cls) -> Posting:
-    """Return debit or credit amount sum."""
+    """Return sum of debits or sum of credit entries."""
     return sum(entry.amount for entry in posting if isinstance(entry, cls))
 
 
@@ -302,7 +298,7 @@ class Ledger(UserDict[AccountName, TAccount]):
         )
 
     @property
-    def balances(self) -> dict[AccountName, Amount]: # note: similar to ReportDict
+    def balances(self) -> dict[AccountName, Amount]:  # note: similar to ReportDict
         """Return account balances."""
         return {name: account.balance for name, account in self.items()}
 

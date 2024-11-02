@@ -23,6 +23,7 @@ book.close()
 print(book.income_statement)
 print(book.balance_sheet)
 # Some checks
+assert book.balance_sheet.assets.total == 550
 assert book.income_statement.net_earnings == 50
 assert book.balances == {
     "cash": 550,

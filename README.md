@@ -19,11 +19,11 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 ## Minimal example
 
 A company receives initial shareholder investment of 500 USD in cash,
-acquires a stock of merchandise for 200 USD, 
+acquires a stock of merchandise for 200 USD,
 gets a lucky chance to sell all merchandise for 400 USD,
-and gladly pays 150 USD as salaries to the staff. 
+and gladly pays 150 USD as salaries to the staff.
 
-We programmatically run the accounting workflow within 
+We programmatically run the accounting workflow within
 one reporting period for this company and show end of period reports.
 
 ```python
@@ -50,7 +50,7 @@ book.close()
 print(book.income_statement)
 print(book.balance_sheet)
 # Some checks
-assert book.balance_sheet.assets.total = 550
+assert book.balance_sheet.assets.total == 550
 assert book.income_statement.net_earnings == 50
 assert book.balances == {"cash": 550, "inventory": 0, "equity": 500, "retained_earnings": 50}
 ```
@@ -59,32 +59,30 @@ assert book.balances == {"cash": 550, "inventory": 0, "equity": 500, "retained_e
 
 `abacus-minimal` adheres to the following interpretation of double-entry book keeping rules.
 
-1. The value of company property, or assets, equals to shareholder and creditor claims on the company,
-   known as capital (or equity) and liabilities respectively:
+1. The value of company property, or assets, equals to shareholder and creditor claims on the company, known as capital (or equity) and liabilities respectively:
 
 ```
-Assets = Capital + Liabilities                                                        
+Assets = Capital + Liabilities
 ```
 
 2. Company current earnings, or profit, equal to income less expenses associated with
    generating the income:
 
-
 ```
-Current earnings = Income - Expenses                                                   
+Current earnings = Income - Expenses
 ```
 
 3. Capital consists of paid-in capital (or shareholder equity), other capital accounts and
-   retained earnings:   
+   retained earnings:
 
 ```
-Capital = Shareholder Equity + Other Capital + Retained earnings                      
+Capital = Shareholder Equity + Other Capital + Retained earnings
 ```
 
 4. Current earnings accumulate to retained earnings:
 
 ```
-Retained earnings = Retained earnings from previous period + Current earnings           
+Retained earnings = Retained earnings from previous period + Current earnings
 ```
 
 5. Substituting we get a form of extended accounting equation:
@@ -93,17 +91,15 @@ Retained earnings = Retained earnings from previous period + Current earnings
 Assets + Expenses = Shareholder Equity + Other Capital + Retained earnings + Income + Liabilities
 ```
 
-6. Our book-keeping goal is to reflect business events as changes to the variables in this 
+6. Our book-keeping goal is to reflect business events as changes to the variables in this
    equation while maintaining the identity between the left and the right sides of the equation,
    as well as following the accounting principles for recognition, measurement and reporting.
 
 7. Changing just one variable will break the accountign equation, so we allow postings,
    or entries that change two or more vairables, depending on the nature of the business transaction.
-   
 8. Debits and credits are a common framework to keep track of the changes in accounts. It is less
    fundimental than accounting identity, just a clever system to avoid at least some of accounting mistakes
    when expressing what variables in accounting identity you are changing.
-    
 9. Let as allow for every account to accumulate the changes as a list of debit amounts and a list of credit amounts.
    There will be accounts where the account balance is sum of debits less sum of credits ('debit normal'),
    and accounts where the balance is sum of credits less sum of debits ('credit normal').
@@ -115,7 +111,7 @@ Assets + Expenses = Shareholder Equity + Other Capital + Retained earnings + Inc
 
 11. In a double entry you add the same amount to the debit of one account and to the credit of another account and
     the accounting identity never breaks. Profit!
-   
+
 12. We would not want a company that just accumulates profits and never pays divident to shareholders. Sometimes you would see
     at equation similar to:
 
@@ -123,8 +119,7 @@ Assets + Expenses = Shareholder Equity + Other Capital + Retained earnings + Inc
 Retained earnings (at period end) =  Retained earnings (at period start) + (Income - Expenses) - Dividend
 ```
 
-To pay out the dividends the company will transfer part of retained earnings to dividend due libility 
-after announcing the dividend, and will pay out the dividend due with cash at disbursement. 
+To pay out the dividends the company will transfer part of retained earnings to dividend due libility after announcing the dividend, and will pay out the dividend due with cash at dividend disbursement.
 (Think of two double entries that reflect these operations).
 
 ## Accounting workflow
@@ -143,15 +138,15 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 
 Accounts survive these transformations quite differently, here is the best summary I can give:
 
-Step  | Assets | Expenses | Shareholder Equity | Retained Earnings | Current Earnings | Income | Liabilities
-------|:------:|:--------:|:------------------:|:-------------:|:-----------------:|:----------------:|:------:
-Account type               | permanent | temporary |   permanent| permanent | temporary | temporary  | permanent  
-1\. In empty ledger all accounts have zero balances | 0 | 0 |         0             | 0                 | 0                | 0 | 0
-2\. Opening balances restore permanent accounts             | **+** | 0 |        **+**             | **r**                 | 0                | 0 | **+**
-3\. Business entries affect all accounts except earnings          | + | e |          +             | r                 | 0                | i | +
-4\. Closing income and expense to current earnings  | + | **closed**  |         +             | r                 | **i-e**              | **closed** | + 
-5\. Closing current to retained earings  | + |   |         +             | **r + i -e**          |  **closed**                |   | +
-6\. Saving permanent account balances for the next period | + |   |        +             | +          |                  |   | +
+| Step                                                      |  Assets   |  Expenses  | Shareholder Equity | Retained Earnings | Current Earnings |   Income   | Liabilities |
+| --------------------------------------------------------- | :-------: | :--------: | :----------------: | :---------------: | :--------------: | :--------: | :---------: |
+| Account type                                              | permanent | temporary  |     permanent      |     permanent     |    temporary     | temporary  |  permanent  |
+| 1\. In empty ledger all accounts have zero balances       |     0     |     0      |         0          |         0         |        0         |     0      |      0      |
+| 2\. Opening balances restore permanent accounts           |   **+**   |     0      |       **+**        |       **r**       |        0         |     0      |    **+**    |
+| 3\. Business entries affect all accounts except earnings  |     +     |     e      |         +          |         r         |        0         |     i      |      +      |
+| 4\. Closing income and expense to current earnings        |     +     | **closed** |         +          |         r         |     **i-e**      | **closed** |      +      |
+| 5\. Closing current to retained earings                   |     +     |            |         +          |   **r + i -e**    |    **closed**    |            |      +      |
+| 6\. Saving permanent account balances for the next period |     +     |            |         +          |         +         |                  |            |      +      |
 
 ## End-to-end example
 
@@ -348,7 +343,7 @@ reflect the state of ledger.
 ### User interface
 
 As a user you do not have to interact with the core directly. `abacus-minmal` exports `Chart`, `Entry` and `Book` classes
-that we used in the examples. 
+that we used in the examples.
 The `Book` class holds together a chart, a store of entries, and a ledger and allows posting entries, closing the accounts,
 creating reports and saving and loading JSON files.
 
@@ -411,7 +406,7 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 ## Changelog
 
-- `0.10.7` (2024-11-02) Simplified `abacus.core`:`Posting` type is a list of single entries.
+- `0.10.7` (2024-11-02) `Posting` type is a list of single entries.
 - `0.10.5` (2024-10-27) Handles income statement and balances sheet before and after close.
 - `0.10.0` (2024-10-24) Separates core, chart, entry and book code and tests.
 
@@ -421,8 +416,8 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 Implanting `abacus-minimal` as a dependency to:
 
-- [ ]  [abacus-py][cli],
-- [ ]  [abacus-streamlit][app].
+- [ ] [abacus-py][cli],
+- [ ] [abacus-streamlit][app].
 
 ### New features
 
