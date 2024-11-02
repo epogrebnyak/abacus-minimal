@@ -146,12 +146,12 @@ Accounts survive these transformations quite differently, here is the best summa
 Step  | Assets | Expenses | Shareholder Equity | Retained Earnings | Current Earnings | Income | Liabilities
 ------|:------:|:--------:|:------------------:|:-------------:|:-----------------:|:----------------:|:------:
 Account type               | permanent | temporary |   permanent| permanent | temporary | temporary  | permanent  
-Empty ledger has zero balances | 0 | 0 |         0             | 0                 | 0                | 0 | 0
-Opening balances restore permanent accounts             | **+** | 0 |        **+**             | **r**                 | 0                | 0 | **+**
-Business entries affect all accounts except earnings          | + | e |          +             | r                 | 0                | i | +
-Closing income and expense to current earnings  | + | **closed**  |         +             | r                 | **i-e**              | **closed** | + 
-Closing to retained earings  | + |   |         +             | **r + i -e**          |  **closed**                |   | +
-Saving permanent account balances  | + |   |        +             | +          |                  |   | +
+1\. In empty ledger all accounts have zero balances | 0 | 0 |         0             | 0                 | 0                | 0 | 0
+2\. Opening balances restore permanent accounts             | **+** | 0 |        **+**             | **r**                 | 0                | 0 | **+**
+3\. Business entries affect all accounts except earnings          | + | e |          +             | r                 | 0                | i | +
+4\. Closing income and expense to current earnings  | + | **closed**  |         +             | r                 | **i-e**              | **closed** | + 
+5\. Closing current to retained earings  | + |   |         +             | **r + i -e**          |  **closed**                |   | +
+6\. Saving permanent account balances for the next period | + |   |        +             | +          |                  |   | +
 
 ## End-to-end example
 
