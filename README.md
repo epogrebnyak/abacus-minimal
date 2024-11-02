@@ -19,11 +19,12 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 ## Minimal example
 
 A company receives initial shareholder investment of 500 USD in cash,
-acquires a stock of merchandise for 200 USD and then sells it for 400 USD 
-and pays 150 USD as staff salaries. 
+acquires a stock of merchandise for 200 USD, 
+gets a lucky chance to sell all merchandise for 400 USD,
+and gladly pays 150 USD as salaries to the staff. 
 
 We programmatically run the accounting workflow within 
-one reporting period for this company and show some reports.
+one reporting period for this company and show end of period reports.
 
 ```python
 from abacus import Book, Chart, Entry
@@ -58,11 +59,11 @@ assert book.balances == {"cash": 550, "inventory": 0, "equity": 500, "retained_e
 
 `abacus-minimal` adheres to the following interpretation of double-entry book keeping rules.
 
-1. Company property, or assets, equal to shareholder and creditor claims on the company,
+1. The value of company property, or assets, equals to shareholder and creditor claims on the company,
    known as capital (or equity) and liabilities respectively:
 
 ```
-Assets = Capital + Liabilities                                                        (1)
+Assets = Capital + Liabilities                                                        
 ```
 
 2. Company current earnings, or profit, equal to income less expenses associated with
@@ -70,32 +71,61 @@ Assets = Capital + Liabilities                                                  
 
 
 ```
-Current earnings = Income - Expenses                                                  (2) 
+Current earnings = Income - Expenses                                                   
 ```
 
 3. Capital consists of paid-in capital (or shareholder equity), other capital accounts and
    retained earnings:   
 
 ```
-Capital = Shareholder Equity + Other Capital + Retained earnings                      (3)
+Capital = Shareholder Equity + Other Capital + Retained earnings                      
 ```
 
 4. Current earnings accumulate to retained earnings:
 
 ```
-Retained earnings = Retained earnings from previous period + Current earnings         (4)  
+Retained earnings = Retained earnings from previous period + Current earnings           
 ```
 
-Substituting we get a form of extended accounting equation:
+5. Substituting we get a form of extended accounting equation:
 
 ```
-Assets + Expenses = Shareholder Equity + Other Capital + Retained Earnings + Income + Liabilities
-                                                                                      (5)  
+Assets + Expenses = Shareholder Equity + Other Capital + Retained earnings + Income + Liabilities
 ```
 
-Our book keeping goal is to reflect business events as changes to the variables in this 
-equation while maintaining the identity between the left and the right sides of the equation,
-as well as following the accounting principles for recognition, measurement and reporting.
+6. Our book-keeping goal is to reflect business events as changes to the variables in this 
+   equation while maintaining the identity between the left and the right sides of the equation,
+   as well as following the accounting principles for recognition, measurement and reporting.
+
+7. Changing just one variable will break the accountign equation, so we allow postings,
+   or entries that change two or more vairables, depending on the nature of the business transaction.
+   
+8. Debits and credits are a common framework to keep track of the changes in accounts. It is less
+   fundimental than accounting identity, just a clever system to avoid at least some of accounting mistakes
+   when expressing what variables in accounting identity you are changing.
+    
+9. Let as allow for every account to accumulate the changes as a list of debit amounts and a list of credit amounts.
+   There will be accounts where the account balance is sum of debits less sum of credits ('debit normal'),
+   and accounts where the balance is sum of credits less sum of debits ('credit normal').
+
+10. Let us designate the assets and expenses accounts as 'debit normal' and capital, liabilities and income accounts
+    as 'credit normal'. Now instead of saying "Please do not break the accounting identity when changing the variables"
+    we can now say "When creating and posting an entry the sum of debit changes must be equal to the sum of credit changes",
+    which is easier to track.
+
+11. In a double entry you add the same amount to the debit of one account and to the credit of another account and
+    the accounting identity never breaks. Profit!
+   
+12. We would not want a company that just accumulates profits and never pays divident to shareholders. Sometimes you would see
+    at equation similar to:
+
+```
+Retained earnings (at period end) =  Retained earnings (at period start) + (Income - Expenses) - Dividend
+```
+
+To pay out the dividends the company will transfer part of retained earnings to dividend due libility 
+after announcing the dividend, and will pay out the dividend due with cash at disbursement. 
+(Think of two double entries that reflect these operations).
 
 ## Accounting workflow
 
