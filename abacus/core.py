@@ -56,9 +56,8 @@ class AbacusError(Exception):
 
 AccountName = str
 Amount = decimal.Decimal
-Pair = tuple[
-    AccountName, AccountName
-]  # ok to use tuple here, less useful as a dataclass
+# ok to use tuple here, less useful as a dataclass
+Pair = tuple[AccountName, AccountName]  
 
 
 class T5(Enum):
