@@ -8,7 +8,7 @@ from typing import Mapping, Sequence
 from pydantic import BaseModel
 
 from abacus.chart import Chart, SaveLoadMixin
-from abacus.core import AbacusError, Amount, Ledger
+from abacus.core import AbacusError, Amount
 from abacus.entry import Entry
 
 
@@ -76,7 +76,7 @@ class Book:
     store: EntryStore = field(default_factory=EntryStore)
 
     def __post_init__(self):
-        self.ledger = Ledger.empty(self.chart.mapping)
+        self.ledger = self.chart.mapping.to_ledger()
         self.opening_balances = {}
         self._income_statement = None
 

@@ -56,7 +56,9 @@ class AbacusError(Exception):
 
 AccountName = str
 Amount = decimal.Decimal
-Pair = tuple[AccountName, AccountName]
+Pair = tuple[
+    AccountName, AccountName
+]  # ok to use tuple here, less useful as a dataclass
 
 
 class T5(Enum):
@@ -83,12 +85,23 @@ class Contra:
     name: str
 
 
-# suggestion: may shut down __setitem__ for this class, may call ChartMap
+class NotInChartError(AbacusError):
+    pass
+
+
+class NotInLedgerError(AbacusError):
+    pass
+
+
 class ChartDict(UserDict[str, Regular | Contra]):
     """Dictionary of accounts with their definitions.
+
     This is an intermediate data structure between Chart and Ledger
-    that ensures account names are unique.
+    that ensures account names are unique and contra accounts point to
+    existing regular accounts.
     """
+
+    # suggestion: may shut down __setitem__ for this class, and may call ChartMap
 
     def is_debit_account(self, account_name: AccountName) -> bool:
         """Return True if account is a debit account."""
@@ -98,7 +111,7 @@ class ChartDict(UserDict[str, Regular | Contra]):
             case Contra(name):
                 return not self.is_debit_account(name)
             case _:
-                raise AbacusError()  # mypy wants it
+                raise NotInChartError(account_name)
 
     def set(self, t: T5, account_name: str):
         """Add regular account."""
@@ -108,12 +121,12 @@ class ChartDict(UserDict[str, Regular | Contra]):
     def offset(self, account_name: str, contra_account_name: str):
         """Add contra account."""
         if account_name not in self.keys():
-            raise AbacusError(f"Account not found in chart: {account_name}")
+            raise NotInChartError(account_name)
         self.data[contra_account_name] = Contra(account_name)
         return self
 
     def t_account_class(self, account_name: str) -> Type["TAccount"]:
-        """Return T-account class for a given account name."""
+        """Return T-account class constructor for a given account name."""
         return DebitAccount if self.is_debit_account(account_name) else CreditAccount
 
     def to_ledger(self) -> "Ledger":
@@ -134,7 +147,7 @@ class ChartDict(UserDict[str, Regular | Contra]):
             elif account_name in self.keys():
                 entry.append(Credit(account_name, amount))
             else:
-                raise AbacusError(f"Account not found in chart: {account_name}")
+                raise NotInChartError(account_name)
         raise_if_not_balanced(entry)
         return entry
 
@@ -255,21 +268,18 @@ class CreditAccount(TAccount):
 
 
 class Ledger(UserDict[AccountName, TAccount]):
-    @classmethod
-    def empty(cls, chart_dict: ChartDict):
-        """Create empty ledger from chart dictionary."""
-        return chart_dict.to_ledger()
-
     def post_single(self, single_entry: SingleEntry) -> None:
-        """Post single entry to ledger.
-        Will raise `KeyError` if account name is not found."""
-        self.data[single_entry.name].apply(single_entry)
+        """Post single entry to ledger."""
+        try:
+            self.data[single_entry.name].apply(single_entry)
+        except KeyError:
+            raise NotInLedgerError(single_entry.name)
 
     def raise_if_not_found(self, posting: Posting) -> None:
         """Raise error if account name is not found."""
         for entry in posting:
             if entry.name not in self.keys():
-                raise AbacusError(f"Account name not found in ledger: {entry.name}")
+                raise NotInLedgerError(entry.name)
 
     def post(self, entry: Posting) -> None:
         """Post entry to ledger."""
@@ -298,7 +308,11 @@ class Ledger(UserDict[AccountName, TAccount]):
         )
 
     @property
-    def balances(self) -> dict[AccountName, Amount]:  # note: similar to ReportDict
+    def balances(
+        self,
+    ) -> dict[
+        AccountName, Amount
+    ]:  # note: similar to ReportDict, but .total() is not meaningful
         """Return account balances."""
         return {name: account.balance for name, account in self.items()}
 
@@ -338,8 +352,6 @@ class TrialBalance(UserDict[str, tuple[Amount, Amount]]):
 
 
 class ReportDict(UserDict[AccountName, Amount]):
-    pass
-
     @property
     def total(self):
         return Amount(sum(self.data.values()))
@@ -350,7 +362,7 @@ def net_balances_factory(
 ) -> Callable[[T5], ReportDict]:
     """Create a function that calculates net balances based on chart and ledger."""
 
-    def fill(t: T5) -> dict[AccountName, Amount]:
+    def fill(t: T5) -> ReportDict:
         """Return net balances for a given account type."""
         result = ReportDict()
         for name in chart_dict.by_type(t):
@@ -387,4 +399,4 @@ class BalanceSheet(Report):
 
     def is_balanced(self) -> bool:
         """Return True if assets equal liabilities plus capital."""
-        return self.assets.total == self.capital.total + self.liabilities.total
+        return self.assets.total == (self.capital.total + self.liabilities.total)

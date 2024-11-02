@@ -13,6 +13,7 @@ from abacus.core import (
     DebitAccount,
     Ledger,
     Regular,
+    ReportDict,
     is_balanced,
 )
 
@@ -57,7 +58,7 @@ def test_ledger_creation(account_name, cls, toy_dict):
 
 @pytest.mark.ledger
 def test_ledger_open(toy_dict):
-    ledger = Ledger.empty(toy_dict)
+    ledger = toy_dict.to_ledger()
     entry = toy_dict.opening_entry(dict(cash=10, equity=10))
     ledger.post(entry)
     assert ledger.trial_balance == dict(
@@ -68,9 +69,9 @@ def test_ledger_open(toy_dict):
 def test_balance_sheet_is_not_balanced():
     assert (
         BalanceSheet(
-            assets={"cash": 350},
-            capital={"equity": 300, "retained_earnings": 50},
-            liabilities={"extra": 1},
+            assets=ReportDict({"cash": 350}),
+            capital=ReportDict({"equity": 300, "retained_earnings": 50}),
+            liabilities=ReportDict({"extra": 1}),
         ).is_balanced()
         is False
     )
