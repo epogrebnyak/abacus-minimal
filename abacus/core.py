@@ -34,7 +34,7 @@ Assumptions and simplifications (some may be relaxed in future versions):
 - other comprehensive income account (OCIA) not calculated
 - no journals, entries are posted to ledger directly
 - an entry can touch any accounts
-- entry amount can be positive, negative or even zero
+- entry amount can be positive, negative or zero
 - net earnings are income less expenses, no gross profit or earnings before tax calculated
 - period end closing will transfer current earnings to retained earnings
 - no cash flow statement
@@ -47,7 +47,7 @@ from abc import ABC, abstractmethod
 from collections import UserDict
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterator, Sequence, Type
+from typing import Callable, Iterator, Sequence, Type
 
 
 class AbacusError(Exception):
@@ -83,7 +83,7 @@ class Contra:
     name: str
 
 
-# suggestion: may shut down __setitem__ for this class
+# suggestion: may shut down __setitem__ for this class, may call ChartMap
 class ChartDict(UserDict[str, Regular | Contra]):
     """Dictionary of accounts with their definitions.
     This is an intermediate data structure between Chart and Ledger
@@ -140,7 +140,7 @@ class ChartDict(UserDict[str, Regular | Contra]):
 
     def closing_pairs(self, earnings_account: AccountName) -> Iterator[Pair]:
         """Yield closing pairs for accounting period end.
-        The closing pairs can poitn to the current earnings or retained earnings account.
+        The closing pairs can poinе to сurrent earnings or retained earnings account.
         """
 
         def close(account_name: AccountName):
@@ -158,9 +158,7 @@ class ChartDict(UserDict[str, Regular | Contra]):
 
     def find_contra_accounts(self, name: AccountName) -> list[AccountName]:
         """Find contra accounts for a given account name."""
-        return [
-            contra_name for contra_name, _name in self.items() if _name == Contra(name)
-        ]
+        return [contra_name for contra_name, n in self.items() if n == Contra(name)]
 
 
 @dataclass
@@ -179,6 +177,7 @@ class Credit(SingleEntry):
     """An entry that increases the credit side of an account."""
 
 
+"""Posting is a list of single entries that is assumed to be balanced."""
 Posting = list[Debit | Credit]
 
 
@@ -223,21 +222,22 @@ class TAccount(ABC):
         """Add amount to credit side of T-account."""
         self.right += amount
 
-    def apply(self, single_entry: SingleEntry):
+    def apply(self, entry: SingleEntry):
         """Apply single entry to T-account."""
-        if isinstance(single_entry, Debit):
-            self.debit(single_entry.amount)
-        elif isinstance(single_entry, Credit):
-            self.credit(single_entry.amount)
+        match entry:
+            case Debit(_, amount):
+                self.debit(amount)
+            case Credit(_, amount):
+                self.credit(amount)
 
     @abstractmethod
     def transfer(self, frm: AccountName, to: AccountName) -> Posting:
-        pass
+        """Transfer balance *frm* one account *to* another."""
 
     @property
     @abstractmethod
     def balance(self) -> Amount:
-        pass
+        """Return balance of T-account."""
 
 
 class DebitAccount(TAccount):
@@ -265,22 +265,25 @@ class Ledger(UserDict[AccountName, TAccount]):
         return chart_dict.to_ledger()
 
     def post_single(self, single_entry: SingleEntry) -> None:
-        """Post single entry to ledger. Will raise `KeyError` if account name is not found."""
+        """Post single entry to ledger.
+        Will raise `KeyError` if account name is not found."""
         self.data[single_entry.name].apply(single_entry)
 
-    def assert_key(self, key: AccountName) -> None:
-        if key not in self.keys():
-            raise AbacusError(f"Account not found in ledger: {key}")
+    def raise_if_not_found(self, posting: Posting) -> None:
+        """Raise error if account name is not found."""
+        for entry in posting:
+            if entry.name not in self.keys():
+                raise AbacusError(f"Account name not found in ledger: {entry.name}")
 
     def post(self, entry: Posting) -> None:
         """Post entry to ledger."""
         raise_if_not_balanced(entry)
-        for single_entry in entry:
-            self.assert_key(single_entry.name)
+        self.raise_if_not_found(entry)
         for single_entry in entry:
             self.post_single(single_entry)
 
     def is_closed(self, chart_dict: ChartDict) -> bool:
+        """Return True if ledger is has no temporary accounts."""
         for frm, _ in chart_dict.closing_pairs("_"):
             if frm in self.data.keys():
                 return False
@@ -299,15 +302,14 @@ class Ledger(UserDict[AccountName, TAccount]):
         )
 
     @property
-    def balances(self) -> dict[AccountName, Amount]:
+    def balances(self) -> dict[AccountName, Amount]: # note: similar to ReportDict
         """Return account balances."""
         return {name: account.balance for name, account in self.items()}
 
     def net_balance(self, name: AccountName, contra_names: list[AccountName]) -> Amount:
         """Calculate net balance of an account by deducting the balances of its contra accounts."""
-        return self[name].balance - sum(
-            self[contra_name].balance for contra_name in contra_names
-        )
+        contra_balances = sum(self[contra_name].balance for contra_name in contra_names)
+        return self[name].balance - contra_balances
 
     def close_one(self, frm: AccountName, to: AccountName) -> Posting:
         """Close account and move its balances to another account."""
@@ -339,18 +341,27 @@ class TrialBalance(UserDict[str, tuple[Amount, Amount]]):
     """Trial balance contains account names and balances."""
 
 
-def net_balances_factory(chart_dict: ChartDict, ledger: Ledger):
-    """Create a function that calculates net balances
-    for a given account type based on the provided chart and ledger.
-    """
+class ReportDict(UserDict[AccountName, Amount]):
+    pass
 
-    def fill(t: T5):
-        result = {}
+    @property
+    def total(self):
+        return Amount(sum(self.data.values()))
+
+
+def net_balances_factory(
+    chart_dict: ChartDict, ledger: Ledger
+) -> Callable[[T5], ReportDict]:
+    """Create a function that calculates net balances based on chart and ledger."""
+
+    def fill(t: T5) -> dict[AccountName, Amount]:
+        """Return net balances for a given account type."""
+        result = ReportDict()
         for name in chart_dict.by_type(t):
             try:
                 contra_accounts = chart_dict.find_contra_accounts(name)
                 result[name] = ledger.net_balance(name, contra_accounts)
-            except KeyError:  # protect from current account not in ledger
+            except KeyError:  # protect from current earnings account not in ledger
                 pass
         return result
 
@@ -361,29 +372,23 @@ class Report:
     """Base class for financial reports."""
 
 
-def sum_values(d: dict):
-    return sum(d.values())
-
-
 @dataclass
 class IncomeStatement(Report):
-    income: dict[AccountName, Amount]
-    expenses: dict[AccountName, Amount]
+    income: ReportDict
+    expenses: ReportDict
 
     @property
     def net_earnings(self):
         """Calculate net earnings as income less expenses."""
-        return sum_values(self.income) - sum_values(self.expenses)
+        return self.income.total - self.expenses.total
 
 
 @dataclass
 class BalanceSheet(Report):
-    assets: dict[AccountName, Amount]
-    capital: dict[AccountName, Amount]
-    liabilities: dict[AccountName, Amount]
+    assets: ReportDict
+    capital: ReportDict
+    liabilities: ReportDict
 
     def is_balanced(self) -> bool:
         """Return True if assets equal liabilities plus capital."""
-        return sum_values(self.assets) == (
-            sum_values(self.capital) + sum_values(self.liabilities)
-        )
+        return self.assets.total == self.capital.total + self.liabilities.total

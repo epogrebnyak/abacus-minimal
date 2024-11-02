@@ -14,7 +14,7 @@ markers = [
 
 [tool.poetry]
 name = "abacus-minimal"
-version = "0.10.6"
+version = "0.10.7"
 description = "Ledger in Python that follows corporate accounting rules."
 authors = ["Evgeny Pogrebnyak <e.pogrebnyak@gmail.com>"]
 license = "MIT"
