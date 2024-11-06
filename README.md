@@ -112,8 +112,7 @@ Assets + Expenses = Shareholder Equity + Other Capital + Retained earnings + Inc
 11. In a double entry you add the same amount to the debit of one account and to the credit of another account and
     the accounting identity never breaks. Profit!
 
-12. We would not want a company that just accumulates profits and never pays divident to shareholders. Sometimes you would see
-    at equation similar to:
+12. We would not want a company that just accumulates profits and never pays divident to shareholders. Sometimes you would see an equation similar to:
 
 ```
 Retained earnings (at period end) =  Retained earnings (at period start) + (Income - Expenses) - Dividend
@@ -356,7 +355,6 @@ The key assumptions are:
 - one currency,
 - globally unique account names,
 - one level of accounts in chart and no account aggregation for reports,
-- no intermediate accounts,
 - no treatment of other comprehensive income,
 - no changes in equity and cash flow statements.
 
@@ -377,7 +375,11 @@ See [core.py](abacus/core.py) module docstring for more details.
 
 If you are totally new to accounting the suggested friendly course is <https://www.accountingcoach.com/>.
 
-ACCA and CPA are the international and the US professional qualifications and IFRS and GAAP are the standards for accounting recognition, measurement and disclosure.
+ACCA and CPA are the international and the US professional qualifications and IFRS and US GAAP are the standards for accounting recognition, measurement and disclosure.
+
+<!--
+A great overview of accounting concepts is at
+-->
 
 Part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf) talk about what `abacus-minimal` is designed for.
 
@@ -406,6 +408,7 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 ## Changelog
 
+- `0.11.1` (2024-11-06) `abacus.core` now feature complete.
 - `0.10.7` (2024-11-02) `Posting` type is a list of single entries.
 - `0.10.5` (2024-10-27) Handles income statement and balances sheet before and after close.
 - `0.10.0` (2024-10-24) Separates core, chart, entry and book code and tests.

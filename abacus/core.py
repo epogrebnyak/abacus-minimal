@@ -21,7 +21,9 @@ Accounting workflow:
 Accounting conventions:
 
 - regular accounts of five types (asset, liability, capital, income, expense),
-- contra accounts to regular accounts are possible (eg depreciation, discounts, etc.).
+- contra accounts to regular accounts are possible (eg depreciation, discounts, etc.),
+- only balanced entries are allowed (sum of debits equals sum of credits),
+- period end closes temporary accounts.
 
 Assumptions and simplifications (some may be relaxed in future versions):
 
@@ -29,14 +31,16 @@ Assumptions and simplifications (some may be relaxed in future versions):
 - one reporting period
 - one level of accounts, no sub-accounts
 - account names must be globally unique (eg cannot have two accounts named "other")
-- chart always has current account and retained earnings account
-- no account durations (current vs non-current)
+- chart always has current earnings account and retained earnings account
+- period end closing will transfer current earnings to retained earnings
+- no account durations, current vs non-current accounts not distinguished
 - other comprehensive income account (OCIA) not calculated
+- no intermediate accounts
+- accounts either debit normal or credit normal, no mixed accounts
 - no journals, entries are posted to ledger directly
 - an entry can touch any accounts
 - entry amount can be positive, negative or zero
 - net earnings are income less expenses, no gross profit or earnings before tax calculated
-- period end closing will transfer current earnings to retained earnings
 - no cash flow statement
 - no statement of changes in equity
 - no date or any transaction metadata recorded
@@ -54,10 +58,17 @@ class AbacusError(Exception):
     """Custom error for the abacus project."""
 
 
+class NotInChartError(AbacusError):
+    pass
+
+
+class NotInLedgerError(AbacusError):
+    pass
+
+
 AccountName = str
 Amount = decimal.Decimal
-# ok to use tuple here, less useful as a dataclass
-Pair = tuple[AccountName, AccountName]  
+Pair = tuple[AccountName, AccountName]
 
 
 class T5(Enum):
@@ -84,14 +95,6 @@ class Contra:
     name: str
 
 
-class NotInChartError(AbacusError):
-    pass
-
-
-class NotInLedgerError(AbacusError):
-    pass
-
-
 class ChartDict(UserDict[str, Regular | Contra]):
     """Dictionary of accounts with their definitions.
 
@@ -99,8 +102,6 @@ class ChartDict(UserDict[str, Regular | Contra]):
     that ensures account names are unique and contra accounts point to
     existing regular accounts.
     """
-
-    # suggestion: may shut down __setitem__ for this class, and may call ChartMap
 
     def is_debit_account(self, account_name: AccountName) -> bool:
         """Return True if account is a debit account."""
@@ -110,7 +111,7 @@ class ChartDict(UserDict[str, Regular | Contra]):
             case Contra(name):
                 return not self.is_debit_account(name)
             case _:
-                raise NotInChartError(account_name)
+                raise NotInChartError(account_name)  # added for mypy
 
     def set(self, t: T5, account_name: str):
         """Add regular account."""
@@ -132,7 +133,7 @@ class ChartDict(UserDict[str, Regular | Contra]):
         """Create ledger."""
         return Ledger(
             {
-                account_name: self.t_account_class(account_name)()
+                account_name: self.t_account_class(account_name).empty()
                 for account_name in self.keys()
             }
         )
@@ -171,27 +172,28 @@ class ChartDict(UserDict[str, Regular | Contra]):
 
 @dataclass
 class SingleEntry(ABC):
-    """Base class for a single entry changes either a debit or a credit side of an account."""
+    """Base class for a single entry that changes either a debit or a credit side of an account."""
 
     name: AccountName
     amount: Amount
 
 
 class Debit(SingleEntry):
-    """An entry that increases the debit side of an account."""
+    """An entry that changes the debit side of an account."""
 
 
 class Credit(SingleEntry):
-    """An entry that increases the credit side of an account."""
+    """An entry that changes the credit side of an account."""
 
 
 """Posting is a list of single entries that is assumed to be balanced."""
-Posting = list[Debit | Credit]
+Posting = list[SingleEntry]
 
 
-def sum_of(posting: Posting, cls) -> Posting:
+def sum_of(posting: Posting, cls: Type[SingleEntry]) -> Amount:
     """Return sum of debits or sum of credit entries."""
-    return sum(entry.amount for entry in posting if isinstance(entry, cls))
+    items = [entry.amount for entry in posting if isinstance(entry, cls)]
+    return Amount(sum(items))
 
 
 def is_balanced(posting: Posting) -> bool:
@@ -219,8 +221,13 @@ class TAccount(ABC):
       - CreditAccount
     """
 
-    left: Amount = Amount(0)
-    right: Amount = Amount(0)
+    left: Amount
+    right: Amount
+
+    @classmethod
+    def empty(cls) -> "TAccount":
+        """Return True if T-account is empty."""
+        return cls(Amount(0), Amount(0))
 
     def debit(self, amount: Amount):
         """Add amount to debit side of T-account."""
@@ -306,7 +313,6 @@ class Ledger(UserDict[AccountName, TAccount]):
             {name: as_tuple(t_account) for name, t_account in self.items()}
         )
 
-    # note: output similar to ReportDict, but .total() would be not meaningful
     @property
     def balances(self) -> dict[AccountName, Amount]:
         """Return account balances."""
@@ -314,8 +320,10 @@ class Ledger(UserDict[AccountName, TAccount]):
 
     def net_balance(self, name: AccountName, contra_names: list[AccountName]) -> Amount:
         """Calculate net balance of an account by deducting the balances of its contra accounts."""
-        contra_balances = sum(self[contra_name].balance for contra_name in contra_names)
-        return self[name].balance - contra_balances
+        contra_balance_sum = sum(
+            self[contra_name].balance for contra_name in contra_names
+        )
+        return self[name].balance - contra_balance_sum
 
     def close_one(self, frm: AccountName, to: AccountName) -> Posting:
         """Close account and move its balances to another account."""

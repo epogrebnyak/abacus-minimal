@@ -21,13 +21,13 @@ from abacus.core import (
 @pytest.mark.chart_dict
 def test_chart_dict_for_regular():
     cd = ChartDict([("sales", Regular(T5.Income)), ("cashback", Contra("sales"))])
-    assert isinstance(cd.t_account_class("sales")(), CreditAccount)
+    assert isinstance(cd.t_account_class("sales").empty(), CreditAccount)
 
 
 @pytest.mark.chart_dict
 def test_chart_dict_for_contra():
     cd = ChartDict([("sales", Regular(T5.Income)), ("cashback", Contra("sales"))])
-    assert isinstance(cd.t_account_class("cashback")(), DebitAccount)
+    assert isinstance(cd.t_account_class("cashback").empty(), DebitAccount)
 
 
 @pytest.mark.chart_dict
