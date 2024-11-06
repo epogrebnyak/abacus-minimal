@@ -18,10 +18,10 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 
 ## Minimal example
 
-A company receives initial shareholder investment of 500 USD in cash,
-acquires a stock of merchandise for 200 USD,
-gets a lucky chance to sell all merchandise for 400 USD,
-and gladly pays 150 USD as salaries to the staff.
+A company starts with $500 from shareholders, 
+buys merchandise for $200, 
+sells it all for $400, 
+and then pays $150 in salaries to its staff.
 
 We programmatically run the accounting workflow within
 one reporting period for this company and show end of period reports.
