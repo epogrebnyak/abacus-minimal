@@ -59,20 +59,25 @@ assert book.balances == {"cash": 550, "inventory": 0, "equity": 500, "retained_e
 
 `abacus-minimal` adheres to the following interpretation of double-entry book keeping rules.
 
-1. The value of company property, or assets, equals to shareholder and creditor claims on the company, known as capital (or equity) and liabilities respectively:
+1. The value of company property, or assets, equals to shareholder and creditor claims on the company:
 
 ```
 Assets = Capital + Liabilities
 ```
 
-2. Company current earnings, or profit, equal to income less expenses associated with
-   generating the income:
+Note that capital can be seen as the residual claim:
+
+```
+Capital = Assets - Liabilities
+```
+
+2. Company current earnings, or profit, within reporting period equal to income less expenses associated with generating this income:
 
 ```
 Current earnings = Income - Expenses
 ```
 
-3. Capital consists of paid-in capital (or shareholder equity), other capital accounts and
+3. Capital consists of shareholder equity, other capital accounts and
    retained earnings:
 
 ```
@@ -92,34 +97,8 @@ Assets + Expenses = Shareholder Equity + Other Capital + Retained earnings + Inc
 ```
 
 6. Our book-keeping goal is to reflect business events as changes to the variables in this
-   equation while maintaining the identity between the left and the right sides of the equation,
-   as well as following the accounting principles for recognition, measurement and reporting.
+   equation.
 
-7. Changing just one variable will break the accountign equation, so we allow postings,
-   or entries that change two or more vairables, depending on the nature of the business transaction.
-8. Debits and credits are a common framework to keep track of the changes in accounts. It is less
-   fundimental than accounting identity, just a clever system to avoid at least some of accounting mistakes
-   when expressing what variables in accounting identity you are changing.
-9. Let as allow for every account to accumulate the changes as a list of debit amounts and a list of credit amounts.
-   There will be accounts where the account balance is sum of debits less sum of credits ('debit normal'),
-   and accounts where the balance is sum of credits less sum of debits ('credit normal').
-
-10. Let us designate the assets and expenses accounts as 'debit normal' and capital, liabilities and income accounts
-    as 'credit normal'. Now instead of saying "Please do not break the accounting identity when changing the variables"
-    we can now say "When creating and posting an entry the sum of debit changes must be equal to the sum of credit changes",
-    which is easier to track.
-
-11. In a double entry you add the same amount to the debit of one account and to the credit of another account and
-    the accounting identity never breaks. Profit!
-
-12. We would not want a company that just accumulates profits and never pays divident to shareholders. Sometimes you would see an equation similar to:
-
-```
-Retained earnings (at period end) =  Retained earnings (at period start) + (Income - Expenses) - Dividend
-```
-
-To pay out the dividends the company will transfer part of retained earnings to dividend due libility after announcing the dividend, and will pay out the dividend due with cash at dividend disbursement.
-(Think of two double entries that reflect these operations).
 
 ## Accounting workflow
 
@@ -135,7 +114,7 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 - show financial reports,
 - save account balances data for the next reporting period.
 
-Accounts survive these transformations quite differently, here is the best summary I can give:
+Accounts survive these transformations quite differently, here is a summary:
 
 | Step                                                      |  Assets   |  Expenses  | Shareholder Equity | Retained Earnings | Current Earnings |   Income   | Liabilities |
 | --------------------------------------------------------- | :-------: | :--------: | :----------------: | :---------------: | :--------------: | :--------: | :---------: |
@@ -147,9 +126,11 @@ Accounts survive these transformations quite differently, here is the best summa
 | 5\. Closing current to retained earings                   |     +     |            |         +          |   **r + i -e**    |    **closed**    |            |      +      |
 | 6\. Saving permanent account balances for the next period |     +     |            |         +          |         +         |                  |            |      +      |
 
+The results in step 6 are the inputs to step 2 in the next reporting period.
+
 ## End-to-end example
 
-In this example we use more `abacus-minimal` features including:
+In this example we use more features including:
 
 - contra accounts specification,
 - opening ledger with account balances at the start of reporting period,
@@ -315,8 +296,7 @@ assert book.balances == {
 
 ### 7. Saving data for the next period
 
-You can save the list of entries and the period end account balances to JSON files, unless these files already exist.
-In that case you will need extra precaution – for example, save files to a different folder or under a different name.
+You can save the list of entries and the period end account balances to JSON files, unless these files already exist (save files to a different folder or under a different name in that case).
 
 ```python
 # Save JSON files
@@ -341,10 +321,9 @@ reflect the state of ledger.
 
 ### User interface
 
-As a user you do not have to interact with the core directly. `abacus-minmal` exports `Chart`, `Entry` and `Book` classes
-that we used in the examples.
-The `Book` class holds together a chart, a store of entries, and a ledger and allows posting entries, closing the accounts,
-creating reports and saving and loading JSON files.
+As a user you do not have to interact with the core library directly. 
+`abacus-minmal` exports `Chart`, `Entry` and `Book` classes that we used in the examples.
+The `Book` class holds together a chart, a store of entries, and a ledger and allows posting entries, closing the accounts, creating reports and saving and loading JSON files.
 
 ### Limitations
 
@@ -377,9 +356,9 @@ If you are totally new to accounting the suggested friendly course is <https://w
 
 ACCA and CPA are the international and the US professional qualifications and IFRS and US GAAP are the standards for accounting recognition, measurement and disclosure.
 
-<!--
-A great overview of accounting concepts is at
--->
+A great overview of accounting concepts is at IFRS 
+[Conceptual Framework for Financial Reporting]
+(https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards/english/2021/issued/part-a/conceptual-framework-for-financial-reporting.pdf).
 
 Part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf) talk about what `abacus-minimal` is designed for.
 

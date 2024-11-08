@@ -1,0 +1,28 @@
+ while maintaining the identity between the left and the right sides of the equation,
+   as well as following the accounting principles for recognition, measurement and reporting.
+
+7. Changing just one variable will break the accountign equation, so we allow postings,
+   or entries that change two or more vairables, depending on the nature of the business transaction.
+8. Debits and credits are a common framework to keep track of the changes in accounts. It is less
+   fundimental than accounting identity, just a clever system to avoid at least some of accounting mistakes
+   when expressing what variables in accounting identity you are changing.
+9. Let as allow for every account to accumulate the changes as a list of debit amounts and a list of credit amounts.
+   There will be accounts where the account balance is sum of debits less sum of credits ('debit normal'),
+   and accounts where the balance is sum of credits less sum of debits ('credit normal').
+
+10. Let us designate the assets and expenses accounts as 'debit normal' and capital, liabilities and income accounts
+    as 'credit normal'. Now instead of saying "Please do not break the accounting identity when changing the variables"
+    we can now say "When creating and posting an entry the sum of debit changes must be equal to the sum of credit changes",
+    which is easier to track.
+
+11. In a double entry you add the same amount to the debit of one account and to the credit of another account and
+    the accounting identity never breaks. Profit!
+
+12. We would not want a company that just accumulates profits and never pays divident to shareholders. Sometimes you would see an equation similar to:
+
+```
+Retained earnings (at period end) =  Retained earnings (at period start) + (Income - Expenses) - Dividend
+```
+
+To pay out the dividends the company will transfer part of retained earnings to dividend due libility after announcing the dividend, and will pay out the dividend due with cash at dividend disbursement.
+(Think of two double entries that reflect these operations).
