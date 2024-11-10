@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
-from typing import ClassVar
+from typing import ClassVar, Iterable
 
 
 class T5(Enum):
@@ -16,12 +16,32 @@ class T5(Enum):
         return self.value.capitalize()
 
 
-class Action:
+class Primitive:
+    """Indicate a basic operation on a ledger."""
+
+    pass
+
+
+class Charting:
+    """Change chart of accounts."""
+
+    pass
+
+
+class Entry:
+    """Change account balances."""
+
+    pass
+
+
+class Compound:
+    """Indicate a complex operation on a ledger."""
+
     pass
 
 
 @dataclass
-class Add(Action):
+class Add(Primitive, Charting):
     """Add account."""
 
     name: str
@@ -29,7 +49,7 @@ class Add(Action):
 
 
 @dataclass
-class Offset(Action):
+class Offset(Primitive, Charting):
     """Add contra account."""
 
     parent: str
@@ -37,14 +57,14 @@ class Offset(Action):
 
 
 @dataclass
-class Drop(Action):
+class Drop(Primitive, Charting):
     """Drop account if it has zero balance."""
 
     name: str
 
 
 @dataclass
-class Transfer(Action):
+class Transfer(Compound):
     """Transfer account balance to another account."""
 
     from_account: str
@@ -52,18 +72,14 @@ class Transfer(Action):
 
 
 @dataclass
-class Close(Action):
+class Close(Compound):
     """Close ledger to earnings account."""
 
     earnings_account: str
 
 
-class Entry:
-    pass
-
-
 @dataclass
-class Debit(Entry):
+class Debit(Entry, Primitive):
     """Increase debit-normal accounts, decrease credit-normal accounts."""
 
     account: str
@@ -71,7 +87,7 @@ class Debit(Entry):
 
 
 @dataclass
-class Credit(Entry):
+class Credit(Entry, Primitive):
     """Increase credit-normal accounts, decrease debit-normal accounts."""
 
     account: str
@@ -93,19 +109,34 @@ class Double(Entry):
 
 @dataclass
 class Multiple(Entry):
-    """Multiple entry, balanced by debit and credit changes."""
+    """Multiple entry, balanced by debit and credit."""
 
-    entries: list[Debit | Credit]
+    debits: list[tuple[str, int | float | Decimal]] = field(default_factory=list)
+    credits: list[tuple[str, int | float | Decimal]] = field(default_factory=list)
 
     def __post_init__(self):
-        def sum_class(cls):
-            return sum(x.amount for x in self.entries if isinstance(x, cls))
+        self
 
-        if sum_class(Debit) != sum_class(Credit):
-            raise AbacusError(f"Debits and credits are not balanced for {self.events}")
+    def assert_balanced(self):
+        ds = sum(x for (_, x) in self.debits)
+        cs = sum(x for (_, x) in self.credits)
+        if ds != cs:
+            raise AbacusError(
+                f"Debits {ds} and credits {cs} are not balanced for {self}."
+            )
 
     def __iter__(self):
-        yield from self.entries
+        for account, amount in self.debits:
+            yield Debit(account, Decimal(amount))
+        for account, amount in self.credits:
+            yield Credit(account, Decimal(amount))
+
+
+@dataclass
+class Opening(Compound):
+    """Open ledger with initial balances."""
+
+    balances: dict[str, int | float | Decimal]
 
 
 @dataclass
@@ -150,13 +181,13 @@ class CreditAccount(TAccount):
 
 
 @dataclass
-class Account(ABC):
+class Account(ABC, Charting):
     name: str
     title: str | None = None
     contra_accounts: list[str] = field(default_factory=list)
     t: ClassVar[T5]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[Add | Offset]:
         yield Add(self.name, self.t)
         for contra_name in self.contra_accounts:
             yield Offset(self.name, contra_name)
@@ -211,13 +242,31 @@ class Ledger:
         else:
             return Double(from_account, to_account, balance)
 
-    def apply_many(self, incoming):
-        events = list(incoming)
-        for event in events:
-            self.apply(event)
-        return events
+    def apply_charting(self, incoming: Charting) -> list[Primitive]:
+        if isinstance(incoming, Account):
+            return self.apply_many(incoming)
+        match incoming:
+            case Add(name, t):
+                must_not_exist(self.chart, name)
+                self.chart[name] = t
+                self.create_account(name)
+                return [incoming]
+            case Offset(parent, name):
+                if parent not in self.chart:
+                    raise AbacusError(f"Account {parent} must exist.")
+                must_not_exist(self.chart, name)
+                self.chart[name] = Contra(parent)
+                self.create_account(name)
+                return [incoming]
+            case Drop(name):
+                if not self.accounts[name].is_empty():
+                    raise AbacusError(f"Account {name} is not empty.")
+                del self.accounts[name]
+                return [incoming]
+            case _:
+                raise AbacusError(f"Unknown event {incoming}")
 
-    def apply_entry(self, entry: Entry) -> list[Entry]:
+    def apply_entry(self, entry: Entry) -> list[Primitive]:
         match entry:
             case Debit(account, amount):
                 self.accounts[account].debit(amount)
@@ -229,68 +278,61 @@ class Ledger:
                 self.accounts[debit].debit(amount)
                 self.accounts[credit].credit(amount)
                 return list(entry)
-            case Multiple(events):
-                return self.apply_many(events)
+            case Multiple(_, _):
+                for e in entry:
+                    self.apply_entry(e)
+                return list(entry)
             case _:
                 raise AbacusError(f"Unknown event {entry}")
 
-    def apply_action(self, action: Action) -> list[Entry]:
-        match action:
-            case Add(name, t):
-                must_not_exist(self.chart, name)
-                self.chart[name] = t
-                self.create_account(name)
-                return []
-            case Offset(parent, name):
-                if parent not in self.chart:
-                    raise AbacusError(f"Account {parent} must exist.")
-                must_not_exist(self.chart, name)
-                self.chart[name] = Contra(parent)
-                self.create_account(name)
-                return []
-            case Drop(name):
-                if not self.accounts[name].is_empty():
-                    raise AbacusError(f"Account {name} is not empty.")
-                del self.accounts[name]
-                return []
+    def apply_compound(self, compound: Compound) -> list[Primitive]:
+        match compound:
+            case Opening(balances):
+                raise NotImplementedError(balances)
             case Transfer(from_account, to_account):
                 transfer_entry = self.transfer_entry(from_account, to_account)
-                events = [transfer_entry, Drop(from_account)]
+                events = list(transfer_entry) + [Drop(from_account)]
                 self.apply_many(events)
-                return [transfer_entry]
+                return events
+            case Close(earnings_account):
+                raise NotImplementedError(earnings_account)
             case _:
-                raise AbacusError(f"Unknown event {action}")
+                raise AbacusError(f"Unknown event {compound}")
 
-    def apply(self, incoming: Entry | Action | Account) -> list[Entry]:
-        if isinstance(incoming, Account):
-            self.apply_many(incoming)
-            return []
+    def apply_many(self, incoming) -> list[Primitive]:
+        events = list(iter(incoming))
+        for event in events:
+            self.apply(event)
+        return events
+
+    def apply(self, incoming: Charting | Entry | Compound) -> list[Primitive]:
+        if isinstance(incoming, Charting):
+            return self.apply_charting(incoming)
         elif isinstance(incoming, Entry):
             return self.apply_entry(incoming)
-        elif isinstance(incoming, Action):
-            return self.apply_action(incoming)
+        elif isinstance(incoming, Compound):
+            return self.apply_compound(incoming)
         else:
             raise AbacusError(f"Unknown type {incoming}")
 
 
-events: list[Account | Action | Entry] = [
+events: list[Account | Compound | Entry] = [
     # Create accounts
     Asset("cash"),
     Equity("equity"),
     Income("services", contra_accounts=["refunds", "voids"]),
-    Liability("tax", title="VAT due to tax authorities"),
+    Liability("vat", title="VAT due to tax authorities"),
     Expense("salaries"),
     Equity("retained_earnings"),
     # Start ledger
     # TODO: Open(cash=10, equity=8, retained_earnings=2)
-    Multiple([Debit("cash", 10), Credit("equity", 8), Credit("retained_earnings", 2)]),
+    Multiple(debits=[("cash", 10)], credits=[("equity", 8), ("retained_earnings", 2)]),
     # Start transactions
-    # TODO: demonstrate mmultiple entry
-    # Multiple(debits=[("cash", 120)], credits=[("services", 100), ("tax_due", 20)]),
-    Double("cash", "services", 75),
-    Double("refunds", "cash", 10),
-    Double("voids", "cash", 15),
-    Double("salaries", "cash", 25),
+    # TODO: demonstrate multiple entry
+    Multiple(debits=[("cash", 120)], credits=[("services", 100), ("vat", 20)]),
+    Double("refunds", "cash", 20),
+    Double("voids", "cash", 10),
+    Double("salaries", "cash", 50),
     # Close accounts
     # TODO: Close(retained_earnings)
     Transfer("refunds", "services"),
@@ -299,18 +341,22 @@ events: list[Account | Action | Entry] = [
     Transfer("salaries", "retained_earnings"),
 ]
 
+
+m = Multiple(debits=[("cash", 10)], credits=[("equity", 8), ("retained_earnings", 2)])
+print(list(m))
+
 # Run ledger
 ledger = Ledger()
 for event in events:
     print(event)
-    ledger.apply(event)
+    print(ledger.apply(event))
 print(ledger.balances)
 print(ledger.chart)
 assert ledger.balances == {
-    "cash": "35",
+    "cash": "50",
     "equity": "8",
-    "retained_earnings": "27",
-    "tax": "0",
+    "vat": "20",
+    "retained_earnings": "22",
 }
 assert ledger.chart == {
     "cash": T5.Asset,
@@ -320,5 +366,5 @@ assert ledger.chart == {
     "voids": Contra(name="services"),
     "salaries": T5.Expense,
     "retained_earnings": T5.Equity,
-    "tax": T5.Liability,
+    "vat": T5.Liability,
 }
