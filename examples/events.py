@@ -277,7 +277,7 @@ class Ledger:
 
     @property
     def balances(self):
-        return {name: str(account.balance) for name, account in self.accounts.items()}
+        return {name: float(account.balance) for name, account in self.accounts.items()}
 
     def is_debit_account(self, name) -> bool:
         match self.chart[name]:
@@ -406,22 +406,18 @@ events: list[Account | Closing | Posting] = [
     Close("retained_earnings"),
 ]
 
-
 m = Multiple(debits=[("cash", 10)], credits=[("equity", 8), ("retained_earnings", 2)])
-print(list(m))
+assert list(m) == [Debit(account='cash', amount=Decimal('10')), Credit(account='equity', amount=Decimal('8')), Credit(account='retained_earnings', amount=Decimal('2'))]
 
 # Run ledger
-ledger = Ledger()
-for event in events:
-    print(event)
-    print(ledger.apply(event))
+ledger = Ledger.from_list(events)
 print(ledger.balances)
 print(ledger.chart)
 assert ledger.balances == {
-    "cash": "50",
-    "equity": "8",
-    "vat": "20",
-    "retained_earnings": "22",
+    "cash": 50,
+    "equity": 8,
+    "vat": 20,
+    "retained_earnings": 22,
 }
 assert ledger.chart == {
     "cash": T5.Asset,
