@@ -1,12 +1,13 @@
-"""An accounting ledger that is reproducible with a sequence of events."""
+"""An accounting ledger that equates to a sequence of events."""
+
 from abc import ABC, abstractmethod
 from collections import UserDict
+from copy import deepcopy
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
 from typing import ClassVar, Iterable, Iterator, Sequence
 
-Numeric = int | float | Decimal
 
 class AbacusError(Exception):
     pass
@@ -24,11 +25,13 @@ class T5(Enum):
 
 
 class Operation(object):
-    """Something that can change the chart of account or ledger state."""
-
-
-class Primitive:
-    """Indicates a basic operation on a ledger."""
+    """Something that can change the chart of account or the ledger state.
+    
+    Types of operations:
+    - Charting: change the chart of accounts
+    - Posting: change account balances
+    - Closing: compound period end operation on a ledger
+    """
 
 
 class Charting(Operation):
@@ -44,7 +47,7 @@ class Closing(Operation):
 
 
 @dataclass
-class Add(Primitive, Charting):
+class Add(Charting):
     """Add account."""
 
     name: str
@@ -52,7 +55,7 @@ class Add(Primitive, Charting):
 
 
 @dataclass
-class Offset(Primitive, Charting):
+class Offset(Charting):
     """Add contra account."""
 
     parent: str
@@ -60,7 +63,7 @@ class Offset(Primitive, Charting):
 
 
 @dataclass
-class Drop(Primitive, Charting):
+class Drop(Charting):
     """Drop account if it has zero balance."""
 
     name: str
@@ -82,7 +85,7 @@ class Close(Closing):
 
 
 @dataclass
-class Debit(Posting, Primitive):
+class Debit(Posting):
     """Increase debit-normal accounts, decrease credit-normal accounts."""
 
     account: str
@@ -90,11 +93,14 @@ class Debit(Posting, Primitive):
 
 
 @dataclass
-class Credit(Posting, Primitive):
+class Credit(Posting):
     """Increase credit-normal accounts, decrease debit-normal accounts."""
 
     account: str
     amount: int | float | Decimal
+
+
+Primitive = Add | Offset | Drop | Debit | Credit
 
 
 @dataclass
@@ -157,6 +163,9 @@ class Multiple(Unbalanced):
         ds = self.sums(self.debits)
         cs = self.sums(self.credits)
         raise AbacusError(f"Debits {ds} and credits {cs} are not balanced for {self}.")
+
+
+Numeric = int | float | Decimal
 
 
 @dataclass
@@ -252,9 +261,14 @@ class ChartDict(UserDict[str, T5 | Contra]):
             for contra in self.find_contra_accounts(account):
                 yield Transfer(contra, account)
 
-    def close(self, t, earnings_account: str) -> Iterable[Transfer]:
+    def close_t(self, t, earnings_account: str) -> Iterable[Transfer]:
         for account in self.by_type(t):
             yield Transfer(account, earnings_account)
+
+    def close(self, earnings_account: str) -> Iterable[Transfer]:
+        for t in (T5.Income, T5.Expense):
+            yield from self.close_contra(t)
+            yield from self.close_t(t, earnings_account)
 
 
 @dataclass
@@ -327,7 +341,7 @@ class Ledger:
                 del self.accounts[name]
                 return [action]
             case _:
-                raise AbacusError(f"Unknown event {action}")
+                raise AbacusError(f"Unknown {action}")
 
     def apply_entry(self, entry: Posting) -> list[Primitive]:
         match entry:
@@ -357,27 +371,27 @@ class Ledger:
                     self.apply_entry(e)
                 return list(entry)
             case _:
-                raise AbacusError(f"Unknown event {entry}")
+                raise AbacusError(f"Unknown {entry}")
 
-    def apply_compound(self, compound: Closing) -> list[Primitive]:
-        match compound:
+    def apply_closing(self, action: Closing) -> list[Primitive]:
+        match action:
             case Transfer(from_account, to_account):
+                operations: list[Primitive] = []
                 transfer_entry = self.transfer_entry(from_account, to_account)
                 drop = Drop(from_account)
                 self.apply_entry(transfer_entry)
                 self.apply_charting(drop)
-                return list(transfer_entry) + [Drop(from_account)]
+                operations.extend(transfer_entry)
+                operations.append(drop)
+                return operations
             case Close(earnings_account):
                 operations = []
-                self.accounts_before_close = self.accounts
-                for t in (T5.Income, T5.Expense):
-                    for transfer in self.chart.close_contra(t):
-                        operations.extend(self.apply_compound(transfer))
-                    for transfer in self.chart.close(t, earnings_account):
-                        operations.extend(self.apply_compound(transfer))
+                self.accounts_before_close = deepcopy(self.accounts)
+                for transfer in self.chart.close(earnings_account):
+                    operations.extend(self.apply_closing(transfer))
                 return operations
             case _:
-                raise AbacusError(f"Unknown event {compound}")
+                raise AbacusError(f"Unknown {action}")
 
     def apply(self, action: Operation) -> list[Primitive]:
         if isinstance(action, Charting):
@@ -385,21 +399,24 @@ class Ledger:
         elif isinstance(action, Posting):
             operations = self.apply_entry(action)
         elif isinstance(action, Closing):
-            operations = self.apply_compound(action)
+            operations = self.apply_closing(action)
         else:
-            raise AbacusError(f"Unknown type {action}")
+            raise AbacusError(f"Unknown {action}")
         self.events.append(Event(operations))
         return operations
 
 
-operations: list[Account | Posting | Closing] = [
-    # Create accounts
+# Create accounts
+chart_ops = [
     Asset("cash"),
     Equity("equity"),
     Income("services", contra_accounts=["refunds", "voids"]),
     Liability("vat", title="VAT due to tax authorities"),
     Expense("salaries"),
     Equity("retained_earnings"),
+]
+
+more_ops = [
     # Start ledger with initial balances
     Initial([("cash", 10), ("equity", 8), ("retained_earnings", 2)]),
     # Make transactions
@@ -411,12 +428,12 @@ operations: list[Account | Posting | Closing] = [
     Close("retained_earnings"),
 ]
 
-ledger = Ledger.from_list(operations)
+ledger = Ledger.from_list(chart_ops + more_ops)
 for e in ledger.events:
     print(e.primitives)
 print(ledger.chart)
 print(ledger.balances)
-assert len(ledger.events) == len(operations)
+assert len(ledger.events) == len(chart_ops) + len(more_ops)
 assert ledger.balances == {
     "cash": 50,
     "equity": 8,
@@ -435,3 +452,5 @@ assert ledger.chart == {
 }
 ledger2 = Ledger.from_list([p for event in ledger.events for p in event.primitives])
 assert ledger2.balances == ledger.balances
+if ledger.accounts_before_close is not None:
+   assert len(ledger.accounts_before_close) > 3
