@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections import UserDict
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
@@ -108,22 +109,11 @@ class Double(Posting):
 
 
 @dataclass
-class Multiple(Posting):
+class Unbalanced(Posting):
     """Multiple entry, balanced by debit and credit."""
 
     debits: list[tuple[str, int | float | Decimal]] = field(default_factory=list)
     credits: list[tuple[str, int | float | Decimal]] = field(default_factory=list)
-
-    def __post_init__(self):
-        self
-
-    def assert_balanced(self):
-        ds = sum(x for (_, x) in self.debits)
-        cs = sum(x for (_, x) in self.credits)
-        if ds != cs:
-            raise AbacusError(
-                f"Debits {ds} and credits {cs} are not balanced for {self}."
-            )
 
     def __iter__(self):
         for account, amount in self.debits:
@@ -131,12 +121,47 @@ class Multiple(Posting):
         for account, amount in self.credits:
             yield Credit(account, Decimal(amount))
 
+    def debit(self, account, amount):
+        self.debits.append((account, amount))
+        return self
+
+    def credit(self, account, amount):
+        self.credits.append((account, amount))
+        return self
+
+    def balances(self):
+        ds = sum(x for (_, x) in self.debits)
+        cs = sum(x for (_, x) in self.credits)
+        return ds, cs
+
+    def is_balanced(self):
+        ds, cs = self.balances()
+        return ds == cs
+
+    def to_multiple(self):
+        return Multiple(debits=self.debits, credits=self.credits)
+
+
+class Multiple(Unbalanced):
+    """Multiple entry, balanced by debit and credit."""
+
+    def validate(self):
+        ds, cs = self.balances()
+        if ds != cs:
+            raise AbacusError(
+                f"Debits {ds} and credits {cs} are not balanced for {self}."
+            )
+        return self
+
+
+Numeric = int | float | Decimal
+
 
 @dataclass
-class Opening(Posting):
+class Initial(Posting):
     """Open ledger with initial balances."""
 
-    balances: dict[str, int | float | Decimal]
+    balances: list[tuple[str, Numeric]]
 
 
 @dataclass
@@ -212,15 +237,35 @@ class Income(Account):
 class Expense(Account):
     t = T5.Expense
 
+
 @dataclass
 class Event:
-    title: str
     primitives: list[Primitive]
+
+
+class ChartDict(UserDict[str, T5 | Contra]):
+    def by_type(self, t: T5) -> list[str]:
+        return [name for name, account_type in self.data.items() if account_type == t]
+
+    def find_contra_accounts(self, name: str) -> list[str]:
+        return [
+            contra_name
+            for contra_name, parent in self.data.items()
+            if parent == Contra(name)
+        ]
+
+    def closing_pairs(self, earnings_account: str) -> Iterable[Transfer]:
+        for t in (T5.Income, T5.Expense):
+            for account in self.by_type(t):
+                for contra in self.find_contra_accounts(account):
+                    yield Transfer(contra, account)
+                yield Transfer(account, earnings_account)
+
 
 @dataclass
 class Ledger:
     accounts: dict[str, TAccount] = field(default_factory=dict)
-    chart: dict[str, T5 | Contra] = field(default_factory=dict)
+    chart: ChartDict = field(default_factory=ChartDict)
     events: list[Event] = field(default_factory=list)
 
     @classmethod
@@ -290,8 +335,17 @@ class Ledger:
                 self.accounts[debit].debit(amount)
                 self.accounts[credit].credit(amount)
                 return list(entry)
-            case Opening(balances):
-                raise NotImplementedError(balances)
+            case Initial(balances):
+                ub = Unbalanced()
+                for account, amount in balances:
+                    if self.is_debit_account(account):
+                        ub.debit(account, amount)
+                    else:
+                        ub.credit(account, amount)
+                if ub.is_balanced():
+                    return self.apply_entry(ub.to_multiple())
+                else:
+                    raise AbacusError(f"Unbalanced opening {balances}")
             case Multiple(_, _):
                 for e in entry:
                     self.apply_entry(e)
@@ -307,7 +361,10 @@ class Ledger:
                 self.apply_many(events)
                 return events
             case Close(earnings_account):
-                raise NotImplementedError(earnings_account)
+                events = []
+                for t in self.chart.closing_pairs(earnings_account):
+                    events.extend(self.apply(t))
+                return events
             case _:
                 raise AbacusError(f"Unknown event {compound}")
 
@@ -319,13 +376,15 @@ class Ledger:
 
     def apply(self, incoming: Charting | Posting | Closing) -> list[Primitive]:
         if isinstance(incoming, Charting):
-            return self.apply_charting(incoming)
+            prims = self.apply_charting(incoming)
         elif isinstance(incoming, Posting):
-            return self.apply_entry(incoming)
+            prims = self.apply_entry(incoming)
         elif isinstance(incoming, Closing):
-            return self.apply_compound(incoming)
+            prims = self.apply_compound(incoming)
         else:
             raise AbacusError(f"Unknown type {incoming}")
+        self.events.append(Event(prims))
+        return prims
 
 
 events: list[Account | Closing | Posting] = [
@@ -336,22 +395,15 @@ events: list[Account | Closing | Posting] = [
     Liability("vat", title="VAT due to tax authorities"),
     Expense("salaries"),
     Equity("retained_earnings"),
-    # Start ledger
-    # TODO: Opening(balances=[(cash, 10), (equity, 8), (retained_earnings, 2)])
-    Multiple(debits=[("cash", 10)], credits=[("equity", 8), ("retained_earnings", 2)]),
-    # Start transactions
-    # TODO: demonstrate multiple entry
-    Multiple(debits=[("cash", 120)], credits=[("services", 100), ("vat", 20)]),
+    # Start ledger with initial balances
+    Initial(balances=[("cash", 10), ("equity", 8), ("retained_earnings", 2)]),
+    # Make transactions
+    Multiple().debit("cash", 120).credit("services", 100).credit("vat", 20),
     Double("refunds", "cash", 20),
     Double("voids", "cash", 10),
     Double("salaries", "cash", 50),
     # Close accounts
-    # TODO: Close("current_earnings")
-    # TODO: Transfer("current_earnings", "retained_earnings")
-    Transfer("refunds", "services"),
-    Transfer("voids", "services"),
-    Transfer("services", "retained_earnings"),
-    Transfer("salaries", "retained_earnings"),
+    Close("retained_earnings"),
 ]
 
 
