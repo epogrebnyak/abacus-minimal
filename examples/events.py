@@ -1,5 +1,4 @@
 """An accounting ledger that is reproducible with a sequence of events."""
-
 from abc import ABC, abstractmethod
 from collections import UserDict
 from dataclasses import dataclass, field
@@ -8,7 +7,6 @@ from enum import Enum
 from typing import ClassVar, Iterable, Iterator, Sequence
 
 Numeric = int | float | Decimal
-
 
 class AbacusError(Exception):
     pass
@@ -435,5 +433,5 @@ assert ledger.chart == {
     "retained_earnings": T5.Equity,
     "vat": T5.Liability,
 }
-ledger2 = Ledger.from_list(p for event in ledger.events for p in event.primitives)
+ledger2 = Ledger.from_list([p for event in ledger.events for p in event.primitives])
 assert ledger2.balances == ledger.balances
