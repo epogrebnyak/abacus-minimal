@@ -1,12 +1,11 @@
+"""An accounting ledger that is reproducible with a sequence of events."""
+
 from abc import ABC, abstractmethod
 from collections import UserDict
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
-
-# Run ledger
-from pprint import pprint
-from typing import ClassVar, Iterable
+from typing import ClassVar, Iterable, Iterator, Sequence
 
 Numeric = int | float | Decimal
 
@@ -30,7 +29,7 @@ class Operation(object):
     """Something that can change the chart of account or ledger state."""
 
 
-class Primitive(Operation):
+class Primitive:
     """Indicates a basic operation on a ledger."""
 
 
@@ -213,7 +212,7 @@ class Account(ABC, Charting):
     contra_accounts: list[str] = field(default_factory=list)
     t: ClassVar[T5]
 
-    def __iter__(self) -> Iterable[Add | Offset]:
+    def __iter__(self) -> Iterator[Add | Offset]:
         yield Add(self.name, self.t)
         for contra_name in self.contra_accounts:
             yield Offset(self.name, contra_name)
@@ -250,12 +249,14 @@ class ChartDict(UserDict[str, T5 | Contra]):
             if parent == Contra(name)
         ]
 
-    def closing_pairs(self, earnings_account: str) -> Iterable[Transfer]:
-        for t in (T5.Income, T5.Expense):
-            for account in self.by_type(t):
-                for contra in self.find_contra_accounts(account):
-                    yield Transfer(contra, account)
-                yield Transfer(account, earnings_account)
+    def close_contra(self, t) -> Iterable[Transfer]:
+        for account in self.by_type(t):
+            for contra in self.find_contra_accounts(account):
+                yield Transfer(contra, account)
+
+    def close(self, t, earnings_account: str) -> Iterable[Transfer]:
+        for account in self.by_type(t):
+            yield Transfer(account, earnings_account)
 
 
 @dataclass
@@ -268,9 +269,13 @@ class Ledger:
     accounts: dict[str, TAccount] = field(default_factory=dict)
     chart: ChartDict = field(default_factory=ChartDict)
     events: list[Event] = field(default_factory=list)
+    accounts_before_close: dict[str, TAccount] | None = None
+
+    def is_closed(self) -> bool:
+        return self.accounts_before_close is not None
 
     @classmethod
-    def from_list(cls, actions: list[Charting | Posting | Closing]):
+    def from_list(cls, actions: Sequence[Operation]):
         ledger = cls()
         for action in actions:
             ledger.apply(action)
@@ -302,9 +307,9 @@ class Ledger:
 
     def apply_charting(self, action: Charting) -> list[Primitive]:
         if isinstance(action, Account):
-            for a in action:
+            for a in iter(action):
                 self.apply_charting(a)
-            return list[action]
+            return list(action)
         match action:
             case Add(name, t):
                 must_not_exist(self.chart, name)
@@ -366,13 +371,17 @@ class Ledger:
                 return list(transfer_entry) + [Drop(from_account)]
             case Close(earnings_account):
                 operations = []
-                for transfer in self.chart.closing_pairs(earnings_account):
-                    operations.extend(self.apply_compound(transfer))
+                self.accounts_before_close = self.accounts
+                for t in (T5.Income, T5.Expense):
+                    for transfer in self.chart.close_contra(t):
+                        operations.extend(self.apply_compound(transfer))
+                    for transfer in self.chart.close(t, earnings_account):
+                        operations.extend(self.apply_compound(transfer))
                 return operations
             case _:
                 raise AbacusError(f"Unknown event {compound}")
 
-    def apply(self, action: Charting | Posting | Closing) -> list[Primitive]:
+    def apply(self, action: Operation) -> list[Primitive]:
         if isinstance(action, Charting):
             operations = self.apply_charting(action)
         elif isinstance(action, Posting):
@@ -385,7 +394,7 @@ class Ledger:
         return operations
 
 
-operations: list[Account | Closing | Posting] = [
+operations: list[Account | Posting | Closing] = [
     # Create accounts
     Asset("cash"),
     Equity("equity"),
@@ -404,15 +413,9 @@ operations: list[Account | Closing | Posting] = [
     Close("retained_earnings"),
 ]
 
-m = Multiple(debits=[("cash", 10)], credits=[("equity", 8), ("retained_earnings", 2)])
-assert list(m) == [
-    Debit(account="cash", amount=Decimal("10")),
-    Credit(account="equity", amount=Decimal("8")),
-    Credit(account="retained_earnings", amount=Decimal("2")),
-]
-
 ledger = Ledger.from_list(operations)
-pprint(ledger.events)
+for e in ledger.events:
+    print(e.primitives)
 print(ledger.chart)
 print(ledger.balances)
 assert len(ledger.events) == len(operations)
@@ -432,3 +435,5 @@ assert ledger.chart == {
     "retained_earnings": T5.Equity,
     "vat": T5.Liability,
 }
+ledger2 = Ledger.from_list(p for event in ledger.events for p in event.primitives)
+assert ledger2.balances == ledger.balances
