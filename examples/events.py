@@ -28,13 +28,13 @@ class Charting:
     pass
 
 
-class Entry:
+class Posting:
     """Change account balances."""
 
     pass
 
 
-class Compound:
+class Closing:
     """Indicate a complex operation on a ledger."""
 
     pass
@@ -64,7 +64,7 @@ class Drop(Primitive, Charting):
 
 
 @dataclass
-class Transfer(Compound):
+class Transfer(Closing):
     """Transfer account balance to another account."""
 
     from_account: str
@@ -72,14 +72,14 @@ class Transfer(Compound):
 
 
 @dataclass
-class Close(Compound):
+class Close(Closing):
     """Close ledger to earnings account."""
 
     earnings_account: str
 
 
 @dataclass
-class Debit(Entry, Primitive):
+class Debit(Posting, Primitive):
     """Increase debit-normal accounts, decrease credit-normal accounts."""
 
     account: str
@@ -87,7 +87,7 @@ class Debit(Entry, Primitive):
 
 
 @dataclass
-class Credit(Entry, Primitive):
+class Credit(Posting, Primitive):
     """Increase credit-normal accounts, decrease debit-normal accounts."""
 
     account: str
@@ -95,7 +95,7 @@ class Credit(Entry, Primitive):
 
 
 @dataclass
-class Double(Entry):
+class Double(Posting):
     """Double-entry transaction."""
 
     debit: str
@@ -108,7 +108,7 @@ class Double(Entry):
 
 
 @dataclass
-class Multiple(Entry):
+class Multiple(Posting):
     """Multiple entry, balanced by debit and credit."""
 
     debits: list[tuple[str, int | float | Decimal]] = field(default_factory=list)
@@ -133,7 +133,7 @@ class Multiple(Entry):
 
 
 @dataclass
-class Opening(Compound):
+class Opening(Posting):
     """Open ledger with initial balances."""
 
     balances: dict[str, int | float | Decimal]
@@ -212,11 +212,23 @@ class Income(Account):
 class Expense(Account):
     t = T5.Expense
 
+@dataclass
+class Event:
+    title: str
+    primitives: list[Primitive]
 
 @dataclass
 class Ledger:
     accounts: dict[str, TAccount] = field(default_factory=dict)
     chart: dict[str, T5 | Contra] = field(default_factory=dict)
+    events: list[Event] = field(default_factory=list)
+
+    @classmethod
+    def from_list(cls, events: list[Charting | Posting | Closing]):
+        ledger = cls()
+        for event in events:
+            ledger.apply(event)
+        return ledger
 
     @property
     def balances(self):
@@ -266,7 +278,7 @@ class Ledger:
             case _:
                 raise AbacusError(f"Unknown event {incoming}")
 
-    def apply_entry(self, entry: Entry) -> list[Primitive]:
+    def apply_entry(self, entry: Posting) -> list[Primitive]:
         match entry:
             case Debit(account, amount):
                 self.accounts[account].debit(amount)
@@ -278,6 +290,8 @@ class Ledger:
                 self.accounts[debit].debit(amount)
                 self.accounts[credit].credit(amount)
                 return list(entry)
+            case Opening(balances):
+                raise NotImplementedError(balances)
             case Multiple(_, _):
                 for e in entry:
                     self.apply_entry(e)
@@ -285,10 +299,8 @@ class Ledger:
             case _:
                 raise AbacusError(f"Unknown event {entry}")
 
-    def apply_compound(self, compound: Compound) -> list[Primitive]:
+    def apply_compound(self, compound: Closing) -> list[Primitive]:
         match compound:
-            case Opening(balances):
-                raise NotImplementedError(balances)
             case Transfer(from_account, to_account):
                 transfer_entry = self.transfer_entry(from_account, to_account)
                 events = list(transfer_entry) + [Drop(from_account)]
@@ -300,23 +312,23 @@ class Ledger:
                 raise AbacusError(f"Unknown event {compound}")
 
     def apply_many(self, incoming) -> list[Primitive]:
-        events = list(iter(incoming))
+        events = list(incoming)
         for event in events:
             self.apply(event)
         return events
 
-    def apply(self, incoming: Charting | Entry | Compound) -> list[Primitive]:
+    def apply(self, incoming: Charting | Posting | Closing) -> list[Primitive]:
         if isinstance(incoming, Charting):
             return self.apply_charting(incoming)
-        elif isinstance(incoming, Entry):
+        elif isinstance(incoming, Posting):
             return self.apply_entry(incoming)
-        elif isinstance(incoming, Compound):
+        elif isinstance(incoming, Closing):
             return self.apply_compound(incoming)
         else:
             raise AbacusError(f"Unknown type {incoming}")
 
 
-events: list[Account | Compound | Entry] = [
+events: list[Account | Closing | Posting] = [
     # Create accounts
     Asset("cash"),
     Equity("equity"),
@@ -325,7 +337,7 @@ events: list[Account | Compound | Entry] = [
     Expense("salaries"),
     Equity("retained_earnings"),
     # Start ledger
-    # TODO: Open(cash=10, equity=8, retained_earnings=2)
+    # TODO: Opening(balances=[(cash, 10), (equity, 8), (retained_earnings, 2)])
     Multiple(debits=[("cash", 10)], credits=[("equity", 8), ("retained_earnings", 2)]),
     # Start transactions
     # TODO: demonstrate multiple entry
@@ -334,7 +346,8 @@ events: list[Account | Compound | Entry] = [
     Double("voids", "cash", 10),
     Double("salaries", "cash", 50),
     # Close accounts
-    # TODO: Close(retained_earnings)
+    # TODO: Close("current_earnings")
+    # TODO: Transfer("current_earnings", "retained_earnings")
     Transfer("refunds", "services"),
     Transfer("voids", "services"),
     Transfer("services", "retained_earnings"),
