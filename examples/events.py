@@ -3,7 +3,16 @@ from collections import UserDict
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
+
+# Run ledger
+from pprint import pprint
 from typing import ClassVar, Iterable
+
+Numeric = int | float | Decimal
+
+
+class AbacusError(Exception):
+    pass
 
 
 class T5(Enum):
@@ -17,28 +26,24 @@ class T5(Enum):
         return self.value.capitalize()
 
 
-class Primitive:
-    """Indicate a basic operation on a ledger."""
-
-    pass
+class Operation(object):
+    """Something that can change the chart of account or ledger state."""
 
 
-class Charting:
+class Primitive(Operation):
+    """Indicates a basic operation on a ledger."""
+
+
+class Charting(Operation):
     """Change chart of accounts."""
 
-    pass
 
-
-class Posting:
+class Posting(Operation):
     """Change account balances."""
 
-    pass
 
-
-class Closing:
+class Closing(Operation):
     """Indicate a complex operation on a ledger."""
-
-    pass
 
 
 @dataclass
@@ -66,7 +71,7 @@ class Drop(Primitive, Charting):
 
 @dataclass
 class Transfer(Closing):
-    """Transfer account balance to another account."""
+    """Transfer account balance to another account and delete account."""
 
     from_account: str
     to_account: str
@@ -117,9 +122,9 @@ class Unbalanced(Posting):
 
     def __iter__(self):
         for account, amount in self.debits:
-            yield Debit(account, Decimal(amount))
+            yield Debit(account, amount)
         for account, amount in self.credits:
-            yield Credit(account, Decimal(amount))
+            yield Credit(account, amount)
 
     def debit(self, account, amount):
         self.debits.append((account, amount))
@@ -129,14 +134,12 @@ class Unbalanced(Posting):
         self.credits.append((account, amount))
         return self
 
-    def balances(self):
-        ds = sum(x for (_, x) in self.debits)
-        cs = sum(x for (_, x) in self.credits)
-        return ds, cs
+    @staticmethod
+    def sums(xs):
+        return sum(x for (_, x) in xs)
 
     def is_balanced(self):
-        ds, cs = self.balances()
-        return ds == cs
+        return self.sums(self.debits) == self.sums(self.credits)
 
     def to_multiple(self):
         return Multiple(debits=self.debits, credits=self.credits)
@@ -145,16 +148,18 @@ class Unbalanced(Posting):
 class Multiple(Unbalanced):
     """Multiple entry, balanced by debit and credit."""
 
+    def __post_init__(self):
+        self.validate()
+
     def validate(self):
-        ds, cs = self.balances()
-        if ds != cs:
-            raise AbacusError(
-                f"Debits {ds} and credits {cs} are not balanced for {self}."
-            )
+        if not self.is_balanced():
+            self.raise_not_balanced()
         return self
 
-
-Numeric = int | float | Decimal
+    def raise_not_balanced(self):
+        ds = self.sums(self.debits)
+        cs = self.sums(self.credits)
+        raise AbacusError(f"Debits {ds} and credits {cs} are not balanced for {self}.")
 
 
 @dataclass
@@ -169,10 +174,6 @@ class Contra:
     """Contra account, refers to an existing regular account."""
 
     name: str
-
-
-class AbacusError(Exception):
-    pass
 
 
 def must_not_exist(chart, name):
@@ -238,11 +239,6 @@ class Expense(Account):
     t = T5.Expense
 
 
-@dataclass
-class Event:
-    primitives: list[Primitive]
-
-
 class ChartDict(UserDict[str, T5 | Contra]):
     def by_type(self, t: T5) -> list[str]:
         return [name for name, account_type in self.data.items() if account_type == t]
@@ -263,21 +259,26 @@ class ChartDict(UserDict[str, T5 | Contra]):
 
 
 @dataclass
+class Event:
+    primitives: list[Primitive]
+
+
+@dataclass
 class Ledger:
     accounts: dict[str, TAccount] = field(default_factory=dict)
     chart: ChartDict = field(default_factory=ChartDict)
     events: list[Event] = field(default_factory=list)
 
     @classmethod
-    def from_list(cls, events: list[Charting | Posting | Closing]):
+    def from_list(cls, actions: list[Charting | Posting | Closing]):
         ledger = cls()
-        for event in events:
-            ledger.apply(event)
+        for action in actions:
+            ledger.apply(action)
         return ledger
 
     @property
     def balances(self):
-        return {name: float(account.balance) for name, account in self.accounts.items()}
+        return {name: account.balance for name, account in self.accounts.items()}
 
     def is_debit_account(self, name) -> bool:
         match self.chart[name]:
@@ -299,29 +300,31 @@ class Ledger:
         else:
             return Double(from_account, to_account, balance)
 
-    def apply_charting(self, incoming: Charting) -> list[Primitive]:
-        if isinstance(incoming, Account):
-            return self.apply_many(incoming)
-        match incoming:
+    def apply_charting(self, action: Charting) -> list[Primitive]:
+        if isinstance(action, Account):
+            for a in action:
+                self.apply_charting(a)
+            return list[action]
+        match action:
             case Add(name, t):
                 must_not_exist(self.chart, name)
                 self.chart[name] = t
                 self.create_account(name)
-                return [incoming]
+                return [action]
             case Offset(parent, name):
                 if parent not in self.chart:
                     raise AbacusError(f"Account {parent} must exist.")
                 must_not_exist(self.chart, name)
                 self.chart[name] = Contra(parent)
                 self.create_account(name)
-                return [incoming]
+                return [action]
             case Drop(name):
                 if not self.accounts[name].is_empty():
                     raise AbacusError(f"Account {name} is not empty.")
                 del self.accounts[name]
-                return [incoming]
+                return [action]
             case _:
-                raise AbacusError(f"Unknown event {incoming}")
+                raise AbacusError(f"Unknown event {action}")
 
     def apply_entry(self, entry: Posting) -> list[Primitive]:
         match entry:
@@ -336,16 +339,16 @@ class Ledger:
                 self.accounts[credit].credit(amount)
                 return list(entry)
             case Initial(balances):
-                ub = Unbalanced()
+                posting = Multiple()
                 for account, amount in balances:
                     if self.is_debit_account(account):
-                        ub.debit(account, amount)
+                        posting.debit(account, amount)
                     else:
-                        ub.credit(account, amount)
-                if ub.is_balanced():
-                    return self.apply_entry(ub.to_multiple())
+                        posting.credit(account, amount)
+                if posting.is_balanced():
+                    return self.apply_entry(posting)
                 else:
-                    raise AbacusError(f"Unbalanced opening {balances}")
+                    raise AbacusError(f"Unbalanced {balances}")
             case Multiple(_, _):
                 for e in entry:
                     self.apply_entry(e)
@@ -357,37 +360,32 @@ class Ledger:
         match compound:
             case Transfer(from_account, to_account):
                 transfer_entry = self.transfer_entry(from_account, to_account)
-                events = list(transfer_entry) + [Drop(from_account)]
-                self.apply_many(events)
-                return events
+                drop = Drop(from_account)
+                self.apply_entry(transfer_entry)
+                self.apply_charting(drop)
+                return list(transfer_entry) + [Drop(from_account)]
             case Close(earnings_account):
-                events = []
-                for t in self.chart.closing_pairs(earnings_account):
-                    events.extend(self.apply(t))
-                return events
+                operations = []
+                for transfer in self.chart.closing_pairs(earnings_account):
+                    operations.extend(self.apply_compound(transfer))
+                return operations
             case _:
                 raise AbacusError(f"Unknown event {compound}")
 
-    def apply_many(self, incoming) -> list[Primitive]:
-        events = list(incoming)
-        for event in events:
-            self.apply(event)
-        return events
-
-    def apply(self, incoming: Charting | Posting | Closing) -> list[Primitive]:
-        if isinstance(incoming, Charting):
-            prims = self.apply_charting(incoming)
-        elif isinstance(incoming, Posting):
-            prims = self.apply_entry(incoming)
-        elif isinstance(incoming, Closing):
-            prims = self.apply_compound(incoming)
+    def apply(self, action: Charting | Posting | Closing) -> list[Primitive]:
+        if isinstance(action, Charting):
+            operations = self.apply_charting(action)
+        elif isinstance(action, Posting):
+            operations = self.apply_entry(action)
+        elif isinstance(action, Closing):
+            operations = self.apply_compound(action)
         else:
-            raise AbacusError(f"Unknown type {incoming}")
-        self.events.append(Event(prims))
-        return prims
+            raise AbacusError(f"Unknown type {action}")
+        self.events.append(Event(operations))
+        return operations
 
 
-events: list[Account | Closing | Posting] = [
+operations: list[Account | Closing | Posting] = [
     # Create accounts
     Asset("cash"),
     Equity("equity"),
@@ -396,9 +394,9 @@ events: list[Account | Closing | Posting] = [
     Expense("salaries"),
     Equity("retained_earnings"),
     # Start ledger with initial balances
-    Initial(balances=[("cash", 10), ("equity", 8), ("retained_earnings", 2)]),
+    Initial([("cash", 10), ("equity", 8), ("retained_earnings", 2)]),
     # Make transactions
-    Multiple().debit("cash", 120).credit("services", 100).credit("vat", 20),
+    Multiple(debits=[("cash", 120)], credits=[("services", 100), ("vat", 20)]),
     Double("refunds", "cash", 20),
     Double("voids", "cash", 10),
     Double("salaries", "cash", 50),
@@ -407,12 +405,17 @@ events: list[Account | Closing | Posting] = [
 ]
 
 m = Multiple(debits=[("cash", 10)], credits=[("equity", 8), ("retained_earnings", 2)])
-assert list(m) == [Debit(account='cash', amount=Decimal('10')), Credit(account='equity', amount=Decimal('8')), Credit(account='retained_earnings', amount=Decimal('2'))]
+assert list(m) == [
+    Debit(account="cash", amount=Decimal("10")),
+    Credit(account="equity", amount=Decimal("8")),
+    Credit(account="retained_earnings", amount=Decimal("2")),
+]
 
-# Run ledger
-ledger = Ledger.from_list(events)
-print(ledger.balances)
+ledger = Ledger.from_list(operations)
+pprint(ledger.events)
 print(ledger.chart)
+print(ledger.balances)
+assert len(ledger.events) == len(operations)
 assert ledger.balances == {
     "cash": 50,
     "equity": 8,
