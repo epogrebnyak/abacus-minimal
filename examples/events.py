@@ -303,6 +303,12 @@ class ChartDict(UserDict[str, T5 | Contra]):
             yield from self.close_contra_accounts(t)
             yield from self.close_type(t, earnings_account)
 
+    def serialize(self, current_earnings: str, retained_earnings: str):
+        for earnings_account in (current_earnings, retained_earnings):
+            if self.data.get(earnings_account, None) != T5.Equity:
+                raise AbacusError(f"Account {earnings_account} should be equity.")
+        # fold back to Chart    
+        
 
 Primitive = Add | Offset | Debit | Credit | PeriodEnd | Drop
 
