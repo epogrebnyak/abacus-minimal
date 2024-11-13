@@ -387,6 +387,7 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 ## Changelog
 
+- `0.12.0` (2024-11-13) `events.py` offers events-based ledger modification.
 - `0.11.1` (2024-11-06) `abacus.core` now feature complete.
 - `0.10.7` (2024-11-02) `Posting` type is a list of single entries.
 - `0.10.5` (2024-10-27) Handles income statement and balances sheet before and after close.
