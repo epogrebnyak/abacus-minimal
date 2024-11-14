@@ -341,10 +341,7 @@ Primitive = Add | Offset | Debit | Credit | PeriodEnd | Drop
 @dataclass
 class Event:
     action: (
-        Add
-        | Offset
-        | Drop
-        | Asset
+        Asset
         | Equity
         | Liability
         | Income
@@ -355,6 +352,7 @@ class Event:
         | Transfer
         | Close
         | PeriodEnd
+        | Drop
     )
     primitives: list[Primitive]
     note: str | None
