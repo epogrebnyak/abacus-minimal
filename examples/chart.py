@@ -1,8 +1,7 @@
-from pathlib import Path
 
 from events import T5, AbacusError, Add, Offset, must_exist
-from pydantic import BaseModel, ConfigDict
 from mixin import SaveLoadMixin
+from pydantic import BaseModel, ConfigDict
 
 
 class Chart(BaseModel, SaveLoadMixin):
@@ -26,9 +25,19 @@ class Chart(BaseModel, SaveLoadMixin):
             retained_earnings="retained_earnings", current_earnings="current_earnings"
         )
 
+    def offset(self, account_name: str, contra_name: str):
+        """Add contra account to chart."""
+        self.contra_accounts.setdefault(account_name, list()).append(contra_name)
+        return self
+
+    def name(self, account_name: str, title: str):
+        """Add descriptive account title."""
+        self.names[account_name] = title
+        return self
+    
     def __post_init__(self):
         self.assert_all_account_names_are_unique()
-        self.assert_no_invalid_contra_account_references()
+        self.assert_contra_account_references_are_valid()
 
     @property
     def duplicates(self):
@@ -40,10 +49,10 @@ class Chart(BaseModel, SaveLoadMixin):
 
     def assert_all_account_names_are_unique(self):
         """Raise error if any duplicate account names are found."""
-        if names := self.duplicates:
-            raise AbacusError(f"Account names are not unique: {names}")
+        if dups := self.duplicates:
+            raise AbacusError(f"Account names are not unique: {dups}")
 
-    def assert_no_invalid_contra_account_references(self):
+    def assert_contra_account_references_are_valid(self):
         """Raise error if any contra account reference is invalid."""
         regular_account_names = self.regular_accounts
         for account_names in self.contra_accounts.keys():
@@ -84,13 +93,3 @@ class Chart(BaseModel, SaveLoadMixin):
     @property
     def primitives(self):
         return list(self._regular_accounts()) + list(self._contra_accounts())
-
-    def offset(self, account_name: str, contra_name: str):
-        """Add contra account to chart."""
-        self.contra_accounts.setdefault(account_name, list()).append(contra_name)
-        return self
-
-    def name(self, account_name: str, title: str):
-        """Add descriptive account title."""
-        self.names[account_name] = title
-        return self

@@ -80,3 +80,6 @@ class Book:
     @property
     def balance_sheet(self):
         return self.ledger.balance_sheet(self.chart.current_earnings)
+
+    def save_history(self, path, allow_overwrite=False):
+        self.ledger.history.save(path, allow_overwrite)

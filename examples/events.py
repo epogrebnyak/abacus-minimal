@@ -28,10 +28,9 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
-from pathlib import Path
-from typing import Iterable, Iterator, Sequence
-from mixin import SaveLoadMixin
+from typing import Iterable, Iterator, Literal, Sequence
 
+from mixin import SaveLoadMixin
 from pydantic import BaseModel
 
 Numeric = int | float | Decimal
@@ -73,7 +72,6 @@ class Posting(Operation):
 class Closing(Operation):
     """Close accounts at period end."""
 
-from typing import Literal
 
 @dataclass
 class Add(Charting):
@@ -81,7 +79,7 @@ class Add(Charting):
 
     name: str
     t: T5
-    tag: Literal['add'] = 'add'
+    tag: Literal["add"] = "add"
 
 
 @dataclass
@@ -90,7 +88,7 @@ class Offset(Charting):
 
     parent: str
     name: str
-    tag: Literal['offset'] = 'offset'
+    tag: Literal["offset"] = "offset"
 
 
 @dataclass
@@ -98,14 +96,21 @@ class Drop(Charting):
     """Drop account if the account and its contra accounts have zero balances."""
 
     name: str
-    tag: Literal['drop'] = 'drop'
+    tag: Literal["drop"] = "drop"
+
 
 @dataclass
 class Account(ABC, Operation):
     name: str
     contra_accounts: list[str] = field(default_factory=list)
     title: str | None = None
+    
+    @property
+    @abstractmethod
+    def tag(self):
+        pass
 
+    @property
     def t(self) -> T5:
         return T5(self.tag)
 
@@ -114,30 +119,35 @@ class Account(ABC, Operation):
         for contra_name in self.contra_accounts:
             yield Offset(self.name, contra_name)
 
+
 @dataclass
 class Asset(Account):
     t = T5.Asset
-    tag: Literal['asset'] = 'asset'
+    tag: Literal["asset"] = "asset"
+
 
 @dataclass
 class Equity(Account):
     t = T5.Equity
-    tag: Literal['equity'] = 'equity'
+    tag: Literal["equity"] = "equity"
+
 
 @dataclass
 class Liability(Account):
     t = T5.Liability
-    tag: Literal['liability'] = 'liability'
+    tag: Literal["liability"] = "liability"
+
 
 @dataclass
 class Income(Account):
     t = T5.Income
-    tag: Literal['income'] = 'income'
+    tag: Literal["income"] = "income"
+
 
 @dataclass
 class Expense(Account):
     t = T5.Expense
-    tag: Literal['expense'] = 'expense'
+    tag: Literal["expense"] = "expense"
 
 
 @dataclass
@@ -146,15 +156,16 @@ class Transfer(Closing):
 
     from_account: str
     to_account: str
-    tag: Literal['transfer'] = 'transfer'
+    tag: Literal["transfer"] = "transfer"
 
 
 @dataclass
 class PeriodEnd(Closing):
     """Mark end of accounting period and save the copy of ledger
     to be used for the income statement.
-    """    
-    tag: Literal['period_end'] = 'period_end'
+    """
+
+    tag: Literal["period_end"] = "period_end"
 
 
 @dataclass
@@ -162,7 +173,7 @@ class Close(Closing):
     """Close ledger to earnings account."""
 
     earnings_account: str
-    tag: Literal['close'] = 'close'
+    tag: Literal["close"] = "close"
 
 
 @dataclass
@@ -171,7 +182,7 @@ class Debit(Posting):
 
     account: str
     amount: int | float | Decimal
-    tag: Literal['debit'] = 'debit'
+    tag: Literal["debit"] = "debit"
 
 
 @dataclass
@@ -180,7 +191,7 @@ class Credit(Posting):
 
     account: str
     amount: int | float | Decimal
-    tag: Literal['credit'] = 'credit'
+    tag: Literal["credit"] = "credit"
 
 
 @dataclass
@@ -216,8 +227,11 @@ class Unbalanced(Posting):
         return Multiple(debits=self.debits, credits=self.credits)
 
 
+@dataclass
 class Multiple(Unbalanced):
     """Multiple entry that is balanced by debits and credits."""
+
+    tag: Literal["multiple"] = "multiple"
 
     def __post_init__(self):
         self.validate()
@@ -334,29 +348,18 @@ class ChartDict(UserDict[str, T5 | Contra]):
             yield from self.close_contra_accounts(t)
             yield from self.close_type(t, earnings_account)
 
-
+# may disqualify primitives from actions or allow a list of primitives 
 Primitive = Add | Offset | Debit | Credit | PeriodEnd | Drop
-
+AccountType =  Asset | Equity | Liability | Income | Expense
+EntryType = Double | Multiple | Initial
+ClosingType = Transfer | Close
+Action = Primitive | AccountType | EntryType | ClosingType
 
 @dataclass
 class Event:
-    action: (
-        Asset
-        | Equity
-        | Liability
-        | Income
-        | Expense
-        | Double
-        | Multiple
-        | Initial
-        | Transfer
-        | Close
-        | PeriodEnd
-        | Drop
-    )
+    action: Action
     primitives: list[Primitive]
     note: str | None
-
 
 
 class History(BaseModel, SaveLoadMixin):
@@ -366,7 +369,7 @@ class History(BaseModel, SaveLoadMixin):
         yield from self.events
 
     def append(
-        self, action: Operation, primitives: list[Primitive], note: str | None = None
+        self, action: "Action", primitives: list[Primitive], note: str | None = None
     ):
         event = Event(action, primitives, note)
         self.events.append(event)
@@ -377,16 +380,9 @@ class History(BaseModel, SaveLoadMixin):
             yield from event.primitives
 
     @property
-    def actions(self) -> Iterable[Primitive]:
+    def actions(self) -> Iterable:
         for event in self.events:
-            yield from event.primitives
-
-    def save(self, path: str | Path):
-        pass
-
-    @classmethod
-    def load(cls, path: str | Path):
-        pass
+            yield event.action
 
     def to_ledger(self):
         """Re-create ledger from history of actions."""
@@ -404,11 +400,11 @@ class Ledger:
         return self.accounts_before_close is not None
 
     @classmethod
-    def from_accounts(cls, accounts: Iterable[Account]):  # just sugar
-        return cls.from_list(accounts)
+    def from_accounts(cls, accounts: Iterable[Account]):
+        return cls.from_list(accounts) # type: ignore
 
     @classmethod
-    def from_list(cls, actions: Iterable[Operation]):
+    def from_list(cls, actions: Iterable[Action]):
         return cls().apply_many(actions)
 
     @property
@@ -467,8 +463,8 @@ class Ledger:
             case Multiple(_, _):
                 return self.apply_from(action)
             case Transfer(from_account, to_account):
-                account = self.accounts[from_account]
-                transfer_entry = account.transfer(from_account, to_account)
+                account_ = self.accounts[from_account]
+                transfer_entry = account_.transfer(from_account, to_account)
                 operations += self._apply(transfer_entry)
                 return operations
             case PeriodEnd():
@@ -491,20 +487,15 @@ class Ledger:
         self.apply(Close(earnings_account))
         return self
 
-    def apply(self, action: Operation, note: str | None = None):
+    def apply(self, action: "Action", note: str | None = None):
         operations = self._apply(action)
         self.history.append(action, operations, note)
         return self
 
-    def apply_many(self, actions: Sequence[Operation]):
+    def apply_many(self, actions: Iterable[Action]):
         for action in actions:
             self.apply(action, note=None)
         return self
-
-    def reporter(self, current_earnings: str) -> "Reporter":
-        return Reporter(
-            self.accounts, self.accounts_before_close, self.chart, current_earnings
-        )
 
     def income_statement(self) -> "IncomeStatement":
         if self.is_closed():
@@ -512,12 +503,12 @@ class Ledger:
         else:
             return IncomeStatement.new(self.accounts, self.chart)
 
-    def proxy(self, proxy_earnings: str) -> "Ledger":
-        """Create a ledger copy, used before close."""
+    def proxy(self, proxy_earnings_account: str) -> "Ledger":
+        """Create a ledger copy to used before period close."""
         return (
             Ledger(accounts=deepcopy(self.accounts), chart=deepcopy(self.chart))
-            .apply(Equity(proxy_earnings))
-            .close(proxy_earnings)
+            .apply(Equity(proxy_earnings_account))
+            .close(proxy_earnings_account)
         )
 
     def balance_sheet(self, proxy_earnings: str = "current_earnings") -> "BalanceSheet":
@@ -615,8 +606,6 @@ entries = [
 ]
 
 ledger = Ledger.from_accounts(accounts).apply_many(entries)
-for event in ledger.history:
-    print(event.action, "translates to:\n ", event.primitives)
 print(ledger.chart)
 print(ledger.balances)
 assert len(ledger.history.events) == len(accounts) + len(entries)
@@ -644,10 +633,21 @@ assert ledger2.is_closed() is True
 assert ledger2.income_statement().net_earnings == 20
 assert ledger2.balance_sheet().is_balanced() is True
 content = ledger.history.model_dump_json(indent=2)
-print(content)
 history2 = History.model_validate_json(content)
 for a, b in zip(history2, ledger.history):
-    print(a)
-    print(b)
     assert a == b
-History().save("history1.json")
+history2.save("history2.json", allow_overwrite=True)
+history3 = History.load("history2.json")
+for a, b in zip(history2, history3):
+    assert a == b
+
+
+e = Event(
+    action=Add(name="cash", t=T5.Asset, tag="add"),
+    primitives=[Add(name="cash", t=T5.Asset, tag="add")],
+    note=None,
+)
+h = History(events=[e])
+d = h.model_dump()
+h2 = History.model_validate(d)
+print(h2)
