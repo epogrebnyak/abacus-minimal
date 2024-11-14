@@ -61,7 +61,7 @@ class Chart(BaseModel, SaveLoadMixin):
                     must_exist(account_name)
 
     @property
-    def matcher(self):
+    def matching(self):
         return (
             (Asset, "assets"),
             (Liability, "liabilities"),
@@ -72,7 +72,7 @@ class Chart(BaseModel, SaveLoadMixin):
                         
     @property
     def account_directives(self):
-        for cls, attr in self.matcher:
+        for cls, attr in self.matching:
             for account_name in getattr(self, attr):
                 contra_names = self.contra_accounts.get(account_name, [])
                 title = self.names.get(account_name, None)
