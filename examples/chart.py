@@ -1,21 +1,8 @@
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
-
 from events import T5, AbacusError, Add, Offset, must_exist
-
-
-class SaveLoadMixin:
-    """Class for loading and saving pydantic models to files."""
-
-    @classmethod
-    def load(cls, filename: str | Path):
-        return cls.model_validate_json(Path(filename).read_text())  # type: ignore
-
-    def save(self, filename: str | Path, allow_overwrite: bool = False):
-        if not allow_overwrite and Path(filename).exists():
-            raise FileExistsError(f"File already exists: {filename}")
-        Path(filename).write_text(self.model_dump_json(indent=2))  # type: ignore
+from pydantic import BaseModel, ConfigDict
+from mixin import SaveLoadMixin
 
 
 class Chart(BaseModel, SaveLoadMixin):
@@ -75,7 +62,6 @@ class Chart(BaseModel, SaveLoadMixin):
             for account_name in getattr(self, attr):
                 yield Add(account_name, t)
         yield Add(self.retained_earnings, T5.Equity)
-        yield Add(self.current_earnings, T5.Equity)        
 
     def _contra_accounts(self):
         for account_name, contra_names in self.contra_accounts.items():
@@ -83,21 +69,21 @@ class Chart(BaseModel, SaveLoadMixin):
                 yield Offset(parent=account_name, name=contra_name)
 
     @property
-    def regular_accounts(self):
+    def regular_names(self):
         return [add.name for add in self._regular_accounts()]
 
     @property
-    def contra_accounts(self):
+    def contra_names(self):
         return [offset.name for offset in self._contra_accounts()]
 
     @property
     def accounts(self):
         """All accounts in this chart including the duplicates."""
-        return self.regular_accounts + self.contra_accounts
+        return self.regular_names + [self.current_earnings] + self.contra_names
 
     @property
     def primitives(self):
-        return list(self._regular_accounts()) + list(self._contra_accounts())            
+        return list(self._regular_accounts()) + list(self._contra_accounts())
 
     def offset(self, account_name: str, contra_name: str):
         """Add contra account to chart."""
