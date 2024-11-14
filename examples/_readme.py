@@ -2,6 +2,7 @@
 
 from book import Book, Entry
 from chart import Chart
+from events import History
 
 # FIXME: serialization
 
@@ -110,9 +111,7 @@ assert book.balances == {
 
 # Save JSON file
 book.save_history("./history.json", allow_overwrite=True)
-# print(book.ledger.history.events[0])
 
-from events import History
 new_history = History.load("./history.json")
 for a, b in zip(new_history, book.ledger.history):
-   assert a == b
+    assert a == b

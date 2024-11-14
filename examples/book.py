@@ -53,7 +53,7 @@ class Book:
 
     @classmethod
     def from_chart(cls, chart: Chart):
-        ledger = Ledger.from_accounts(chart.primitives)
+        ledger = Ledger.from_accounts(chart.account_directives)
         return cls(chart, ledger)
 
     def open(self, balances: dict):

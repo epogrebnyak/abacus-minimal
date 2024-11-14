@@ -1,5 +1,12 @@
-
-from events import T5, AbacusError, Add, Offset, must_exist
+from events import (
+    AbacusError,
+    Asset,
+    Equity,
+    Expense,
+    Income,
+    Liability,
+    must_exist,
+)
 from mixin import SaveLoadMixin
 from pydantic import BaseModel, ConfigDict
 
@@ -27,6 +34,7 @@ class Chart(BaseModel, SaveLoadMixin):
 
     def offset(self, account_name: str, contra_name: str):
         """Add contra account to chart."""
+        must_exist(self.accounts, account_name)
         self.contra_accounts.setdefault(account_name, list()).append(contra_name)
         return self
 
@@ -34,20 +42,12 @@ class Chart(BaseModel, SaveLoadMixin):
         """Add descriptive account title."""
         self.names[account_name] = title
         return self
-    
+
     def __post_init__(self):
-        self.assert_all_account_names_are_unique()
+        self.assert_account_names_are_unique()
         self.assert_contra_account_references_are_valid()
 
-    @property
-    def duplicates(self):
-        """Duplicate account names. Must be empty for valid chart."""
-        names = self.accounts
-        for name in set(names):
-            names.remove(name)
-        return names
-
-    def assert_all_account_names_are_unique(self):
+    def assert_account_names_are_unique(self):
         """Raise error if any duplicate account names are found."""
         if dups := self.duplicates:
             raise AbacusError(f"Account names are not unique: {dups}")
@@ -60,30 +60,36 @@ class Chart(BaseModel, SaveLoadMixin):
                 if account_name not in regular_account_names:
                     must_exist(account_name)
 
-    def _regular_accounts(self):
-        for t, attr in (
-            (T5.Asset, "assets"),
-            (T5.Liability, "liabilities"),
-            (T5.Equity, "equity"),
-            (T5.Income, "income"),
-            (T5.Expense, "expenses"),
-        ):
+    @property
+    def matcher(self):
+        return (
+            (Asset, "assets"),
+            (Liability, "liabilities"),
+            (Equity, "equity"),
+            (Income, "income"),
+            (Expense, "expenses"),
+        )
+                        
+    @property
+    def account_directives(self):
+        for cls, attr in self.matcher:
             for account_name in getattr(self, attr):
-                yield Add(account_name, t)
-        yield Add(self.retained_earnings, T5.Equity)
-
-    def _contra_accounts(self):
-        for account_name, contra_names in self.contra_accounts.items():
-            for contra_name in contra_names:
-                yield Offset(parent=account_name, name=contra_name)
+                contra_names = self.contra_accounts.get(account_name, [])
+                title = self.names.get(account_name, None)
+                yield cls(account_name, contra_names, title)
+        yield Equity(self.retained_earnings)
 
     @property
     def regular_names(self):
-        return [add.name for add in self._regular_accounts()]
+        return [add.name for add in self.accounts_directives]
 
     @property
     def contra_names(self):
-        return [offset.name for offset in self._contra_accounts()]
+        return [
+            name
+            for contra_names in self.contra_accounts.values()
+            for name in contra_names
+        ]
 
     @property
     def accounts(self):
@@ -91,5 +97,9 @@ class Chart(BaseModel, SaveLoadMixin):
         return self.regular_names + [self.current_earnings] + self.contra_names
 
     @property
-    def primitives(self):
-        return list(self._regular_accounts()) + list(self._contra_accounts())
+    def duplicates(self):
+        """Duplicate account names. Must be empty for valid chart."""
+        names = self.accounts
+        for name in set(names):
+            names.remove(name)
+        return names

@@ -28,7 +28,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
-from typing import Iterable, Iterator, Literal, Sequence
+from typing import Iterable, Iterator, Literal
 
 from mixin import SaveLoadMixin
 from pydantic import BaseModel
@@ -104,7 +104,7 @@ class Account(ABC, Operation):
     name: str
     contra_accounts: list[str] = field(default_factory=list)
     title: str | None = None
-    
+
     @property
     @abstractmethod
     def tag(self):
@@ -348,12 +348,14 @@ class ChartDict(UserDict[str, T5 | Contra]):
             yield from self.close_contra_accounts(t)
             yield from self.close_type(t, earnings_account)
 
-# may disqualify primitives from actions or allow a list of primitives 
+
+# may disqualify primitives from actions or allow a list of primitives
 Primitive = Add | Offset | Debit | Credit | PeriodEnd | Drop
-AccountType =  Asset | Equity | Liability | Income | Expense
+AccountType = Asset | Equity | Liability | Income | Expense
 EntryType = Double | Multiple | Initial
 ClosingType = Transfer | Close
 Action = Primitive | AccountType | EntryType | ClosingType
+
 
 @dataclass
 class Event:
@@ -401,7 +403,7 @@ class Ledger:
 
     @classmethod
     def from_accounts(cls, accounts: Iterable[Account]):
-        return cls.from_list(accounts) # type: ignore
+        return cls.from_list(accounts)  # type: ignore
 
     @classmethod
     def from_list(cls, actions: Iterable[Action]):

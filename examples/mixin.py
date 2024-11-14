@@ -11,5 +11,5 @@ class SaveLoadMixin:
     def save(self, filename: str | Path, allow_overwrite: bool = False):
         if not allow_overwrite and Path(filename).exists():
             raise FileExistsError(f"File already exists: {filename}")
-        content = self.model_dump_json(indent=2, warnings=False) # type: ignore
+        content = self.model_dump_json(indent=2, warnings=False)  # type: ignore
         Path(filename).write_text(content)  # type: ignore
