@@ -97,8 +97,8 @@ and show end reports:
 
 - a company gets $1000 equity investment from shareholders,
 - bills a client $1000 plus 20% value added tax (VAT) for services,
-- company makes a $200 refund,
-- pays $500 in salaries to the staff.
+- company makes a $150 refund,
+- pays $450 in salaries to the staff.
 
 ```python
 from abacus import Book, Chart, Entry
@@ -121,7 +121,8 @@ entries = [
        .debit("ar", 1200)
        .credit("services", 1000)
        .credit("tax_due", 200),
-    Entry("Paid salaries").double("salaries", "cash", 600),
+    Entry("Made refund").double("refunds", "cash", 150)  
+    Entry("Paid salaries").double("salaries", "cash", 450),
 ]
 book.post_many(entries)
 print(book.balances)
