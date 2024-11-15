@@ -172,7 +172,7 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 
 ## Accounting identity
 
-`abacus-minimal` adheres to interpretation of accounting identity.
+`abacus-minimal` adheres to the following interpretation of accounting identity.
 
 1. The value of company property, or assets, equals to shareholder and creditor claims on the company:
 
