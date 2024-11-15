@@ -7,10 +7,10 @@
 Notable features:
 
 - event-based ledger,
-- accounting period closing,
 - contra accounts,
+- period end closing,
 - saving and loading from JSON,
-- returns income statement and balance sheet.
+- income statement and balance sheet before and after close.
 
 ## Install
 
@@ -27,29 +27,31 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 ## Ledger as a sequence of events
 
 `abacus-minimal` provides a accounting journal (ledger) that is controlled by
-events: chart of account changes, business transactions and closing entries.
-Given a sequence of events you can always recreate the ledger state.
+events:
 
-In an example below account creation, double entries and a command to close
-accounts at period end are all part the `events` list.
+- chart of account changes,
+- business transactions, and
+- closing entries.
+- Given a sequence of events you can always recreate the ledger state from scratch.
+
+Аccount creation, double entries and a command to close
+accounts at period end are part the `events` list
+in an example below.
 
 ```python
 from abacus import Asset, Double, Equity, Expense, Income, Ledger, Close
 
-accounts = [
+events = [
     Asset("cash"),
     Equity("equity"),
     Equity("re", title="Retained earnings"),
     Income("sales"),
     Expense("salaries"),
-]
-entries = [
     Double("cash", "equity", 1000),
     Double("cash", "sales", 250),
     Double("salaries", "cash", 150),
     Close("re")
 ]
-events = accounts+entries
 ledger = Ledger.from_list(events)
 ```
 
@@ -86,7 +88,7 @@ for p in ledger.history.primitives:
 You can also work with higher-level `Chart`, `Book` and `Entry` classes.
 
 Consider an example where you need to process the following transactions
-and show end of period reports:
+and show end reports:
 
 - a company gets $1000 equity investment from shareholders,
 - bills a client $1000 plus 20% value added tax (VAT) for services,
@@ -130,14 +132,41 @@ print(book.balance_sheet)
 All data structures are serialisable. You can write code to create a chart of accounts and a ledger, save them to JSONs or pick up data from the JSON files, restore the ledger, work on it, save again and so on.
 
 ```python
-# Save, load and re-enter
+# Save (use `allow_overwrite=True` in your code with caution)
 book.chart.save("chart.json", allow_overwrite=True)
 book.ledger.history.save("history.json", allow_overwrite=True)
+
+# Load and re-enter
+book2 = Book.load("history.json")
+print(book2) # not identical yet
 ```
 
 ## Accounting concepts
 
-`abacus-minimal` adheres to the following interpretation of double-entry book keeping rules.
+In `abacus-minimal` there are regular accounts of five types: asset, liability, equity, income, expense. Contra accounts to regular accounts are possible (eg depreciation, discounts).
+
+Period end closes temporary accounts (income, expense and their associated contra accounts),
+but balance sheet and income statement are available before and after close.
+
+Post close entries are allowed on permanent accounts.
+
+## Accounting workflow
+
+The steps for using `abacus-minimal` follow the steps of a typical accounting cycle:
+
+- create a chart of accounts,
+- open ledger for the current reporting period,
+- post account balances for the previous period,
+- post entries that reflect business transactions within the period,
+- post reconciliation and adjustment entries,
+- close accounts at reporting period end,
+- make post-close entries,
+- show financial reports,
+- save account balances data for the next reporting period.
+
+## Accounting identity
+
+`abacus-minimal` adheres to interpretation of accounting identity.
 
 1. The value of company property, or assets, equals to shareholder and creditor claims on the company:
 
@@ -145,7 +174,7 @@ book.ledger.history.save("history.json", allow_overwrite=True)
 Assets = Equity + Liabilities
 ```
 
-Equity (equity) is the residual claim after creditors:
+Equity is the residual claim after creditors:
 
 ```
 Equity = Assets - Liabilities
@@ -180,38 +209,29 @@ Assets + Expenses =
 Our book-keeping goal is to reflect business events as changes to the variables
 while maintaining this equation.
 
-5. Also note each account may have contra accounts.
-
 ### Limitations
 
-Several assumptions and simplifications are used to make `abacus-minimal` easier to develop and reason about.
+Several assumptions and simplifications are used to make `abacus-minimal` easier to develop and reason about:
 
-The key assumptions are:
-
-- one currency,
-- unique account names,
-- one level of accounts in chart
-- no account aggregation for reports,
-- no treatment of other comprehensive income,
-- no changes in equity and cash flow statements.
-
-See [events.py](abacus/events.py) module docstring for more details.
-
-
-## Accounting workflow
-
-The steps for using `abacus-minimal` follow the steps of a typical accounting cycle:
-
-- create a chart of accounts,
-- open ledger for the current reporting period,
-- post account balances for the previous period,
-- post entries that reflect business transactions within the period,
-- post reconciliation and adjustment entries,
-- close accounts at reporting period end,
-- make post-close entries,
-- show financial reports,
-- save account balances data for the next reporting period.
-
+- one currency
+- one reporting period
+- one level of accounts, no sub-accounts
+- no account aggregation for reports
+- account names must be globally unique (eg cannot have two accounts named "other")
+- chart always has current earnings account and retained earnings account
+- period end closing will transfer current earnings to retained earnings
+- no account durations, current vs non-current accounts not distinguished
+- other comprehensive income account (OCIA) not calculated
+- no revaluations
+- no intermediate accounts except current earnings
+- accounts either debit normal or credit normal, no mixed accounts
+- no journals, entries are posted to ledger directly
+- an entry can touch any accounts
+- entry amount can be positive, negative or zero
+- net earnings are income less expenses, no gross profit or earnings before tax calculated
+- no cash flow statement
+- no statement of changes in equity
+- no date or any transaction metadata recorded
 
 ## Alternatives
 
@@ -261,6 +281,7 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 ## Changelog
 
+- `0.14.0` (2024-11-15) Event-based ledger now on `main`. Mixed test suite and `pyright`.
 - `0.13.0` (2024-11-15) Event-based ledger will become next minor version
 - `0.12.0` (2024-11-13) `events.py` offers events-based ledger modification.
 - `0.11.1` (2024-11-06) `abacus.core` now feature complete.
