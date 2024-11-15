@@ -23,7 +23,7 @@ class ChartBase(BaseModel, SaveLoadMixin):
     names: dict[str, str] = {}
 
     @classmethod
-    def from_accounts(cls, accounts: Iterable[str]):
+    def from_accounts(cls, accounts: Iterable["Account"]):
         """Create chart from account classes."""
         self = cls()
         for account in accounts:

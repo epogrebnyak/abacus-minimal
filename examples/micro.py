@@ -1,6 +1,6 @@
 # Micro example
 
-from abacus import Asset, Double, Equity, Expense, Income, Ledger, Close
+from abacus import Asset, Close, Double, Equity, Expense, Income, Ledger
 
 accounts = [
     Asset("cash"),
@@ -13,9 +13,11 @@ entries = [
     Double("cash", "equity", 1000),
     Double("cash", "sales", 250),
     Double("salaries", "cash", 150),
-    Close("re")
+    Close("re"),
 ]
-ledger = Ledger.from_list(accounts+entries)
+events = accounts + entries
+ledger = Ledger.from_list(events)
 print(ledger.balances)
 print(ledger.income_statement())
 print(ledger.balance_sheet())
+print(list(ledger.history.primitives))

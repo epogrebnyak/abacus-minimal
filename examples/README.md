@@ -4,6 +4,14 @@
 
 `abacus-minimal` aims to be concise, correct and expressive in implementation of double entry book-keeping rules and accounting logic.
 
+Notable features:
+
+- event-based ledger,
+- accounting period closing,
+- contra accounts,
+- saving and loading from JSON,
+- returns income statement and balance sheet.
+
 ## Install
 
 ```bash
@@ -19,7 +27,7 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 ## Ledger as a sequence of events
 
 `abacus-minimal` provides a accounting journal (ledger) that is controlled by 
-events (chart of account changes, business transactions and closing entries).
+events: chart of account changes, business transactions and closing entries.
 Given a sequence of events you can always recreate the ledger state.
 
 In an example below account creation, double entries and a command to close 
@@ -53,6 +61,8 @@ print(ledger.income_statement())
 print(ledger.balance_sheet())
 ```
 
+Ledger history can be saved to a JSON file.
+
 ### Primitives
 
 There are six types of 'primitive' events in `abacus-minimal`:
@@ -63,16 +73,17 @@ There are six types of 'primitive' events in `abacus-minimal`:
 - mark period end.
 
 All compound event types translate to primitives. 
+
 In example above you can extract the primitives as following:
 
 ```python
-print(ledger.history.primitives)
+for p in ledger.history.primitives:
+   print(p)
 ```
-
 
 # Ledger as class
 
-On a higher level you can work with `Chart`, `Book` and `Entry` classes.
+You can also work with `Chart`, `Book` and `Entry` classes.
 
 Consider an example where you need to process the following transactions
 and show end of period reports:
@@ -82,7 +93,7 @@ and show end of period reports:
 - pays $600 in salaries to the staff.
 
 ```python
-from abacus import Asset, Book, Chart, Entry, Equity, Expense, Income, Liability
+from abacus import Book, Chart, Entry
 
 # Create chart and ledger
 chart = Chart(
@@ -132,7 +143,7 @@ book.history.save("history.json", allow_overwrite=True)
 Assets = Equity + Liabilities
 ```
 
-Capital (equity) can be seen as the residual claim after creditors:
+Capital (equity) is the residual claim after creditors:
 
 ```
 Equity = Assets - Liabilities
@@ -141,36 +152,34 @@ Equity = Assets - Liabilities
 2. Company current earnings, or profit, equal to income less expenses associated with generating this income:
 
 ```
-Current earnings = Income - Expenses
+Current Earnings = Income - Expenses
 ```
 
 Current earnings accumulate to retained earnings:
 
 ```
-Retained earnings = Retained earnings from previous period + Current earnings
+Retained Earnings = Retained Earnings From Previous Period + Current Earnings
 ```
-
 
 3. Equity consists of shareholder capital, other equity accounts and
    retained earnings:
 
 ```
-Equity = Shareholder Equity + Other Capital + Retained earnings
+Equity = Shareholder Equity + Other Capital + Retained Earnings
 ```
 
 
 4. Substituting we get a form of extended accounting equation:
 
 ```
-Assets + Expenses = Shareholder Equity + Other Capital + Retained earnings + Income + Liabilities
+Assets + Expenses = 
+   Shareholder Equity + Other Capital + Retained Earnings + Income + Liabilities
 ```
 
-Our book-keeping goal is to reflect business events as changes to the variables in this
-equation.
+Our book-keeping goal is to reflect business events as changes to the variables 
+while maintaining this equation.
 
-
-5. Each account may have contra accounts.
-
+5. Also note each account may have contra accounts.
 
 ### Limitations
 
@@ -179,8 +188,9 @@ Several assumptions and simplifications are used to make `abacus-minimal` easier
 The key assumptions are:
 
 - one currency,
-- globally unique account names,
-- one level of accounts in chart and no account aggregation for reports,
+- unique account names,
+- one level of accounts in chart
+- no account aggregation for reports,
 - no treatment of other comprehensive income,
 - no changes in equity and cash flow statements.
 
@@ -203,17 +213,17 @@ If you are totally new to accounting the suggested friendly course is <https://w
 
 ACCA and CPA are the international and the US professional qualifications and IFRS and US GAAP are the standards for accounting recognition, measurement and disclosure.
 
-A great overview of accounting concepts is at IFRS 
-[Conceptual Framework for Financial Reporting]
+A great overview of accounting concepts is at  
+[IFRS Conceptual Framework for Financial Reporting]
 (https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards/english/2021/issued/part-a/conceptual-framework-for-financial-reporting.pdf).
 
 Part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf) talk about what `abacus-minimal` is designed for.
 
-Textbooks:
+Textbooks and articles:
 
-- [list of free and open source textbooks](https://library.sacredheart.edu/opentextbooks/accounting)
-- [Frank Wood "Business Accounting"](https://www.google.com/search?q=Frank+Wood+%22Business+Accounting)
-- ["200 Years of Accounting History Dates and Events"](https://maaw.info/AccountingHistoryDatesAndEvents.htm)
+1. [list of free and open source textbooks](https://library.sacredheart.edu/opentextbooks/accounting)
+2. [Frank Wood "Business Accounting"](https://www.google.com/search?q=Frank+Wood+%22Business+Accounting)
+3. ["200 Years of Accounting History Dates and Events"](https://maaw.info/AccountingHistoryDatesAndEvents.htm)
 
 ## Project conventions
 
@@ -234,6 +244,7 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 ## Changelog
 
+- `0.13.0` (2024-11-15) Event-based ledger will become next minor version
 - `0.12.0` (2024-11-13) `events.py` offers events-based ledger modification.
 - `0.11.1` (2024-11-06) `abacus.core` now feature complete.
 - `0.10.7` (2024-11-02) `Posting` type is a list of single entries.

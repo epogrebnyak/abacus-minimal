@@ -10,7 +10,7 @@ class Operation(object):
     """A unit of change of the ledger state.
 
     Types of operations:
-    - Account, Charting: change chart of accounts,
+    - Account and Charting: change chart of accounts,
     - Posting: change account balances,
     - Closing: compound period end operation on a ledger.
     """
@@ -54,7 +54,7 @@ class T5(Enum):
 
 
 class SaveLoadMixin:
-    """Class for loading and saving pydantic models to files."""
+    """A mix-in class for loading and saving pydantic models to files."""
 
     @classmethod
     def load(cls, filename: str | Path):
