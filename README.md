@@ -19,11 +19,15 @@ so far are:
 pip install abacus-minimal
 ```
 
+<details>
+    
 Latest:
 
 ```bash
 pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 ```
+
+</details>
 
 ## Ledger as a sequence of events
 
