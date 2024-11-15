@@ -92,7 +92,7 @@ for p in ledger.history.primitives:
    print(p)
 ```
 
-# Ledger as class
+## Ledger as class
 
 You can also work with higher-level `Chart`, `Book` and `Entry` classes.
 
