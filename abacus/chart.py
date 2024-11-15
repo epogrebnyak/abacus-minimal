@@ -1,32 +1,21 @@
-from pathlib import Path
+"""Chart of accounts as a Pydantic class."""
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Iterable, Iterator, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from abacus.core import T5, AbacusError, AccountName, ChartDict, Pair
+from .base import T5, AbacusError, Charting, Operation, SaveLoadMixin
 
 
-class SaveLoadMixin:
-    """Class for loading and saving pydantic models to files."""
-
-    @classmethod
-    def load(cls, filename: str | Path):
-        return cls.model_validate_json(Path(filename).read_text())  # type: ignore
-
-    def save(self, filename: str | Path, allow_overwrite: bool = False):
-        if not allow_overwrite and Path(filename).exists():
-            raise FileExistsError(f"File already exists: {filename}")
-        Path(filename).write_text(self.model_dump_json(indent=2))  # type: ignore
-
-
-class Chart(BaseModel, SaveLoadMixin):
-    """Chart of accounts."""
+class ChartBase(BaseModel, SaveLoadMixin):
+    """Chart of accounts without checks for duplicates or contra account references."""
 
     model_config = ConfigDict(extra="forbid")
 
-    retained_earnings: str
-    current_earnings: str
     assets: list[str] = []
-    capital: list[str] = []
+    equity: list[str] = []
     liabilities: list[str] = []
     income: list[str] = []
     expenses: list[str] = []
@@ -34,79 +23,54 @@ class Chart(BaseModel, SaveLoadMixin):
     names: dict[str, str] = {}
 
     @classmethod
-    def default(cls):
-        return cls(
-            retained_earnings="retained_earnings", current_earnings="current_earnings"
-        )
+    def from_accounts(cls, accounts: Iterable["Account"]):
+        """Create chart from account classes."""
+        self = cls()
+        for account in accounts:
+            self.add_account(account)
+        return self
 
-    def __post_init__(self):
-        self.assert_all_account_names_are_unique()
-        self.assert_no_invalid_contra_account_references()
+    def add_account(self, account: "Account"):
+        """Add account to chart."""
+        self.add_string(account.headline)
+        for contra in account.contra_accounts:
+            self.offset(account.name, contra)
+        if account.title:
+            self.name(account.name, account.title)
+        return self
 
-    @property
-    def regular_accounts(self):
-        return (
-            self.assets + self.capital + self.liabilities + self.income + self.expenses
-        ) + [self.retained_earnings, self.current_earnings]
-
-    @property
-    def accounts(self):
-        """All accounts in this chart including the duplicates."""
-        return self.regular_accounts + sum(self.contra_accounts.values(), [])
-
-    @property
-    def duplicates(self):
-        """Duplicate account names. Must be empty for valid chart."""
-        names = self.accounts
-        for name in set(names):
-            names.remove(name)
-        return names
-
-    def assert_all_account_names_are_unique(self):
-        """Raise error if any duplicate account names are found."""
-        if names := self.duplicates:
-            raise AbacusError(f"Account names are not unique: {names}")
-
-    def assert_no_invalid_contra_account_references(self):
-        """Verify chart by making an empty ledger and try closing it."""
-        regular_account_names = self.regular_accounts
-        for account_name in self.contra_accounts.keys():
-            if account_name not in regular_account_names:
-                raise AbacusError(
-                    f"Account name should exist before making a contra account: {account_name}"
-                )
-
-    def _regular_accounts(self):
-        for t, attr in (
-            (T5.Asset, "assets"),
-            (T5.Liability, "liabilities"),
-            (T5.Capital, "capital"),
-            (T5.Income, "income"),
-            (T5.Expense, "expenses"),
-        ):
-            for account_name in getattr(self, attr):
-                yield t, account_name
-
-    def _contra_accounts(self):
-        for account_name, contra_names in self.contra_accounts.items():
-            for contra_name in contra_names:
-                yield account_name, contra_name
-
-    @property
-    def mapping(self) -> ChartDict:
-        """Create chart dictionary with unique account names."""
-        chart_dict = ChartDict()
-        for t, account_name in self._regular_accounts():
-            chart_dict.set(t, account_name)
-        chart_dict.set(T5.Capital, self.retained_earnings)
-        chart_dict.set(T5.Capital, self.current_earnings)
-        for account_name, contra_name in self._contra_accounts():
-            chart_dict.offset(account_name, contra_name)
-        return chart_dict
+    def add_string(self, string: str):
+        """Add account by slug like `asset:cash`."""
+        # may also use ^contra1,contra2
+        prefix, account_name = string.split(":")
+        match prefix[0].lower():
+            case "a":
+                self.assets.append(account_name)
+            case "l":
+                self.liabilities.append(account_name)
+            case "c":
+                self.equity.append(account_name)
+            case "e":
+                match prefix[1].lower():
+                    case "q":
+                        self.equity.append(account_name)
+                    case "x":
+                        self.expenses.append(account_name)
+                    case _:
+                        raise AbacusError(f"Invalid prefix: {prefix}")
+            case "i":
+                self.income.append(account_name)
+            case _:
+                raise AbacusError(f"Invalid prefix: {prefix}")
+        return self
 
     def offset(self, account_name: str, contra_name: str):
         """Add contra account to chart."""
-        self.contra_accounts.setdefault(account_name, list()).append(contra_name)
+        AbacusError.must_exist(self.accounts, account_name)
+        if contra_name in self.contra_accounts:
+            self.contra_accounts[account_name].append(contra_name)
+        else:
+            self.contra_accounts[account_name] = [contra_name]
         return self
 
     def name(self, account_name: str, title: str):
@@ -114,11 +78,158 @@ class Chart(BaseModel, SaveLoadMixin):
         self.names[account_name] = title
         return self
 
-    def make_closing_pairs(self, accumulation_account: AccountName) -> list[Pair]:
-        """Return list of tuples that allows to close ledger."""
-        return list(self.mapping.closing_pairs(accumulation_account))
+    @property
+    def matching(self):
+        """Match attributes with account classes."""
+        return (
+            (Asset, "assets"),
+            (Equity, "equity"),
+            (Liability, "liabilities"),
+            (Income, "income"),
+            (Expense, "expenses"),
+        )
 
-    # @property
-    # def closing_pairs(self) -> list["Pair"]:
-    #     """Return list of tuples that allows to close ledger at period end."""
-    #     return self.make_closing_pairs(self.retained_earnings)
+    def __iter__(self) -> Iterator["Account"]:  # type: ignore
+        """Yield accounts from this chart.  Overrides `pydantic.BaseModel.__iter__`."""
+        for cls, attr in self.matching:
+            for account_name in getattr(self, attr):
+                contra_names = self.contra_accounts.get(account_name, [])
+                title = self.names.get(account_name, None)
+                yield cls(account_name, contra_names, title)
+
+    @property
+    def regular_names(self):
+        """All regular account names."""
+        return [add.name for add in self]
+
+    @property
+    def contra_names(self) -> list[str]:
+        """All contra account names."""
+        return [
+            name
+            for contra_names in self.contra_accounts.values()
+            for name in contra_names
+        ]
+
+    @property
+    def accounts(self) -> list[str]:
+        """All accounts in this chart including the duplicates."""
+        return self.regular_names + self.contra_names
+
+    @property
+    def duplicates(self) -> list[str]:
+        """Duplicate account names. Must be empty for valid chart."""
+        names = self.accounts
+        for name in set(names):
+            names.remove(name)
+        return names
+
+
+class Chart(ChartBase):
+    retained_earnings: str
+    current_earnings: str = "current_earnings"
+
+    def extend(self, accounts):
+        base = ChartBase.from_accounts(accounts)
+        return self.__class__(
+            **base.model_dump(),
+            retained_earnings=self.retained_earnings,
+            current_earnings=self.current_earnings,
+        )
+
+    def model_post_init(self, _):
+        if self.current_earnings in self.accounts:
+            AbacusError.must_not_exist(self.accounts, self.current_earnings)
+        if self.retained_earnings not in self.equity:
+            self.add_account(Equity(self.retained_earnings))
+        self.assert_account_names_are_unique(self)
+        self.assert_contra_account_references_are_valid(self)
+
+    @staticmethod
+    def assert_account_names_are_unique(chart):
+        """Raise error if any duplicate account names are found."""
+        if ds := chart.duplicates:
+            raise AbacusError(f"Account names are not unique: {ds}")
+
+    @staticmethod
+    def assert_contra_account_references_are_valid(chart):
+        """Raise error if any contra account reference is invalid."""
+        regular_names = chart.regular_names
+        for parent_account in chart.contra_accounts.keys():
+            AbacusError.must_exist(regular_names, parent_account)
+
+
+@dataclass
+class Add(Charting):
+    """Add account."""
+
+    name: str
+    t: T5
+    tag: Literal["add"] = "add"
+
+
+@dataclass
+class Offset(Charting):
+    """Add contra account."""
+
+    parent: str
+    name: str
+    tag: Literal["offset"] = "offset"
+
+
+@dataclass
+class Drop(Charting):
+    """Drop account if the account and its contra accounts have zero balances."""
+
+    name: str
+    tag: Literal["drop"] = "drop"
+
+
+@dataclass
+class Account(ABC, Operation, Iterable[Add | Offset]):
+    name: str
+    contra_accounts: list[str] = field(default_factory=list)
+    title: str | None = None
+
+    @property
+    def headline(self) -> str:
+        return f"{self.tag}:{self.name}"
+
+    @property
+    @abstractmethod
+    def tag(self):
+        pass
+
+    @property
+    def t(self) -> T5:
+        return T5(self.tag)
+
+    def __iter__(self) -> Iterator[Add | Offset]:
+        yield Add(self.name, self.t)
+        for contra_name in self.contra_accounts:
+            yield Offset(self.name, contra_name)
+
+
+@dataclass
+class Asset(Account):
+    tag: Literal["asset"] = "asset"  # type: ignore
+
+
+@dataclass
+class Equity(Account):
+    tag: Literal["equity"] = "equity"  # type: ignore
+
+
+@dataclass
+class Liability(Account):
+    tag: Literal["liability"] = "liability"  # type: ignore
+
+
+@dataclass
+class Income(Account):
+    tag: Literal["income"] = "income"  # type: ignore
+
+
+@dataclass
+class Expense(Account):
+    tag: Literal["expense"] = "expense"  # type: ignore
