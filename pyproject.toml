@@ -14,7 +14,7 @@ markers = [
 
 [tool.poetry]
 name = "abacus-minimal"
-version = "0.13.0"
+version = "0.14.0"
 description = "Ledger in Python that follows corporate accounting rules."
 authors = ["Evgeny Pogrebnyak <e.pogrebnyak@gmail.com>"]
 license = "MIT"
@@ -27,6 +27,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.10"
 pydantic = "^2.9.2"
+simplejson = "^3.19.3"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
@@ -34,6 +35,7 @@ isort = "^5.13.2"
 mypy = "^1.13.0"
 ruff = "^0.7.0"
 # must add black 
+pyright = "^1.1.389"
 
 [build-system]
 requires = ["poetry-core"]

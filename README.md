@@ -145,7 +145,7 @@ book.ledger.history.save("history.json", allow_overwrite=True)
 Assets = Equity + Liabilities
 ```
 
-Capital (equity) is the residual claim after creditors:
+Equity (equity) is the residual claim after creditors:
 
 ```
 Equity = Assets - Liabilities
@@ -163,18 +163,18 @@ Current earnings accumulate to retained earnings:
 Retained Earnings = Retained Earnings From Previous Period + Current Earnings
 ```
 
-3. Equity consists of shareholder capital, other equity accounts and
+3. Equity consists of shareholder equity, other equity accounts and
    retained earnings:
 
 ```
-Equity = Shareholder Equity + Other Capital + Retained Earnings
+Equity = Shareholder Equity + Other Equity + Retained Earnings
 ```
 
 4. Substituting we get a form of extended accounting equation:
 
 ```
 Assets + Expenses =
-   Shareholder Equity + Other Capital + Retained Earnings + Income + Liabilities
+   Shareholder Equity + Other Equity + Retained Earnings + Income + Liabilities
 ```
 
 Our book-keeping goal is to reflect business events as changes to the variables
@@ -196,6 +196,22 @@ The key assumptions are:
 - no changes in equity and cash flow statements.
 
 See [events.py](abacus/events.py) module docstring for more details.
+
+
+## Accounting workflow
+
+The steps for using `abacus-minimal` follow the steps of a typical accounting cycle:
+
+- create a chart of accounts,
+- open ledger for the current reporting period,
+- post account balances for the previous period,
+- post entries that reflect business transactions within the period,
+- post reconciliation and adjustment entries,
+- close accounts at reporting period end,
+- make post-close entries,
+- show financial reports,
+- save account balances data for the next reporting period.
+
 
 ## Alternatives
 

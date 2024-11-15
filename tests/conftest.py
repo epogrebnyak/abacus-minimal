@@ -1,24 +1,24 @@
 import pytest
 
-from abacus.chart import Chart
-from abacus.core import T5, ChartDict, double
+from abacus import T5, Asset, Chart, Double, Equity, Ledger
+from abacus.ledger import ChartDict
 
 
 @pytest.fixture
-def toy_dict():
-    return (
-        ChartDict()
-        .set(T5.Asset, "cash")
-        .set(T5.Capital, "equity")
-        .set(T5.Capital, "re")
+def toy_dict() -> ChartDict:
+    return ChartDict(cash=T5.Asset, equity=T5.Equity, re=T5.Equity)
+
+
+@pytest.fixture
+def toy_ledger():
+    return Ledger.from_list(
+        [
+            Asset("cash"),
+            Equity("equity"),
+            Equity("re"),
+            Double("cash", "equity", 10),
+        ]
     )
-
-
-@pytest.fixture
-def toy_ledger(toy_dict):
-    ledger = toy_dict.to_ledger()
-    ledger.post(double("cash", "equity", 10))
-    return ledger
 
 
 @pytest.fixture
@@ -27,7 +27,7 @@ def realistic_chart():
         retained_earnings="re",
         current_earnings="profit",
         assets=["cash", "inventory", "ar"],
-        capital=["equity"],
+        equity=["equity"],
         liabilities=["vat", "ap"],
         income=["sales"],
         expenses=["wages"],

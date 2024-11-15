@@ -67,6 +67,17 @@ class Multiple(Unbalanced):
 
     tag: Literal["multiple"] = "multiple"
 
+    @classmethod
+    def from_list(cls, singles):
+        entry = Unbalanced()
+        for s in singles:
+            match s:
+                case Debit(account, amount):
+                    entry.debits.append((account, amount))
+                case Credit(account, amount):
+                    entry.credits.append((account, amount))
+        return entry.to_multiple()
+
     def __post_init__(self):
         self.validate()
 
@@ -106,7 +117,7 @@ class Entry:
             if self._amount:
                 return self._amount
             else:
-                raise ValueError("Amount is not set.")
+                raise AbacusError("Amount is not set.")
         else:
             return Decimal(amount)
 

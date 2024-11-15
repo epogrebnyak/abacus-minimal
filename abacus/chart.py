@@ -126,7 +126,7 @@ class ChartBase(BaseModel, SaveLoadMixin):
 
 
 class Chart(ChartBase):
-    retained_earnings: str
+    retained_earnings: str = "retained_earnings"
     current_earnings: str = "current_earnings"
 
     def extend(self, accounts):

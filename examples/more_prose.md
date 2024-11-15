@@ -1,31 +1,4 @@
 
-## Accounting workflow
-
-The steps for using `abacus-minimal` follow the steps of a typical accounting cycle:
-
-- create a chart of accounts,
-- open ledger for the current reporting period,
-- post account balances for the previous period,
-- post entries that reflect business transactions within the period,
-- post reconciliation and adjustment entries,
-- close accounts at reporting period end,
-- make post-close entries,
-- show financial reports,
-- save account balances data for the next reporting period.
-
-Accounts survive these transformations quite differently, here is a summary:
-
-| Step                                                      |  Assets   |  Expenses  | Shareholder Equity | Retained Earnings | Current Earnings |   Income   | Liabilities |
-| --------------------------------------------------------- | :-------: | :--------: | :----------------: | :---------------: | :--------------: | :--------: | :---------: |
-| Account type                                              | permanent | temporary  |     permanent      |     permanent     |    temporary     | temporary  |  permanent  |
-| 1\. In empty ledger all accounts have zero balances       |     0     |     0      |         0          |         0         |        0         |     0      |      0      |
-| 2\. Opening balances restore permanent accounts           |   **+**   |     0      |       **+**        |       **r**       |        0         |     0      |    **+**    |
-| 3\. Business entries affect all accounts except earnings  |     +     |     e      |         +          |         r         |        0         |     i      |      +      |
-| 4\. Closing income and expense to current earnings        |     +     | **closed** |         +          |         r         |     **i-e**      | **closed** |      +      |
-| 5\. Closing current to retained earings                   |     +     |            |         +          |   **r + i -e**    |    **closed**    |            |      +      |
-| 6\. Saving permanent account balances for the next period |     +     |            |         +          |         +         |                  |            |      +      |
-
-The results in step 6 are the inputs to step 2 in the next reporting period.
 
 ## End-to-end example
 
@@ -44,7 +17,7 @@ The complete code is in [readme.py](examples/readme.py).
 Steps involved:
 
 - specify names of the current earnings and retained earnings accounts,
-- add account names for assets, capital, liabilities, income and expenses,
+- add account names for assets, equity, liabilities, income and expenses,
 - add contra accounts (e.g. `refunds` is a contra account to `sales`).
 
 Code example:
@@ -56,7 +29,7 @@ chart = Chart(
     retained_earnings="retained_earnings",
     current_earnings="current_earnings",
     assets=["cash", "ar"],
-    capital=["equity"],
+    equity=["equity"],
     liabilities=["vat_payable"],
     income=["sales"],
     expenses=["salaries"],
@@ -173,7 +146,7 @@ Expect to see a lot of dictionary-like data structures in code output below:
 print("=== Before closing ===")
 print(book.income_statement)
 print(book.balance_sheet)
-assert book.balance_sheet.capital["current_earnings"] == 3000
+assert book.balance_sheet.equity["current_earnings"] == 3000
 
 # Close accounts at period end
 book.close()

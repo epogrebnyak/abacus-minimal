@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Iterable, Literal
 
+import simplejson as json  # type: ignore
 from pydantic import BaseModel
 
 from .base import T5, AbacusError, Closing, Numeric, Operation, SaveLoadMixin
@@ -137,7 +138,7 @@ class ChartDict(UserDict[str, T5 | Contra]):
             yield from self.close_contra_accounts(t)
             yield from self.close_type(t, earnings_account)
 
-    def inital_entry(self, balances: dict[str, Numeric]) -> Multiple:
+    def initial_entry(self, balances: dict[str, Numeric]) -> Multiple:
         entry = Unbalanced()
         for account, amount in balances.items():
             AbacusError.must_exist(self, account)
@@ -213,7 +214,9 @@ class Ledger:
 
     @property
     def balances(self):
-        return {name: account.balance for name, account in self.accounts.items()}
+        return ReportDict(
+            {name: account.balance for name, account in self.accounts.items()}
+        )
 
     def create_account(self, name):
         if self.chart.is_debit_account(name):
@@ -261,7 +264,7 @@ class Ledger:
                 self.accounts[account].credit(amount)
                 return [action]
             case Initial(balances):
-                initial_entry = self.chart.inital_entry(balances)
+                initial_entry = self.chart.initial_entry(balances)
                 return self.run(initial_entry)
             case Transfer(from_account, to_account):
                 account_ = self.accounts[from_account]
@@ -338,10 +341,17 @@ class Reporter:
         return result
 
 
-class ReportDict(UserDict[str, Decimal]):
+class ReportDict(UserDict[str, Decimal], SaveLoadMixin):
     @property
     def total(self):
         return Decimal(sum(self.data.values()))
+
+    def model_dump_json(self, indent: int = 2, warnings: bool = False):
+        return json.dumps(self.data, indent=indent)
+
+    @classmethod
+    def model_validate_json(cls, text: str):
+        return cls(json.loads(text))
 
 
 class Report:
@@ -380,5 +390,5 @@ class BalanceSheet(Report):
         )
 
     def is_balanced(self) -> bool:
-        """Return True if assets equal liabilities plus capital."""
+        """Return True if assets equal liabilities plus equity."""
         return self.assets.total == (self.equity.total + self.liabilities.total)

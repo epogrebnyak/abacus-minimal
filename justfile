@@ -1,7 +1,8 @@
 # Run pytest and mypy
 test: 
    poetry run pytest .
-   poetry run mypy .
+   poetry run mypy abacus
+   poetry run pyright abacus
    poetry run python examples/readme.py
    rm chart.json history.json
 
