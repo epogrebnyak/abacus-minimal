@@ -18,10 +18,10 @@ class Book:
         ledger = Ledger.from_accounts(chart)
         return cls(chart, ledger)
 
-    @classmethod
-    def from_accounts(cls, accounts: Iterable[str]):
-        chart = Chart.from_accounts(accounts)
-        return cls.from_chart(chart)
+    # @classmethod
+    # def from_accounts(cls, accounts: Iterable[str]):
+    #     chart = Chart.from_list(accounts)
+    #     return cls.from_chart(chart)
 
     def open(self, balances: dict):
         self.ledger.apply(Initial(balances))
@@ -55,4 +55,4 @@ class Book:
     # def load(self, chart_path, history_path):
     #     chart = Chart.load(chart_path)
     #     ledger = Ledger.load_history(history_path)
-    #     return Book(chart, ledger)    
+    #     return Book(chart, ledger)
