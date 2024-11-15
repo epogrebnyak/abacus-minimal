@@ -2,9 +2,10 @@
 
 ![PyPI - Version](https://img.shields.io/pypi/v/abacus-minimal?color=blue)
 
-`abacus-minimal` aims to be concise, correct and expressive in implementation of double entry book-keeping rules and accounting logic.
+`abacus-minimal` aims to be concise, correct and expressive in implementation of double entry book-keeping rules.
 
-Notable features:
+Accounting logic should be possible to express in good code. Progress and notable features
+so far are:
 
 - event-based ledger,
 - contra accounts,
@@ -32,7 +33,8 @@ events:
 - chart of account changes,
 - business transactions, and
 - closing entries.
-- Given a sequence of events you can always recreate the ledger state from scratch.
+
+Given a sequence of events you can always recreate the ledger state from scratch.
 
 Аccount creation, double entries and a command to close
 accounts at period end are part the `events` list
