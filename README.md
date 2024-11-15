@@ -44,15 +44,18 @@ in an example below.
 from abacus import Asset, Double, Equity, Expense, Income, Ledger, Close
 
 events = [
+    # Create accounts
     Asset("cash"),
     Equity("equity"),
     Equity("re", title="Retained earnings"),
     Income("sales"),
     Expense("salaries"),
+    # Post entries
     Double("cash", "equity", 1000),
     Double("cash", "sales", 250),
     Double("salaries", "cash", 150),
-    Close("re")
+    # Close period
+    Close(earnings_account="re")
 ]
 ledger = Ledger.from_list(events)
 ```
@@ -131,7 +134,7 @@ print(book.balance_sheet)
 
 ## Everything as JSON
 
-All data structures are serialisable. You can write code to create a chart of accounts and a ledger, save them to JSONs or pick up data from the JSON files, restore the ledger, work on it, save again and so on.
+All data structures used are serialisable. You can write code to create a chart of accounts and a ledger, save them to JSONs or pick up data from the JSON files, restore the ledger, work on it, save again and so on.
 
 ```python
 # Save (use `allow_overwrite=True` in your code with caution)
@@ -140,7 +143,7 @@ book.ledger.history.save("history.json", allow_overwrite=True)
 
 # Load and re-enter
 book2 = Book.load("history.json")
-print(book2) # not identical yet
+print(book2) # not fully identical to `book` yet
 ```
 
 ## Accounting concepts

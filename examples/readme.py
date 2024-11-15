@@ -14,15 +14,18 @@ from abacus import (
 )
 
 events = [
+    # Create accounts
     Asset("cash"),
     Equity("equity"),
     Equity("re", title="Retained earnings"),
     Income("sales"),
     Expense("salaries"),
+    # Post entries
     Double("cash", "equity", 1000),
     Double("cash", "sales", 250),
     Double("salaries", "cash", 150),
-    Close("re"),
+    # Close period
+    Close(earnings_account="re"),
 ]
 ledger = Ledger.from_list(events)
 
@@ -69,3 +72,4 @@ book.ledger.history.save("history.json", allow_overwrite=True)
 
 # Load and re-enter
 book2 = Book.load("history.json")
+print(book2)  # not identical yet
