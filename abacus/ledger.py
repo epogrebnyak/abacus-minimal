@@ -117,11 +117,11 @@ class ChartDict(UserDict[str, T5 | Contra]):
     def by_type(self, t: T5) -> list[str]:
         return [name for name, account_type in self.data.items() if account_type == t]
 
-    def find_contra_accounts(self, name: str) -> list[str]:
+    def find_contra_accounts(self, regular_account_name: str) -> list[str]:
         return [
             contra_name
             for contra_name, parent in self.data.items()
-            if parent == Contra(name)
+            if parent == Contra(regular_account_name)
         ]
 
     def close_contra_accounts(self, t: T5) -> Iterable[tuple[str, str]]:

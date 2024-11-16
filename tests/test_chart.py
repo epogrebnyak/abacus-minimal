@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from abacus import AbacusError, Asset, Chart, Equity
-from abacus.chart import ChartBase
+from abacus.chart import Chart, ChartBase, Earnings, QualifiedChart
 
 
 def test_chart_base_name():
@@ -25,12 +25,6 @@ def test_post_init_on_dublicate():
             assets=["cash", "cash"],
         )
 
-
-def test_post_init():
-    with pytest.raises(AbacusError):
-        Chart(
-            retained_earnings="retained_earnings", current_earnings="current_earnings"
-        ).extend(map(Asset, ["cash", "cash"]))
 
 
 def test_all_contra_accounts_point_to_existing_accounts():
@@ -84,3 +78,24 @@ def test_cannot_overwrite_chart(tmp_path):
     chart.save(path)
     with pytest.raises(FileExistsError):
         chart.save(path)
+
+
+def test_qualified():
+    assert Chart(
+        retained_earnings="re",
+        current_earnings="profit",
+        assets=["cash"],
+        equity=["equity"],
+        contra_accounts={"equity": ["ts"]},
+    ).qualified == QualifiedChart(
+        earnings=Earnings(current="profit", retained="re"),
+        base=ChartBase(
+            assets=["cash"],
+            equity=["equity", "re"],
+            liabilities=[],
+            income=[],
+            expenses=[],
+            contra_accounts={"equity": ["ts"]},
+            names={},
+        ),
+    )

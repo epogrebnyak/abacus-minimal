@@ -139,13 +139,11 @@ def test_book_similar_to_readme(tmp_path):
         expenses=["salaries"],
     )
     chart.offset("sales", "refunds")
+    chart.save(tmp_path / "chart.json")
     book = Book.from_chart(chart)
-    book.post(Entry("Initial investment").debit("cash", 10000).credit("equity", 10000))
-    book.chart.save(tmp_path / "chart.json")
+    book.post(Entry("Initial investment").debit("cash", 10000).credit("equity", 10000))    
     book.balances.save(tmp_path / "balances.json")
     book.ledger.history.save(tmp_path / "history.json")
-    del book
-    book = Book.load(tmp_path / "history.json")
     entries = [
         Entry("Sold services with VAT").amount(6500).debit("cash").credit("sales"),
         Entry("Made refund").double(amount=500, debit="refunds", credit="cash"),

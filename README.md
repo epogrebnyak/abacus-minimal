@@ -31,7 +31,7 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 
 ## Ledger as a sequence of events
 
-`abacus-minimal` provides a accounting journal (ledger) that is controlled by
+`abacus-minimal` provides an accounting ledger that is controlled by
 events:
 
 - chart of account changes,
@@ -41,8 +41,7 @@ events:
 Given a sequence of events you can always recreate the ledger state from scratch.
 
 Аccount creation, double entries and a command to close
-accounts at period end are part the `events` list
-in an example below.
+accounts are in the `events` list in an example below.
 
 ```python
 from abacus import Asset, Double, Equity, Expense, Income, Ledger, Close
@@ -64,7 +63,7 @@ events = [
 ledger = Ledger.from_list(events)
 ```
 
-The reports reflect the resulting state of ledger:
+Reports reflect the state of ledger:
 
 ```python
 print(ledger.balances)
@@ -101,7 +100,8 @@ and show end reports:
 
 - a company gets $1000 equity investment from shareholders,
 - bills a client $1000 plus 20% value added tax (VAT) for services,
-- company makes a $150 refund,
+- receives $600 installment payment,
+- makes a $150 refund,
 - pays $450 in salaries to the staff.
 
 ```python
@@ -114,18 +114,20 @@ chart = Chart(
     liabilities=["tax_due"],
     income=["services"],
     expenses=["salaries"],
+    contra_accounts={"services": ["refunds"]},
     retained_earnings="retained_earnings",
-    contra_accounts={"services": ["refunds"]})
+    current_earnings="current_earnings")
 book = Book.from_chart(chart)
 
 # Post entries
 entries = [
     Entry("Shareholder investment").double("cash", "equity", 1000),
-    Entry("Incoice for services")
+    Entry("Invoiced services")
        .debit("ar", 1200)
        .credit("services", 1000)
        .credit("tax_due", 200),
-    Entry("Made refund").double("refunds", "cash", 150)  
+    Entry("Accepted payment").double("cash", "ar", 600),
+    Entry("Made refund").double("refunds", "cash", 150),
     Entry("Paid salaries").double("salaries", "cash", 450),
 ]
 book.post_many(entries)
@@ -142,13 +144,15 @@ print(book.balance_sheet)
 All data structures used are serialisable. You can write code to create a chart of accounts and a ledger, save them to JSONs or pick up data from the JSON files, restore the ledger, work on it, save again and so on.
 
 ```python
-# Save (use `allow_overwrite=True` in your code with caution)
-book.chart.save("chart.json", allow_overwrite=True)
+# Save
+chart.save("chart.json")
 book.ledger.history.save("history.json", allow_overwrite=True)
 
 # Load and re-enter
-book2 = Book.load("history.json")
-print(book2) # not fully identical to `book` yet
+from abacus import History
+
+history2 = History.load("history.json")
+print(history2) # not fully identical to `book.ledger.history` yet
 ```
 
 ## Accounting concepts

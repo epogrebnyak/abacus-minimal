@@ -1,4 +1,4 @@
-"""Chart of accounts as a Pydantic class."""
+"""Chart of accounts and events to modify it."""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -10,7 +10,7 @@ from .base import T5, AbacusError, Charting, Operation, SaveLoadMixin
 
 
 class ChartBase(BaseModel, SaveLoadMixin):
-    """Chart of accounts without checks for duplicates or contra account references."""
+    """Chart of accounts with checks for duplicates and contra account references."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -40,8 +40,7 @@ class ChartBase(BaseModel, SaveLoadMixin):
         return self
 
     def add_string(self, string: str):
-        """Add account by slug like `asset:cash`."""
-        # may also use ^contra1,contra2
+        """Add account by slug like `asset:cash` or `a:cash`."""
         prefix, account_name = string.split(":")
         match prefix[0].lower():
             case "a":
@@ -91,8 +90,8 @@ class ChartBase(BaseModel, SaveLoadMixin):
 
     def __iter__(self) -> Iterator["Account"]:  # type: ignore
         """Yield accounts from this chart.  Overrides `pydantic.BaseModel.__iter__`."""
-        for cls, attr in self.matching:
-            for account_name in getattr(self, attr):
+        for cls, attribute in self.matching:
+            for account_name in getattr(self, attribute):
                 contra_names = self.contra_accounts.get(account_name, [])
                 title = self.names.get(account_name, None)
                 yield cls(account_name, contra_names, title)
@@ -124,39 +123,68 @@ class ChartBase(BaseModel, SaveLoadMixin):
             names.remove(name)
         return names
 
-
-class Chart(ChartBase):
-    retained_earnings: str = "retained_earnings"
-    current_earnings: str = "current_earnings"
-
-    def extend(self, accounts):
-        base = ChartBase.from_accounts(accounts)
-        return self.__class__(
-            **base.model_dump(),
-            retained_earnings=self.retained_earnings,
-            current_earnings=self.current_earnings,
-        )
-
-    def model_post_init(self, _):
-        if self.current_earnings in self.accounts:
-            AbacusError.must_not_exist(self.accounts, self.current_earnings)
-        if self.retained_earnings not in self.equity:
-            self.add_account(Equity(self.retained_earnings))
-        self.assert_account_names_are_unique(self)
-        self.assert_contra_account_references_are_valid(self)
-
-    @staticmethod
-    def assert_account_names_are_unique(chart):
-        """Raise error if any duplicate account names are found."""
-        if ds := chart.duplicates:
+    def assert_account_names_are_unique(self):
+        """Raise error if duplicate account names are found."""
+        if ds := self.duplicates:
             raise AbacusError(f"Account names are not unique: {ds}")
 
-    @staticmethod
-    def assert_contra_account_references_are_valid(chart):
+    def assert_contra_account_references_are_valid(self):
         """Raise error if any contra account reference is invalid."""
-        regular_names = chart.regular_names
-        for parent_account in chart.contra_accounts.keys():
+        regular_names = self.regular_names
+        for parent_account in self.contra_accounts.keys():
             AbacusError.must_exist(regular_names, parent_account)
+
+    def set_earnings_accounts(self, current: str, retained: str):
+        """Set earnings accounts."""
+        return Earnings(current, retained).to_chart(self)
+
+
+@dataclass
+class Earnings:
+    current: str
+    retained: str
+
+    def to_chart(self, accounts: Iterable["Account"]) -> "QualifiedChart":
+        return QualifiedChart(self, ChartBase.from_accounts(accounts))
+
+
+class Chart(ChartBase, SaveLoadMixin):
+    """Serializable chart of accounts that is saved to plain JSON."""
+
+    current_earnings: str
+    retained_earnings: str
+
+    def model_post_init(self, _):
+        cu, re = self.current_earnings, self.retained_earnings
+        AbacusError.must_not_exist(self.accounts, cu)
+        if re not in self.equity:
+            self.add_account(Equity(re))
+        self.assert_account_names_are_unique()
+        self.assert_contra_account_references_are_valid()
+
+    @property
+    def base(self):
+        dump = self.model_dump()
+        del dump["current_earnings"]
+        del dump["retained_earnings"]
+        return ChartBase(**dump)
+    
+    @property
+    def earnings(self):
+        return Earnings(self.current_earnings, self.retained_earnings)
+
+    @property
+    def qualified(self) -> "QualifiedChart":
+        return self.earnings.to_chart(self.base)
+
+
+@dataclass
+class QualifiedChart:
+    earnings: Earnings
+    base: ChartBase
+
+    def __iter__(self) -> Iterator["Account"]:
+        return iter(self.base)
 
 
 @dataclass

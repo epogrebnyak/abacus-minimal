@@ -3,20 +3,26 @@
 from dataclasses import dataclass
 from typing import Iterable
 
-from .chart import Account, Chart
+from .chart import Account, Chart, Earnings
 from .entry import Entry
 from .ledger import History, Initial, Ledger
 
 
 @dataclass
 class Book:
-    chart: Chart
+    earnings: Earnings
     ledger: Ledger
+
+    # @property
+    # def chart(self):
+    #     return Chart.from_accounts(
+    #         [a for a in self.ledger.history.actions if isinstance(a, Account)]
+    #     )
 
     @classmethod
     def from_chart(cls, chart: Chart):
         ledger = Ledger.from_accounts(chart)
-        return cls(chart, ledger)
+        return cls(chart.earnings, ledger)
 
     def open(self, balances: dict):
         self.ledger.apply(Initial(balances))
@@ -29,7 +35,7 @@ class Book:
             self.post(entry)
 
     def close(self):
-        self.ledger.close(self.chart.retained_earnings)
+        self.ledger.close(self.earnings.retained)
 
     @property
     def balances(self):
@@ -41,7 +47,7 @@ class Book:
 
     @property
     def balance_sheet(self):
-        return self.ledger.balance_sheet(self.chart.current_earnings)
+        return self.ledger.balance_sheet(self.earnings.current)
 
     def save_history(self, path, allow_overwrite=False):
         self.ledger.history.save(path, allow_overwrite)
@@ -53,4 +59,4 @@ class Book:
             [a for a in history.actions if isinstance(a, Account)]
         )
         ledger = Ledger.from_list(history.actions)
-        return cls(chart, ledger)
+        return cls(chart.earnings, ledger)
