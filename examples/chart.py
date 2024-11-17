@@ -1,5 +1,12 @@
 from abacus.chart import Chart, ChartBase, Earnings, QualifiedChart
 
+print(
+    Chart(
+        retained_earnings="re",
+        current_earnings="profit",
+    ).earnings
+)
+
 
 def test_qualified():
     assert Chart(

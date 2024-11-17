@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from abacus import AbacusError, Asset, Chart, Equity
-from abacus.chart import Chart, ChartBase, Earnings, QualifiedChart
+from abacus.chart import ChartBase, Earnings, QualifiedChart
 
 
 def test_chart_base_name():
@@ -11,10 +11,15 @@ def test_chart_base_name():
     assert chart.names["ar"] == "AR"
 
 
-def test_chart_base_offset():
+def test_chart_base_contra():
     chart = ChartBase()
     chart.add_account(Asset("ppe", contra_accounts=["depreciation"]))
     assert chart.contra_accounts == {"ppe": ["depreciation"]}
+
+
+def test_chart_base_offset():
+    chart = ChartBase(income=["sales"]).offset("sales", "refunds")
+    assert chart.contra_accounts["sales"] == ["refunds"]
 
 
 def test_post_init_on_dublicate():
@@ -24,7 +29,6 @@ def test_post_init_on_dublicate():
             current_earnings="current_earnings",
             assets=["cash", "cash"],
         )
-
 
 
 def test_all_contra_accounts_point_to_existing_accounts():
@@ -38,7 +42,7 @@ def test_all_contra_accounts_point_to_existing_accounts():
 
 def test_chart_on_empty_list():
     chart = Chart(retained_earnings="re", current_earnings="profit")
-    assert chart.accounts == ["re"]
+    assert chart.account_names == ["re"]
 
 
 def test_pydantic_will_not_accept_extra_fields():
@@ -51,21 +55,14 @@ def test_pydantic_will_not_accept_extra_fields():
         )
 
 
-def test_chart_offset():
-    chart = ChartBase(income=["sales"]).offset("sales", "refunds")
-    assert chart.contra_accounts["sales"] == ["refunds"]
-
-
 def test_chart_to_list():
-    assert list(
-        Chart(
-            retained_earnings="re",
-            current_earnings="profit",
-            assets=["cash"],
-            equity=["equity"],
-            contra_accounts={"equity": ["ts"]},
-        )
-    ) == [
+    assert Chart(
+        retained_earnings="re",
+        current_earnings="profit",
+        assets=["cash"],
+        equity=["equity"],
+        contra_accounts={"equity": ["ts"]},
+    ).accounts == [
         Asset("cash"),
         Equity("equity", ["ts"]),
         Equity("re"),

@@ -1,6 +1,7 @@
 import pytest
 
 from abacus import Book, Chart, Entry
+from abacus.chart import Earnings
 from abacus.ledger import BalanceSheet, IncomeStatement, ReportDict
 
 
@@ -34,20 +35,25 @@ def test_balances_load_save(tmp_path):
 @pytest.fixture
 def this_chart():
     chart = Chart(
-        retained_earnings="retained_earnings",
-        current_earnings="current_earnings",
         assets=["cash"],
         equity=["equity"],
         income=["sales"],
         expenses=["salaries"],
+        retained_earnings="retained_earnings",
+        current_earnings="current_earnings",
     )
     chart.offset("sales", "refunds")
     return chart
 
 
+def test_earnings(this_chart):
+    assert this_chart.earnings == Earnings("current_earnings", "retained_earnings")
+
+
 def test_book_may_open_with_retained_earnings(this_chart):
     opening_balances = {"cash": 10_000, "equity": 8_000, "retained_earnings": 2_000}
     book = Book.from_chart(this_chart)
+    print(book)
     book.open(opening_balances)
     assert book.balances == {
         "cash": 10_000,
@@ -141,7 +147,7 @@ def test_book_similar_to_readme(tmp_path):
     chart.offset("sales", "refunds")
     chart.save(tmp_path / "chart.json")
     book = Book.from_chart(chart)
-    book.post(Entry("Initial investment").debit("cash", 10000).credit("equity", 10000))    
+    book.post(Entry("Initial investment").debit("cash", 10000).credit("equity", 10000))
     book.balances.save(tmp_path / "balances.json")
     book.ledger.history.save(tmp_path / "history.json")
     entries = [

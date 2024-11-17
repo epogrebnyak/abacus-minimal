@@ -45,7 +45,7 @@ def test_readme():
 
 
 def test_end_to_end(realistic_chart):
-    ledger = Ledger.from_accounts(realistic_chart)
+    ledger = Ledger.from_accounts(realistic_chart.accounts)
     entries = [
         Entry("Start").debit("cash", 20).credit("equity", 20),
         Entry("Accepted payment")

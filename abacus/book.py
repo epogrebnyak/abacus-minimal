@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Iterable
 
-from .chart import Account, Chart, Earnings
+from .chart import Account, Chart, Earnings, ChartBase, QualifiedChart
 from .entry import Entry
 from .ledger import History, Initial, Ledger
 
@@ -13,15 +13,15 @@ class Book:
     earnings: Earnings
     ledger: Ledger
 
-    # @property
-    # def chart(self):
-    #     return Chart.from_accounts(
-    #         [a for a in self.ledger.history.actions if isinstance(a, Account)]
-    #     )
+    @property
+    def chart(self) -> QualifiedChart:
+        accounts = [a for a in self.ledger.history.actions if isinstance(a, Account)]
+        base = ChartBase.from_accounts(accounts)
+        return QualifiedChart(earnings=self.earnings, base=base)
 
     @classmethod
     def from_chart(cls, chart: Chart):
-        ledger = Ledger.from_accounts(chart)
+        ledger = Ledger.from_accounts(chart.accounts)
         return cls(chart.earnings, ledger)
 
     def open(self, balances: dict):
