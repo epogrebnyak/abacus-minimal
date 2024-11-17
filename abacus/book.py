@@ -1,4 +1,4 @@
-"""User-facing Book and Entry classes for an accounting ledger."""
+"""User-facing Book class for an accounting ledger."""
 
 from dataclasses import dataclass
 from typing import Iterable
@@ -13,16 +13,16 @@ class Book:
     earnings: Earnings
     ledger: Ledger
 
+    @classmethod
+    def from_chart(cls, chart: Chart):
+        ledger = Ledger.from_accounts(chart.accounts)
+        return cls(chart.earnings, ledger)
+
     @property
     def chart(self) -> QualifiedChart:
         accounts = [a for a in self.ledger.history.actions if isinstance(a, Account)]
         base = ChartBase.from_accounts(accounts)
         return QualifiedChart(earnings=self.earnings, base=base)
-
-    @classmethod
-    def from_chart(cls, chart: Chart):
-        ledger = Ledger.from_accounts(chart.accounts)
-        return cls(chart.earnings, ledger)
 
     def open(self, balances: dict):
         self.ledger.apply(Initial(balances))
