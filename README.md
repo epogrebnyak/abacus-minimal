@@ -2,16 +2,16 @@
 
 ![PyPI - Version](https://img.shields.io/pypi/v/abacus-minimal?color=blue)
 
+Accounting logic should be possible to express in good code. 
 `abacus-minimal` aims to be concise, correct and expressive in implementation of double entry book-keeping rules.
 
-Accounting logic should be possible to express in good code. Progress and notable features
-so far are:
+Progress and notable features so far:
 
 - event-based ledger,
 - contra accounts,
 - period end closing,
-- saving and loading from JSON,
-- income statement and balance sheet before and after close.
+- income statement and balance sheet before and after closing,
+- saving and loading from JSON.
 
 ## Install
 
