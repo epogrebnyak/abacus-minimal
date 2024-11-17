@@ -47,7 +47,9 @@ def this_chart():
 
 
 def test_earnings(this_chart):
-    assert this_chart.earnings == Earnings("current_earnings", "retained_earnings")
+    assert this_chart.earnings == Earnings(
+        current="current_earnings", retained="retained_earnings"
+    )
 
 
 def test_book_may_open_with_retained_earnings(this_chart):

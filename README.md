@@ -145,14 +145,13 @@ All data structures used are serialisable. You can write code to create a chart 
 
 ```python
 # Save
-chart.save("chart.json")
-book.ledger.history.save("history.json", allow_overwrite=True)
+book.save("chart.json", "history.json", allow_overwrite=True)
 
 # Load and re-enter
-from abacus import History
+book2 = Book.load_unsafe("chart.json", "history.json")
 
-history2 = History.load("history.json")
-print(history2) # not fully identical to `book.ledger.history` yet
+from pprint import pprint
+pprint(book2) # may not fully identical to `book` yet
 ```
 
 ## Accounting concepts

@@ -1,4 +1,25 @@
-"""Chart of accounts and events to modify it."""
+"""Chart of accounts and events to modify it.
+
+The primitive events are:
+
+- `Add` and `Offset` to add regular and contra accounts,
+- `Drop` to deactivate an empty account.
+
+Compound event is `Account` class that translates to a sequence of `Add` and `Offset` events.
+`Account` is a parent class for `Asset`, `Equity`, `Liability`, `Income`, and `Expense`.
+
+`ChartBase` contains account names and titles.
+
+`Earnings` indicate names of current and retained earnings accounts
+that we need for closing the ledger at period end.
+
+`Chart` is a serializable chart of accounts that:
+-  can be saved and saved to flat and readbale JSON,
+-  has four validation methods for consistency checks,
+-  contains `ChartBase` and `Earnings` objects.
+
+`QualifiedChart` is similar to `Chart` but is a plain dataclass, not a pydantic model.
+"""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -86,7 +107,7 @@ class Expense(Account):
 
 
 class ChartBase(BaseModel):
-    """Chart of accounts with checks for duplicates and contra account references."""
+    """Chart of accounts without earnings accounts."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -98,10 +119,8 @@ class ChartBase(BaseModel):
     contra_accounts: dict[str, list[str]] = {}
     names: dict[str, str] = {}
 
-    @classmethod
-    def from_accounts(cls, accounts: Iterable["Account"]):
-        """Create chart from list of account classes."""
-        self = cls()
+    def extend(self, accounts: Iterable["Account"]):
+        """Add a list of accounts to chart."""
         for account in accounts:
             self.add_account(account)
         return self
@@ -213,6 +232,14 @@ class ChartBase(BaseModel):
         for parent_account in self.contra_accounts.keys():
             AbacusError.must_exist(regular_names, parent_account)
 
+    def to_chart(self, current_earnings: str, retained_earnings: str) -> "Chart":
+        """Convert to chart using current and retained earnings account names."""
+        return Chart(
+            **self.model_dump(),
+            current_earnings=current_earnings,
+            retained_earnings=retained_earnings,
+        )
+
 
 class Chart(ChartBase, SaveLoadMixin):
     """Serializable chart of accounts that is saved to plain JSON."""
@@ -221,9 +248,18 @@ class Chart(ChartBase, SaveLoadMixin):
     retained_earnings: str
 
     @classmethod
-    def from_accounts(cls, accounts: Iterable["Account"]):
+    def new(
+        cls,
+        current_earnings: str,
+        retained_earnings: str,
+        accounts: Iterable["Account"],
+    ):
         """Create chart from account classes."""
-        raise NotImplementedError
+        self = cls(
+            current_earnings=current_earnings, retained_earnings=retained_earnings
+        )
+        self.extend(accounts)
+        return cls(**self.model_dump())
 
     def model_post_init(self, _):
         self.move_retained_earnings_to_chart()
@@ -232,7 +268,7 @@ class Chart(ChartBase, SaveLoadMixin):
         self.assert_contra_account_references_are_valid()
 
     def move_retained_earnings_to_chart(self):
-        """Add retained earnings to equity if not already there."""
+        """Add retained earnings to equity account if not already there."""
         re = Equity(self.retained_earnings)
         if re.name not in self.equity:
             self.add_account(re)
@@ -252,22 +288,31 @@ class Chart(ChartBase, SaveLoadMixin):
     @property
     def earnings(self) -> "Earnings":
         """Earnings account names from this chart."""
-        return Earnings(self.current_earnings, self.retained_earnings)
+        return Earnings(current=self.current_earnings, retained=self.retained_earnings)
 
     @property
     def qualified(self) -> "QualifiedChart":
         return QualifiedChart(earnings=self.earnings, base=self.base)
-    
 
-@dataclass
-class Earnings:
+
+class Earnings(BaseModel):
     current: str
     retained: str
+
+    def to_chart(self, accounts: Iterable["Account"]) -> Chart:
+        return ChartBase().extend(accounts).to_chart(self.current, self.retained)
+
 
 @dataclass
 class QualifiedChart:
     earnings: Earnings
     base: ChartBase
 
+    def __post_init__(self):
+        self.to_chart()
+
     def __iter__(self) -> Iterator["Account"]:
         return iter(self.base.accounts)
+
+    def to_chart(self) -> Chart:
+        return self.earnings.to_chart(self.base.accounts)

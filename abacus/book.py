@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Iterable
 
-from .chart import Account, Chart, Earnings, ChartBase, QualifiedChart
+from .chart import Chart, Earnings
 from .entry import Entry
 from .ledger import History, Initial, Ledger
 
@@ -19,10 +19,8 @@ class Book:
         return cls(chart.earnings, ledger)
 
     @property
-    def chart(self) -> QualifiedChart:
-        accounts = [a for a in self.ledger.history.actions if isinstance(a, Account)]
-        base = ChartBase.from_accounts(accounts)
-        return QualifiedChart(earnings=self.earnings, base=base)
+    def chart(self) -> Chart:
+        return self.earnings.to_chart(self.ledger.history.accounts)
 
     def open(self, balances: dict):
         self.ledger.apply(Initial(balances))
@@ -49,14 +47,30 @@ class Book:
     def balance_sheet(self):
         return self.ledger.balance_sheet(self.earnings.current)
 
+    def save_chart(self, path, allow_overwrite=False):
+        self.chart.save(path, allow_overwrite)
+
+    @classmethod
+    def from_chart_dump(cls, path):
+        chart = Chart.load(path)
+        return cls(chart.earnings, Ledger())
+
     def save_history(self, path, allow_overwrite=False):
         self.ledger.history.save(path, allow_overwrite)
 
+    def load_history(self, path):
+        return History.load(path)
+
+    def save(self, chart_path, history_path, allow_overwrite=False):
+        """Save book to chart and history JSON files."""
+        self.chart.save(chart_path, allow_overwrite)
+        self.ledger.history.save(history_path, allow_overwrite)
+
     @classmethod
-    def load(cls, history_path):
-        history = History.load(history_path)
-        chart = Chart.from_accounts(
-            [a for a in history.actions if isinstance(a, Account)]
-        )
-        ledger = Ledger.from_list(history.actions)
-        return cls(chart.earnings, ledger)
+    def load_unsafe(cls, chart_path, history_path):
+        """Unsafe method to load a Book from chart and history JSON files."""
+        self = cls.from_chart_dump(chart_path)
+        history = self.load_history(history_path)
+        self.ledger = Ledger.from_accounts(history.accounts)
+        # pray that the history is consistent with the chart (fixme)
+        return self

@@ -154,14 +154,13 @@ Primitive = Add | Offset | Debit | Credit | PeriodEnd | Drop
 AccountType = Asset | Equity | Liability | Income | Expense
 EntryType = Double | Multiple | Initial
 ClosingType = Transfer | Close
-# may disqualify primitives from actions or allow a list of primitives
+# may disqualify primitives from actions or allow a list of primitives in actions
 Action = Primitive | AccountType | EntryType | ClosingType
 
 
 @dataclass
 class Event:
     action: Action
-    # may drop primitives
     primitives: list[Primitive]
     note: str | None
 
@@ -188,6 +187,12 @@ class History(BaseModel, SaveLoadMixin):
     def actions(self) -> Iterable:
         for event in self.events:
             yield event.action
+
+    @property
+    def accounts(self) -> Iterable[Account]:
+        for action in self.actions:
+            if isinstance(action, Account):
+                yield action
 
     def to_ledger(self) -> "Ledger":
         """Re-create ledger from history of actions."""
