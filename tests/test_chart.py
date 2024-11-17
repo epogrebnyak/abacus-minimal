@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from abacus import AbacusError, Asset, Chart, Equity
-from abacus.chart import ChartBase, Earnings, QualifiedChart
+from abacus.chart import ChartBase, Earnings
 
 
 def test_chart_base_name():
@@ -77,22 +77,29 @@ def test_cannot_overwrite_chart(tmp_path):
         chart.save(path)
 
 
-def test_qualified():
+def test_earnings_qfn():
     assert Chart(
         retained_earnings="re",
         current_earnings="profit",
         assets=["cash"],
         equity=["equity"],
         contra_accounts={"equity": ["ts"]},
-    ).qualified == QualifiedChart(
-        earnings=Earnings(current="profit", retained="re"),
-        base=ChartBase(
-            assets=["cash"],
-            equity=["equity", "re"],
-            liabilities=[],
-            income=[],
-            expenses=[],
-            contra_accounts={"equity": ["ts"]},
-            names={},
-        ),
+    ).earnings == Earnings(current="profit", retained="re")
+
+
+def test_chart_base_udr():
+    assert Chart(
+        retained_earnings="re",
+        current_earnings="profit",
+        assets=["cash"],
+        equity=["equity"],
+        contra_accounts={"equity": ["ts"]},
+    ).base == ChartBase(
+        assets=["cash"],
+        equity=["equity", "re"],
+        liabilities=[],
+        income=[],
+        expenses=[],
+        contra_accounts={"equity": ["ts"]},
+        names={},
     )

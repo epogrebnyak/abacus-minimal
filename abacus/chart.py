@@ -10,15 +10,13 @@ Compound event is `Account` class that translates to a sequence of `Add` and `Of
 
 `ChartBase` contains account names and titles.
 
-`Earnings` indicate names of current and retained earnings accounts
+`Earnings` class indicates current and retained earnings account names
 that we need for closing the ledger at period end.
 
 `Chart` is a serializable chart of accounts that:
 -  can be saved and saved to flat and readbale JSON,
 -  has four validation methods for consistency checks,
 -  contains `ChartBase` and `Earnings` objects.
-
-`QualifiedChart` is similar to `Chart` but is a plain dataclass, not a pydantic model.
 """
 
 from abc import ABC, abstractmethod
@@ -290,9 +288,9 @@ class Chart(ChartBase, SaveLoadMixin):
         """Earnings account names from this chart."""
         return Earnings(current=self.current_earnings, retained=self.retained_earnings)
 
-    @property
-    def qualified(self) -> "QualifiedChart":
-        return QualifiedChart(earnings=self.earnings, base=self.base)
+    # @property
+    # def qualified(self) -> "QualifiedChart":
+    #     return QualifiedChart(earnings=self.earnings, base=self.base)
 
 
 class Earnings(BaseModel):
@@ -303,16 +301,16 @@ class Earnings(BaseModel):
         return ChartBase().extend(accounts).to_chart(self.current, self.retained)
 
 
-@dataclass
-class QualifiedChart:
-    earnings: Earnings
-    base: ChartBase
+# @dataclass
+# class QualifiedChart:
+#     earnings: Earnings
+#     base: ChartBase
 
-    def __post_init__(self):
-        self.to_chart()
+#     def __post_init__(self):
+#         self.to_chart()
 
-    def __iter__(self) -> Iterator["Account"]:
-        return iter(self.base.accounts)
+#     def __iter__(self) -> Iterator["Account"]:
+#         return iter(self.base.accounts)
 
-    def to_chart(self) -> Chart:
-        return self.earnings.to_chart(self.base.accounts)
+#     def to_chart(self) -> Chart:
+#         return self.earnings.to_chart(self.base.accounts)
