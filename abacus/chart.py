@@ -233,9 +233,9 @@ class Chart(ChartBase, SaveLoadMixin):
 
     def move_retained_earnings_to_chart(self):
         """Add retained earnings to equity if not already there."""
-        re = self.retained_earnings
-        if re not in self.equity:
-            self.add_account(Equity(re))
+        re = Equity(self.retained_earnings)
+        if re.name not in self.equity:
+            self.add_account(re)
 
     def assert_current_earnings_not_in_chart(self):
         """Raise error if current earnings is in chart."""
