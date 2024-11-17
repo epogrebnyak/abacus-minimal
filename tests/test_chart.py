@@ -2,23 +2,23 @@ import pytest
 from pydantic import ValidationError
 
 from abacus import AbacusError, Asset, Chart, Equity
-from abacus.chart import ChartBase, Earnings
+from abacus.chart import BaseChart, Earnings
 
 
 def test_chart_base_name():
-    chart = ChartBase()
+    chart = BaseChart()
     chart.add_account(Asset("ar", title="AR"))
     assert chart.names["ar"] == "AR"
 
 
 def test_chart_base_contra():
-    chart = ChartBase()
+    chart = BaseChart()
     chart.add_account(Asset("ppe", contra_accounts=["depreciation"]))
     assert chart.contra_accounts == {"ppe": ["depreciation"]}
 
 
 def test_chart_base_offset():
-    chart = ChartBase(income=["sales"]).offset("sales", "refunds")
+    chart = BaseChart(income=["sales"]).offset("sales", "refunds")
     assert chart.contra_accounts["sales"] == ["refunds"]
 
 
@@ -94,7 +94,7 @@ def test_chart_base_udr():
         assets=["cash"],
         equity=["equity"],
         contra_accounts={"equity": ["ts"]},
-    ).base == ChartBase(
+    ).base == BaseChart(
         assets=["cash"],
         equity=["equity", "re"],
         liabilities=[],

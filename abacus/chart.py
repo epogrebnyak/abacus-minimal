@@ -5,18 +5,21 @@ The primitive events are:
 - `Add` and `Offset` to add regular and contra accounts,
 - `Drop` to deactivate an empty account.
 
-Compound event is `Account` class that translates to a sequence of `Add` and `Offset` events.
-`Account` is a parent class for `Asset`, `Equity`, `Liability`, `Income`, and `Expense`.
+`Account` is a parent class
+for `Asset`, `Equity`, `Liability`, `Income`, and `Expense`.
+`Account` is a compound event
+that translates to a sequence of `Add` and `Offset` events.
 
-`ChartBase` contains account names and titles.
+`BaseChart` contains account names and titles.
+A list of `Account` objects is enough to define a `BaseChart` object.
 
 `Earnings` class indicates current and retained earnings account names
 that we need for closing the ledger at period end.
 
 `Chart` is a serializable chart of accounts that:
--  can be saved and saved to flat and readbale JSON,
--  has four validation methods for consistency checks,
--  contains `ChartBase` and `Earnings` objects.
+-  can be saved and loaded from a flat and readable JSON,
+-  has 4 validation methods for consistency checks,
+-  contains `BaseChart` and `Earnings` objects.
 """
 
 from abc import ABC, abstractmethod
@@ -104,7 +107,7 @@ class Expense(Account):
     tag: Literal["expense"] = "expense"  # type: ignore
 
 
-class ChartBase(BaseModel):
+class BaseChart(BaseModel):
     """Chart of accounts without earnings accounts."""
 
     model_config = ConfigDict(extra="forbid")
@@ -239,7 +242,7 @@ class ChartBase(BaseModel):
         )
 
 
-class Chart(ChartBase, SaveLoadMixin):
+class Chart(BaseChart, SaveLoadMixin):
     """Serializable chart of accounts that is saved to plain JSON."""
 
     current_earnings: str
@@ -276,12 +279,12 @@ class Chart(ChartBase, SaveLoadMixin):
         AbacusError.must_not_exist(self.account_names, self.current_earnings)
 
     @property
-    def base(self) -> ChartBase:
+    def base(self) -> BaseChart:
         """Base chart without earnings."""
         dump = self.model_dump()
         del dump["current_earnings"]
         del dump["retained_earnings"]
-        return ChartBase(**dump)
+        return BaseChart(**dump)
 
     @property
     def earnings(self) -> "Earnings":
@@ -298,13 +301,13 @@ class Earnings(BaseModel):
     retained: str
 
     def to_chart(self, accounts: Iterable["Account"]) -> Chart:
-        return ChartBase().extend(accounts).to_chart(self.current, self.retained)
+        return BaseChart().extend(accounts).to_chart(self.current, self.retained)
 
 
 # @dataclass
 # class QualifiedChart:
 #     earnings: Earnings
-#     base: ChartBase
+#     base: BaseChart
 
 #     def __post_init__(self):
 #         self.to_chart()
