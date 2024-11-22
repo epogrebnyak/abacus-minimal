@@ -166,3 +166,4 @@ cython_debug/
 balances.json
 chart.json
 store.json
+posts/db.db
