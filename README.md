@@ -2,16 +2,19 @@
 
 ![PyPI - Version](https://img.shields.io/pypi/v/abacus-minimal?color=blue)
 
-Accounting logic should be possible to express in good code.
+Accounting logic should be possible to express in code, right?
+
 `abacus-minimal` aims to be concise, correct and expressive in implementation of double entry book-keeping rules.
 
-Progress and notable features so far:
+Progress and features so far:
 
 - event-based ledger,
 - contra accounts,
+- multiple entries,
 - period end closing,
-- income statement and balance sheet before and after closing,
-- saving and loading from JSON.
+- income statement and balance sheet reports,
+- reports available before and after account closing,
+- saving and loading data from JSON.
 
 ## Install
 
@@ -40,8 +43,10 @@ events:
 
 Given a sequence of events you can always recreate the ledger state from scratch.
 
-Аccount creation, double entries and a command to close
-accounts are in the `events` list in an example below.
+### Example
+
+In code below account creation, double entries and a command to close
+accounts are in the `events` list.
 
 ```python
 from abacus import Asset, Double, Equity, Expense, Income, Ledger, Close
@@ -71,38 +76,59 @@ print(ledger.income_statement())
 print(ledger.balance_sheet())
 ```
 
-Ledger history can be saved to a JSON file.
-
 ### Primitives
 
-There are six types of 'primitive' events in `abacus-minimal`:
+There are six types of basic, or 'primitive', events in `abacus-minimal`:
 
-- add account or contra account,
-- debit or credit account,
-- drop account, and
-- mark period end.
+1. `Add`: add an account of asset, equity, liability, income or expense type,
+2. `Offset`: add a contra account to an existing account,
+3. `Debit`: debit an account with amount,
+4. `Credit`: credit an account with amount,
+5. `Drop`: deactivate an account, and
+6. `PeriodEnd`: mark reporting period end.
 
-All compound event types translate to primitives.
-
-In example above you can extract the primitives as following:
+From example above you can extract the primitives as following:
 
 ```python
 for p in ledger.history.primitives:
    print(p)
 ```
 
+There are also compound events. Every compound event
+can be represented as a list of primitives. Compound events are:
+
+<!-- prettier-ignore-start -->
+
+Compound event | What it does                                 | Translates to
+:-------------:|:---------------------------------------------|:-------------:
+`Account`      | Specifies an account and its contra accounts | `list[Add | Offset]`
+`Double` and `Multiple` | Accounting entries                  | `list[Debit | Credit]`
+`Tranfer`      | Move account balance from one account to another | `Double`   
+`Close`        | Close accounts at period end      | `PeriodEnd` and list of `Transfer`
+
+<!-- prettier-ignore-end -->
+
 ## Ledger as class
 
-You can also work with higher-level `Chart`, `Book` and `Entry` classes.
+You can also work with higher-level `Chart`, `Book` and `Entry` classes
+without looking at events level:
 
-Consider an example where you need to process the following transactions
-and show end reports:
+- `Chart` holds a chart of accounts and can be saved and loaded from JSON (`chart.json`).
+- `Book` is created from chart, accepts entries to post to ledger and
+  also can be saved and loaded from JSON (`history.json`).
+- `Entry` is a posting to a ledger that can be a double or a multiple entry.
 
-- a company gets $1000 equity investment from shareholders,
-- bills a client $1000 plus 20% value added tax (VAT) for services,
-- receives $600 installment payment,
-- makes a $150 refund,
-- pays $450 in salaries to the staff.
+### Example
+
+Consider an example where you need to process the following transactions:
+
+- a company gets €1000 equity investment from shareholders,
+- bills a client €1000 plus 20% [value added tax (VAT)][vat],
+- receives €600 installment payment,
+- makes a €150 refund,
+- pays €450 in salaries to the staff.
+
+[vat]: https://taxation-customs.ec.europa.eu/taxation/vat_en
 
 ```python
 from abacus import Book, Chart, Entry
@@ -141,7 +167,7 @@ print(book.balance_sheet)
 
 ## Everything as JSON
 
-All data structures used are serialisable. You can write code to create a chart of accounts and a ledger, save them to JSONs or pick up data from the JSON files, restore the ledger, work on it, save again and so on.
+All data structures used are serialisable. You can write code to create a chart of accounts and a ledger, save them to JSONs or pick up data from the JSON files and restore the ledger.
 
 ```python
 # Save
@@ -154,16 +180,21 @@ from pprint import pprint
 pprint(book2) # may not fully identical to `book` yet
 ```
 
-## Accounting concepts
+## Accounting concepts and workflow
 
-In `abacus-minimal` there are regular accounts of five types: asset, liability, equity, income, expense. Contra accounts to regular accounts are possible (eg depreciation, discounts).
+### Key concepts
 
-Period end closes temporary accounts (income, expense and their associated contra accounts),
-but balance sheet and income statement are available before and after close.
+In `abacus-minimal`:
 
-Post close entries are allowed on permanent accounts.
+- there are regular accounts of five types (asset, liability, equity, income, expense);
+- contra accounts to regular accounts are possible (eg depreciation, discounts);
+- period end closes temporary accounts (income, expense and their associated contra accounts);
+- balance sheet and income statement are available before and after close;
+- post close entries are allowed on permanent accounts;
 
-## Accounting workflow
+See a detailed list of assumptions and limitations [here](prose/assumptions.md).
+
+### Workflow
 
 The steps for using `abacus-minimal` follow the steps of a typical accounting cycle:
 
@@ -177,7 +208,7 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 - show financial reports,
 - save account balances data for the next reporting period.
 
-## Accounting identity
+### Accounting identity
 
 `abacus-minimal` adheres to the following interpretation of accounting identity.
 
@@ -187,13 +218,13 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 Assets = Equity + Liabilities
 ```
 
-Equity is the residual claim after creditors:
+Equity is the residual claim on assets after creditors:
 
 ```
 Equity = Assets - Liabilities
 ```
 
-2. Company current earnings, or profit, equal to income less expenses associated with generating this income:
+2. Company current earnings, or profit, is equal to income less expenses associated with generating this income:
 
 ```
 Current Earnings = Income - Expenses
@@ -219,32 +250,16 @@ Assets + Expenses =
    Shareholder Equity + Other Equity + Retained Earnings + Income + Liabilities
 ```
 
+5. We also add contra accounts:
+
+```
+Assets + Expenses + Contra Accounts To Equity, Income and Liabilitites =
+   Shareholder Equity + Other Equity + Retained Earnings + Income + Liabilities
+   + Contra Accounts to Assets and Expenses
+```
+
 Our book-keeping goal is to reflect business events as changes to the variables
-while maintaining this equation.
-
-### Limitations
-
-Several assumptions and simplifications are used to make `abacus-minimal` easier to develop and reason about:
-
-- one currency
-- one reporting period
-- one level of accounts, no sub-accounts
-- no account aggregation for reports
-- account names must be globally unique (eg cannot have two accounts named "other")
-- chart always has current earnings account and retained earnings account
-- period end closing will transfer current earnings to retained earnings
-- no account durations, current vs non-current accounts not distinguished
-- other comprehensive income account (OCIA) not calculated
-- no revaluations
-- no intermediate accounts except current earnings
-- accounts either debit normal or credit normal, no mixed accounts
-- no journals, entries are posted to ledger directly
-- an entry can touch any accounts
-- entry amount can be positive, negative or zero
-- net earnings are income less expenses, no gross profit or earnings before tax calculated
-- no cash flow statement
-- no statement of changes in equity
-- no date or any transaction metadata recorded
+in this eqaution while maintaining the balance of it.
 
 ## Alternatives
 
