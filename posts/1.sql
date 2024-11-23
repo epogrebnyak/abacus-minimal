@@ -50,7 +50,7 @@ CREATE TABLE accounts (
   balance INTEGER NOT NULL DEFAULT 0
 );
 
--- Let us put in several accounts with zero balances
+-- Let us put in several accounts with zero balances.
 INSERT INTO accounts (name) VALUES 
     ('owner'), -- equity
     ('cash'), -- asset
@@ -71,7 +71,7 @@ CREATE TABLE entries (
 );
 
 INSERT INTO entries (title, debit, credit, amount) VALUES     
--- A bank is created
+-- A bank is created - someone put the maney in into bank capital
     ('Initial equity investment', 'cash', 'owner', 100000),
 -- A Client deposits cash to her account
     ('Client deposit', 'cash', 'client.mary', 6500),
@@ -94,9 +94,18 @@ SELECT name,
   JOIN entries ON name = debit OR name = credit
   GROUP BY name;
 
--- Some of the accounts will have their balance as credits - debits 
--- ('credit-normal' accounts, bank equity, liabilities and income) 
--- and some will have the balance as debits - credits 
--- ('debit-normal' accounts - bank assets and expenses).
 -- In our database we do not have this information about 
--- account types yet. 
+-- account types yet, just notes in comments.
+-- Some of the accounts will have their balance as credits less debits 
+-- ('credit-normal' accounts -- bank equity, liabilities and income) 
+-- and some will have the balance as debits less credits 
+-- ('debit-normal' accounts -- bank assets and expenses). The debits and credits 
+-- are a smart trick to guarantee the accounting identity always holds,
+-- but it is just a convention, a way to scale accounting records with
+-- less errors. 
+
+-- I find this form of accounting equation very useful:
+
+-- ASSETS + EXPENSES = EQUITY' + RETAINED EARNINGS + LIABILITIES + INCOME (1)
+-- where  EQUITY = EQUITY' + RETAINED EARNINGS              (2)
+
