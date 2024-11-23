@@ -99,12 +99,12 @@ can be represented as a list of primitives.
 
 <!-- prettier-ignore-start -->
 
-Compound event | What it does                                 | Translates to a list of 
+Compound event | What it does                                 | Translates to a list of
 :-------------:|:---------------------------------------------|:-------------
 `Account`      | Specifies an account and its contra accounts | `Add` and `Offset`
-`Double` and `Multiple` | Accounting entries                  | `Debit` and `Credit`
-`Tranfer`      | Move account balance from one account to another | `Double` 
-`Close`        | Close accounts at period end                 | `PeriodEnd` and `Transfer`
+`Double` and `Multiple` | Represent accounting entries        | `Debit` and `Credit`
+`Tranfer`      | Moves account balance from one account to another | `Double` 
+`Close`        | Closes temporary accounts at period end      | `PeriodEnd` and `Transfer`
 
 Note `Transfer` and `Close` are representd as other compond events but further processed to the primitives.
 
