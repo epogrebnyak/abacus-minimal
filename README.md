@@ -280,17 +280,18 @@ If you are totally new to accounting the suggested friendly course is <https://w
 
 ACCA and CPA are the international and the US professional qualifications and IFRS and US GAAP are the standards for accounting recognition, measurement and disclosure.
 
-A great overview of accounting concepts is at  
-[IFRS Conceptual Framework for Financial Reporting]
-(https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards/english/2021/issued/part-a/conceptual-framework-for-financial-reporting.pdf).
+A great overview of accounting concepts is at [IFRS Conceptual Framework for Financial Reporting][ifrs].
 
-Part B-G in the [ACCA syllabus for the FFA exam](https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf) talk about what `abacus-minimal` is designed for.
+Part B-G in the [ACCA syllabus for the FFA exam][ffa] are useful to review to work with `abacus-minimal`.
+
+[ifrs]: https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards/english/2021/issued/part-a/conceptual-framework-for-financial-reporting.pdf
+[ffa]: https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/f3/studyguides/fa-ffa-syllabusandstudyguide-sept23-aug24.pdf
 
 Textbooks and articles:
 
-1. [list of free and open source textbooks](https://library.sacredheart.edu/opentextbooks/accounting)
-2. [Frank Wood "Business Accounting"](https://www.google.com/search?q=Frank+Wood+%22Business+Accounting)
-3. ["200 Years of Accounting History Dates and Events"](https://maaw.info/AccountingHistoryDatesAndEvents.htm)
+1. [A list of free and open source textbooks](https://library.sacredheart.edu/opentextbooks/accounting).
+2. [Frank Wood "Business Accounting"](https://www.google.com/search?q=Frank+Wood+%22Business+Accounting).
+3. [200 Years of Accounting History Dates and Events](https://maaw.info/AccountingHistoryDatesAndEvents.htm).
 
 ## Project conventions
 
