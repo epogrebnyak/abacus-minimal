@@ -9,7 +9,7 @@ Accounting logic should be possible to express in readable code, right?
 Progress and features so far:
 
 - event-based ledger,
-- contra accounts,
+- regular and contra accounts,
 - multiple entries,
 - period end closing,
 - income statement and balance sheet reports,
