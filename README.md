@@ -100,13 +100,14 @@ can be represented as a list of primitives.
 <!-- prettier-ignore-start -->
 
 Compound event | What it does                                 | Translates to a list of
-:-------------:|:---------------------------------------------|:-------------
+:--------------|:---------------------------------------------|:-------------
 `Account`      | Specifies an account and its contra accounts | `Add` and `Offset`
 `Double` and `Multiple` | Represent accounting entries        | `Debit` and `Credit`
 `Transfer`     | Moves account balance from one account to another | `Double` 
 `Close`        | Closes temporary accounts at period end      | `PeriodEnd` and `Transfer`
 
-Note `Transfer` and `Close` are representd as other compond events but further processed to the primitives.
+Note `Transfer` and `Close` are initially represented as other compound events 
+but then further processed down to primitives.
 
 <!-- prettier-ignore-end -->
 
