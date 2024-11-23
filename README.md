@@ -106,7 +106,7 @@ Compound event | What it does                                 | Translates to a 
 `Tranfer`      | Move account balance from one account to another | `Double` 
 `Close`        | Close accounts at period end                 | `PeriodEnd` and `Transfer`
 
-`Transfer` and `Close` are further processed to primitives
+Note `Transfer` and `Close` are representd as other compond events but further processed to the primitives.
 
 <!-- prettier-ignore-end -->
 
