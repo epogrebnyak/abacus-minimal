@@ -76,7 +76,7 @@ print(ledger.income_statement())
 print(ledger.balance_sheet())
 ```
 
-### Primitives
+### Primitive and compound events
 
 There are six types of basic, or 'primitive', events in `abacus-minimal`:
 
