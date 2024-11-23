@@ -2,7 +2,7 @@
 
 ![PyPI - Version](https://img.shields.io/pypi/v/abacus-minimal?color=blue)
 
-Accounting logic should be possible to express in good code. 
+Accounting logic should be possible to express in good code.
 `abacus-minimal` aims to be concise, correct and expressive in implementation of double entry book-keeping rules.
 
 Progress and notable features so far:
@@ -294,6 +294,7 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 ## Changelog
 
+- `0.14.2` (2024-11-23) Added `just sql` command to run database examples.
 - `0.14.0` (2024-11-15) Event-based ledger now on `main`. Mixed test suite and `pyright`.
 - `0.13.0` (2024-11-15) Event-based ledger will become next minor version
 - `0.12.0` (2024-11-13) `events.py` offers events-based ledger modification.

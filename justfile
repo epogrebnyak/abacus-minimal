@@ -23,3 +23,6 @@ readme:
    isort examples/readme.py --float-to-top
    black examples/readme.py
 
+# Run SQL examples
+sql:
+   sqlite3 < posts/1.sql
