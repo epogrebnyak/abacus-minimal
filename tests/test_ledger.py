@@ -1,8 +1,4 @@
-from abacus import (
-    Double,
-    Income,
-    Ledger,
-)
+from abacus import Double, Income, Ledger
 from abacus.ledger import BalanceSheet, CreditAccount, DebitAccount, ReportDict
 
 
@@ -54,6 +50,3 @@ def test_balance_sheet_again(toy_ledger):
 
 def test_balances(toy_ledger):
     assert toy_ledger.balances == dict(cash=10, equity=10, re=0)
-
-
-

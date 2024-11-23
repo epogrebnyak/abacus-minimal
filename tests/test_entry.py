@@ -1,6 +1,9 @@
-import pytest
+from decimal import Decimal
 
-from abacus import AbacusError, Credit, Debit, Double, Entry
+import pytest
+from pytest import fixture
+
+from abacus import AbacusError, Credit, Debit, Double, Entry, Multiple
 from abacus.ledger import DebitAccount
 
 
@@ -30,12 +33,6 @@ def test_entry_amount():
 def test_entry_no_amount_raises_error():
     with pytest.raises(AbacusError):
         Entry("Entry with no amount").debit("cash")
-
-from decimal import Decimal
-
-from pytest import fixture
-
-from abacus import Credit, Debit, Double, Entry, Multiple
 
 
 def test_double():
@@ -90,4 +87,3 @@ def test_opening_entry(toy_dict):
     opening_dict = dict(cash=10, equity=8, re=2)
     entry = toy_dict.initial_entry(opening_dict)
     assert list(entry) == [Debit("cash", 10), Credit("equity", 8), Credit("re", 2)]
-
