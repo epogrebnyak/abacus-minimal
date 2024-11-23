@@ -125,7 +125,7 @@ without looking at events level:
 
 Consider an example where you need to process the following transactions:
 
-- a company gets €1000 equity investment from shareholders,
+- a company gets €20000 equity investment from shareholders,
 - bills a client €1000 plus 20% [value added tax (VAT)][vat],
 - receives €600 installment payment,
 - makes a €150 refund,
@@ -150,7 +150,7 @@ book = Book.from_chart(chart)
 
 # Post entries
 entries = [
-    Entry("Shareholder investment").double("cash", "equity", 1000),
+    Entry("Shareholder investment").double("cash", "equity", 20_000),
     Entry("Invoiced services")
        .debit("ar", 1200)
        .credit("services", 1000)
