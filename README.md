@@ -296,7 +296,7 @@ I use `poetry` as a package manager, but heard good things about `uv` that I wan
 
 - `0.14.2` (2024-11-23) Added `just sql` command to run database examples.
 - `0.14.0` (2024-11-15) Event-based ledger now on `main`. Mixed test suite and `pyright`.
-- `0.13.0` (2024-11-15) Event-based ledger will become next minor version
+- `0.13.0` (2024-11-15) Event-based ledger will become next minor version.
 - `0.12.0` (2024-11-13) `events.py` offers events-based ledger modification.
 - `0.11.1` (2024-11-06) `abacus.core` now feature complete.
 - `0.10.7` (2024-11-02) `Posting` type is a list of single entries.
