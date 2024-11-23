@@ -13,7 +13,7 @@ Progress and features so far:
 - multiple entries,
 - period end closing,
 - income statement and balance sheet reports,
-- reports before and after closing,
+- proxy reports before closing,
 - saving and loading data from JSON.
 
 ## Install
