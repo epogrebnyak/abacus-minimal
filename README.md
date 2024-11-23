@@ -2,7 +2,7 @@
 
 ![PyPI - Version](https://img.shields.io/pypi/v/abacus-minimal?color=blue)
 
-Accounting logic should be possible to express in code, right?
+Accounting logic should be possible to express in readable code, right?
 
 `abacus-minimal` aims to be concise, correct and expressive in implementation of double entry book-keeping rules.
 
@@ -13,7 +13,7 @@ Progress and features so far:
 - multiple entries,
 - period end closing,
 - income statement and balance sheet reports,
-- reports available before and after account closing,
+- reports before and after closing,
 - saving and loading data from JSON.
 
 ## Install
@@ -95,16 +95,18 @@ for p in ledger.history.primitives:
 ```
 
 There are also compound events. Every compound event
-can be represented as a list of primitives. Compound events are:
+can be represented as a list of primitives. 
 
 <!-- prettier-ignore-start -->
 
-Compound event | What it does                                 | Translates to
-:-------------:|:---------------------------------------------|:-------------:
-`Account`      | Specifies an account and its contra accounts | `list[Add | Offset]`
-`Double` and `Multiple` | Accounting entries                  | `list[Debit | Credit]`
-`Tranfer`      | Move account balance from one account to another | `Double`   
-`Close`        | Close accounts at period end      | `PeriodEnd` and list of `Transfer`
+Compound event | What it does                                 | Translates to a list of 
+:-------------:|:---------------------------------------------|:-------------
+`Account`      | Specifies an account and its contra accounts | `Add` and `Offset`
+`Double` and `Multiple` | Accounting entries                  | `Debit` and `Credit`
+`Tranfer`      | Move account balance from one account to another | `Double` 
+`Close`        | Close accounts at period end                 | `PeriodEnd` and `Transfer`
+
+`Transfer` and `Close` are further processed to primitives
 
 <!-- prettier-ignore-end -->
 
@@ -200,11 +202,11 @@ The steps for using `abacus-minimal` follow the steps of a typical accounting cy
 
 - create a chart of accounts,
 - open ledger for the current reporting period,
-- post account balances for the previous period,
+- post account balances from the previous period,
 - post entries that reflect business transactions within the period,
 - post reconciliation and adjustment entries,
 - close accounts at reporting period end,
-- make post-close entries,
+- post entries after close,
 - show financial reports,
 - save account balances data for the next reporting period.
 
