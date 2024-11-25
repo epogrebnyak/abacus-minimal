@@ -114,10 +114,10 @@ Compound event | What it does                                | Translates to a l
 `Transfer`     | Moves account balance from one account to another | `Double` 
 `Close`        | Closes temporary accounts at period end      | `PeriodEnd` and `Transfer`
 
-Note `Transfer` and `Close` are initially represented as other compound events 
-but then further processed down to primitives.
-
 <!-- prettier-ignore-end -->
+
+Note that `Transfer` and `Close` are initially translated into other compound events, 
+but ultimately, they are further simplified into the primitives.
 
 ## Ledger as class
 
