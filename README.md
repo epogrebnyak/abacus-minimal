@@ -38,15 +38,17 @@ pip install git+https://github.com/epogrebnyak/abacus-minimal.git
 events:
 
 - chart of account changes,
-- business transactions, and
+- business transactions,
+- adjustment and reconciliation entries,
 - closing entries.
 
-Given a sequence of events you can always recreate the ledger state from scratch.
+Given a sequence of events you can always recreate the ledger state.
 
 ### Example
 
-In code below account creation, double entries and a command to close
-accounts are in the `events` list.
+In code below account creation, three double entries and a command to close
+accounts are in the `events` list. This list is accepted by ledger, and from the 
+ledger you can see the account balances and reports. 
 
 ```python
 from abacus import Asset, Double, Equity, Expense, Income, Ledger, Close
@@ -80,12 +82,18 @@ print(ledger.balance_sheet())
 
 There are six types of basic, or 'primitive', events in `abacus-minimal`:
 
-1. `Add`: add an account of asset, equity, liability, income or expense type,
-2. `Offset`: add a contra account to an existing account,
-3. `Debit`: debit an account with amount,
-4. `Credit`: credit an account with amount,
-5. `Drop`: deactivate an account, and
-6. `PeriodEnd`: mark reporting period end.
+<!-- prettier-ignore-start -->
+
+Primitive event   | What is does
+:----------------:|----------------
+ `Add`      | Add an empty account of asset, equity, liability, income or expense type
+`Offset`    | Аdd a empty contra account that corresponds to an existing account
+`Debit`     | Debit an account with a specified amount
+`Credit`    | Credit an account with a specified amount
+`Drop`      | Deactivate an account
+`PeriodEnd` | Mark reporting period end
+
+<!-- prettier-ignore-end -->
 
 From example above you can extract the primitives as following:
 
@@ -99,8 +107,8 @@ can be represented as a list of primitives.
 
 <!-- prettier-ignore-start -->
 
-Compound event | What it does                                 | Translates to a list of
-:--------------|:---------------------------------------------|:-------------
+Compound event | What it does                                | Translates to a list of
+:--------------|---------------------------------------------|-------------
 `Account`      | Specifies an account and its contra accounts | `Add` and `Offset`
 `Double` and `Multiple` | Represent accounting entries        | `Debit` and `Credit`
 `Transfer`     | Moves account balance from one account to another | `Double` 
