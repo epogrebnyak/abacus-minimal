@@ -117,15 +117,15 @@ class CreditAccount(TAccount):
     def transfer(self, from_account: str, to_account: str) -> Double:
         return Double(from_account, to_account, self.balance)
 
-
 @dataclass
 class Contra:
     """Contra account, refers to an existing regular account."""
 
     name: str
 
-
 class ChartDict(UserDict[str, T5 | Contra]):
+    """A representation of chart of accounts that ensures account names are unique.""" 
+
     def is_debit_account(self, name) -> bool:
         """Return True if *name* is debit-normal account."""
         AbacusError.must_exist(self, name)
@@ -146,7 +146,6 @@ class ChartDict(UserDict[str, T5 | Contra]):
             for contra_name, parent in self.data.items()
             if parent == Contra(regular_account_name)
         ]
-
 
 def close_contra_accounts(chart: ChartDict, t: T5) -> Iterable[tuple[str, str]]:
     """Yield pairs of account names for closing contra accounts."""
@@ -169,7 +168,7 @@ EntryType = Double | Multiple | Initial
 ClosingType = Transfer | Close
 # TODO: may disqualify primitives from actions or allow a list of primitives in actions
 Action = Primitive | AccountType | EntryType | ClosingType
-
+# Action2 = list[Primitive] | AccountType | EntryType | ClosingType
 
 @dataclass
 class Event:
@@ -180,10 +179,6 @@ class Event:
 
 class History(BaseModel, SaveLoadMixin):
     events: list[Event] = field(default_factory=list)
-
-    def __iter__(self):  # type: ignore
-        """Override `pydantic.BaseModel.__iter__`."""
-        yield from self.events
 
     def append(
         self, action: Action, primitives: list[Primitive], note: str | None = None
@@ -236,7 +231,7 @@ class Ledger:
             {name: account.balance for name, account in self.accounts.items()}
         )
 
-    def create_account(self, name):
+    def _create_account(self, name):
         if self.chart.is_debit_account(name):
             self.accounts[name] = DebitAccount()
         else:
@@ -251,25 +246,24 @@ class Ledger:
 
     def run(self, action: Operation) -> list[Primitive]:
         """Apply action and return list of primitives."""
-        operations: list[Primitive] = []
         if isinstance(action, (Account, Double, Multiple)):
             return self.run_iterable(action)
         match action:
             case Add(name, t):
                 AbacusError.must_not_exist(self.chart, name)
                 self.chart[name] = t
-                self.create_account(name)
+                self._create_account(name)
                 return [action]
             case Offset(parent, name):
                 if parent not in self.chart:
                     raise AbacusError(f"Account {parent} must exist.")
                 AbacusError.must_not_exist(self.chart, name)
                 self.chart[name] = Contra(parent)
-                self.create_account(name)
+                self._create_account(name)
                 return [action]
             case Drop(name):
                 if not self.accounts[name].is_empty():
-                    raise AbacusError(f"Account {name} is not empty.")
+                    raise AbacusError(f"Account {name} is not empty.")                    
                     # FIMXE: must also check contra accounts are empty
                 del self.accounts[name]
                 return [action]
@@ -282,13 +276,11 @@ class Ledger:
                 self.accounts[account].credit(amount)
                 return [action]
             case Initial(_):
-                entry = action.to_entry(self.chart)
-                return self.run(entry)
+                initial_entry = action.to_entry(self.chart)
+                return self.run(initial_entry)
             case Transfer(from_account, to_account):
-                this_account = self.accounts[from_account]
-                transfer_entry = this_account.transfer(from_account, to_account)
-                operations += self.run(transfer_entry)
-                return operations
+                transfer_entry = self.transfer_entry(from_account, to_account)
+                return self.run(transfer_entry)
             case PeriodEnd():
                 self.accounts_before_close = deepcopy(self.accounts)
                 return [action]
@@ -297,6 +289,9 @@ class Ledger:
                 return self.run_iterable(actions)
             case _:
                 raise AbacusError(f"Unknown {action}")
+
+    def transfer_entry(self, from_account, to_account):           
+        return self.accounts[from_account].transfer(from_account, to_account)
 
     def close_ledger_items(self, earnings_account: str) -> Iterable[Operation]:
         yield PeriodEnd()
@@ -325,7 +320,7 @@ class Ledger:
             return IncomeStatement.new(self.accounts, self.chart)
 
     def proxy(self, proxy_earnings_account: str) -> "Ledger":
-        """Create a shallow ledger copy."""
+        """Create a shallow ledger copy and close to proxy accumulation account."""
         return (
             Ledger(accounts=deepcopy(self.accounts), chart=deepcopy(self.chart))
             .apply(Equity(proxy_earnings_account))
