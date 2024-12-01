@@ -72,5 +72,5 @@ class Book:
         self = cls.from_chart_dump(chart_path)
         history = self.load_history(history_path)
         self.ledger = Ledger.from_accounts(history.accounts)
-        # pray that the history is consistent with the chart (fixme)
+        # pray that the history is consistent with the chart (fixme to cheeck)
         return self

@@ -5,13 +5,10 @@ The primitive events are:
 - `Add` and `Offset` to add regular and contra accounts,
 - `Drop` to deactivate an empty account.
 
-`Account` is a parent class
-for `Asset`, `Equity`, `Liability`, `Income`, and `Expense`.
-`Account` is a compound event
-that translates to a sequence of `Add` and `Offset` events.
+`Account` is a parent class for `Asset`, `Equity`, `Liability`, `Income`, and `Expense`.
+`Account` is a compound event that translates to a sequence of `Add` and `Offset` events.
 
-`BaseChart` contains account names and titles.
-A list of `Account` objects is enough to define a `BaseChart` object.
+`BaseChart` has accoutns of five types and their contra accounts.
 
 `Earnings` class indicates current and retained earnings account names
 that we need for closing the ledger at period end.
@@ -49,6 +46,7 @@ class Offset(Charting):
     tag: Literal["offset"] = "offset"
 
 
+# FIXME: drop affects ledger but not chart
 @dataclass
 class Drop(Charting):
     """Drop account if the account and its contra accounts have zero balances."""
@@ -291,10 +289,6 @@ class Chart(BaseChart, SaveLoadMixin):
         """Earnings account names from this chart."""
         return Earnings(current=self.current_earnings, retained=self.retained_earnings)
 
-    # @property
-    # def qualified(self) -> "QualifiedChart":
-    #     return QualifiedChart(earnings=self.earnings, base=self.base)
-
 
 class Earnings(BaseModel):
     current: str
@@ -302,18 +296,3 @@ class Earnings(BaseModel):
 
     def to_chart(self, accounts: Iterable["Account"]) -> Chart:
         return BaseChart().extend(accounts).to_chart(self.current, self.retained)
-
-
-# @dataclass
-# class QualifiedChart:
-#     earnings: Earnings
-#     base: BaseChart
-
-#     def __post_init__(self):
-#         self.to_chart()
-
-#     def __iter__(self) -> Iterator["Account"]:
-#         return iter(self.base.accounts)
-
-#     def to_chart(self) -> Chart:
-#         return self.earnings.to_chart(self.base.accounts)
