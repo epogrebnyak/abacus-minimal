@@ -127,6 +127,7 @@ class Contra:
 
 class ChartDict(UserDict[str, T5 | Contra]):
     def is_debit_account(self, name) -> bool:
+        """Return True if *name* is debit-normal account."""
         AbacusError.must_exist(self, name)
         match self[name]:
             case Contra(name):
@@ -135,9 +136,11 @@ class ChartDict(UserDict[str, T5 | Contra]):
                 return t in {T5.Asset, T5.Expense}
 
     def by_type(self, t: T5) -> list[str]:
+        """List regular accounts of a given type."""
         return [name for name, account_type in self.data.items() if account_type == t]
 
     def find_contra_accounts(self, regular_account_name: str) -> list[str]:
+        """List contra accounts for an given regular account."""
         return [
             contra_name
             for contra_name, parent in self.data.items()
@@ -164,7 +167,7 @@ Primitive = Add | Offset | Debit | Credit | PeriodEnd | Drop
 AccountType = Asset | Equity | Liability | Income | Expense
 EntryType = Double | Multiple | Initial
 ClosingType = Transfer | Close
-# may disqualify primitives from actions or allow a list of primitives in actions
+# TODO: may disqualify primitives from actions or allow a list of primitives in actions
 Action = Primitive | AccountType | EntryType | ClosingType
 
 
@@ -239,18 +242,18 @@ class Ledger:
         else:
             self.accounts[name] = CreditAccount()
 
-    def run_iterable(self, action: Account | Double | Multiple) -> list[Primitive]:
+    def run_iterable(self, iterable) -> list[Primitive]:
         """Get primitives from an iterable action and use them to change ledger."""
         primitives: list[Primitive] = []
-        for operation in iter(action):
+        for operation in iter(iterable):
             primitives += self.run(operation)
         return primitives
 
     def run(self, action: Operation) -> list[Primitive]:
         """Apply action and return list of primitives."""
+        operations: list[Primitive] = []
         if isinstance(action, (Account, Double, Multiple)):
             return self.run_iterable(action)
-        operations: list[Primitive] = []
         match action:
             case Add(name, t):
                 AbacusError.must_not_exist(self.chart, name)
@@ -282,17 +285,16 @@ class Ledger:
                 entry = action.to_entry(self.chart)
                 return self.run(entry)
             case Transfer(from_account, to_account):
-                account = self.accounts[from_account]
-                transfer_entry = account.transfer(from_account, to_account)
+                this_account = self.accounts[from_account]
+                transfer_entry = this_account.transfer(from_account, to_account)
                 operations += self.run(transfer_entry)
                 return operations
             case PeriodEnd():
                 self.accounts_before_close = deepcopy(self.accounts)
                 return [action]
             case Close(earnings_account):
-                for operation in self.close_ledger_items(earnings_account):
-                    operations += self.run(operation)
-                return operations
+                actions = self.close_ledger_items(earnings_account)
+                return self.run_iterable(actions)
             case _:
                 raise AbacusError(f"Unknown {action}")
 
