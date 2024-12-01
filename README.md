@@ -47,19 +47,20 @@ Given a sequence of events you can always recreate the ledger state.
 ### Example
 
 In code below account creation, three double entries and a command to close
-accounts are in the `events` list. This list is accepted by ledger, and from the 
-ledger you can see the account balances and reports. 
+accounts are in the `events` list. This list is accepted by ledger, and from the
+ledger you can see the account balances and reports.
 
 ```python
 from abacus import Asset, Double, Equity, Expense, Income, Ledger, Close
 
-events = [
-    # Create accounts
+create_accounts = [
     Asset("cash"),
     Equity("equity"),
     Equity("re", title="Retained earnings"),
     Income("sales"),
     Expense("salaries"),
+]
+business_events = [
     # Post entries
     Double("cash", "equity", 1000),
     Double("cash", "sales", 250),
@@ -67,6 +68,7 @@ events = [
     # Close period
     Close(earnings_account="re")
 ]
+events = create_accounts + business_events
 ledger = Ledger.from_list(events)
 ```
 
@@ -86,11 +88,11 @@ There are six types of basic, or 'primitive', events in `abacus-minimal`:
 
 Primitive event   | What is does
 :----------------:|----------------
- `Add`      | Add an empty account of asset, equity, liability, income or expense type
+`Add`       | Add an empty account of asset, equity, liability, income or expense type
 `Offset`    | Аdd a empty contra account that corresponds to an existing account
+`Drop`      | Deactivate an account
 `Debit`     | Debit an account with a specified amount
 `Credit`    | Credit an account with a specified amount
-`Drop`      | Deactivate an account
 `PeriodEnd` | Mark reporting period end
 
 <!-- prettier-ignore-end -->
@@ -103,12 +105,12 @@ for p in ledger.history.primitives:
 ```
 
 There are also compound events. Every compound event
-can be represented as a list of primitives. 
+can be represented as a list of primitives.
 
 <!-- prettier-ignore-start -->
 
-Compound event | What it does                                | Translates to a list of
-:-------------:|---------------------------------------------|-------------
+Compound event | What it does                                 | Translates to a list of
+:-------------:|----------------------------------------------|-------------
 `Account`      | Specifies an account and its contra accounts | `Add` and `Offset`
 `Double` and `Multiple` | Represent accounting entries        | `Debit` and `Credit`
 `Transfer`     | Moves account balance from one account to another | `Double` and `Drop` 
@@ -116,7 +118,7 @@ Compound event | What it does                                | Translates to a l
 
 <!-- prettier-ignore-end -->
 
-Note that `Transfer` and `Close` are initially translated into other compound events, 
+Note that `Transfer` and `Close` are initially translated into other compound events,
 but ultimately, they are further simplified into the primitives.
 
 ## Ledger as class
