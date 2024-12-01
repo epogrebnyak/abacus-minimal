@@ -4,7 +4,7 @@ import pytest
 from pytest import fixture
 
 from abacus import AbacusError, Credit, Debit, Double, Entry, Multiple
-from abacus.ledger import DebitAccount
+from abacus.ledger import DebitAccount, Initial
 
 
 @pytest.mark.skip
@@ -79,11 +79,11 @@ def test_how_it_fails():
 @pytest.mark.entry
 def test_opening_fails(toy_dict):
     with pytest.raises(AbacusError):
-        toy_dict.initial_entry(dict(cash=10, equity=8))
+        Initial(dict(cash=10, equity=8)).to_entry(toy_dict)
 
 
 @pytest.mark.entry
 def test_opening_entry(toy_dict):
     opening_dict = dict(cash=10, equity=8, re=2)
-    entry = toy_dict.initial_entry(opening_dict)
+    entry = Initial(opening_dict).to_entry(toy_dict)
     assert list(entry) == [Debit("cash", 10), Credit("equity", 8), Credit("re", 2)]

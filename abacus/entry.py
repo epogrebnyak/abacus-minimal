@@ -92,14 +92,6 @@ class Multiple(Unbalanced):
 
 
 @dataclass
-class Initial(Posting):
-    """Open ledger with initial balances."""
-
-    balances: dict[str, Numeric]
-    tag: Literal["initial"] = "initial"
-
-
-@dataclass
 class Entry:
     title: str
     debits: list[tuple[str, Decimal]] = field(default_factory=list)

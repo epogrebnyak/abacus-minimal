@@ -1,5 +1,5 @@
 from abacus import Double, Income, Ledger
-from abacus.ledger import BalanceSheet, CreditAccount, DebitAccount, ReportDict
+from abacus.ledger import BalanceSheet, CreditAccount, DebitAccount, Initial, ReportDict
 
 
 def test_ledger_keys(toy_ledger):
@@ -7,7 +7,7 @@ def test_ledger_keys(toy_ledger):
 
 
 def test_ledger_open(toy_ledger):
-    entry = toy_ledger.chart.initial_entry(dict(cash=2, equity=2))
+    entry = Initial(dict(cash=2, equity=2)).to_entry(toy_ledger.chart)
     toy_ledger.apply(entry)
     assert toy_ledger.balances == dict(re=0, cash=12, equity=12)
 

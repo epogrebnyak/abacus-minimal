@@ -34,7 +34,27 @@ from pydantic import BaseModel
 
 from .base import T5, AbacusError, Closing, Numeric, Operation, SaveLoadMixin
 from .chart import Account, Add, Asset, Drop, Equity, Expense, Income, Liability, Offset
-from .entry import Credit, Debit, Double, Initial, Multiple, Unbalanced
+from .entry import Credit, Debit, Double, Multiple, Posting, Unbalanced
+
+
+@dataclass
+class Initial(Posting):
+    """Open ledger with initial balances."""
+
+    balances: dict[str, Numeric]
+    tag: Literal["initial"] = "initial"
+
+    def to_entry(self, chart: "ChartDict") -> Multiple:
+        """Convert event to valid multiple entry using chart."""
+        entry = Unbalanced()
+        for account, amount in self.balances.items():
+            AbacusError.must_exist(chart, account)
+            pair = account, Decimal(amount)
+            if chart.is_debit_account(account):
+                entry.debits.append(pair)
+            else:
+                entry.credits.append(pair)
+        return entry.to_multiple()
 
 
 @dataclass
@@ -124,30 +144,20 @@ class ChartDict(UserDict[str, T5 | Contra]):
             if parent == Contra(regular_account_name)
         ]
 
-    def close_contra_accounts(self, t: T5) -> Iterable[tuple[str, str]]:
-        for account_name in self.by_type(t):
-            for contra_name in self.find_contra_accounts(account_name):
-                yield (contra_name, account_name)
 
-    def close_type(self, t: T5, earnings_account: str) -> Iterable[tuple[str, str]]:
-        for account_name in self.by_type(t):
+def close_contra_accounts(chart: ChartDict, t: T5) -> Iterable[tuple[str, str]]:
+    """Yield pairs of account names for closing contra accounts."""
+    for account_name in chart.by_type(t):
+        for contra_name in chart.find_contra_accounts(account_name):
+            yield (contra_name, account_name)
+
+
+def closing_pairs(chart: ChartDict, earnings_account: str) -> Iterable[tuple[str, str]]:
+    """Yield pairs of account names that will need to transfer when closing."""
+    for t in (T5.Income, T5.Expense):
+        yield from close_contra_accounts(chart, t)
+        for account_name in chart.by_type(t):
             yield (account_name, earnings_account)
-
-    def close(self, earnings_account: str) -> Iterable[tuple[str, str]]:
-        for t in (T5.Income, T5.Expense):
-            yield from self.close_contra_accounts(t)
-            yield from self.close_type(t, earnings_account)
-
-    def initial_entry(self, balances: dict[str, Numeric]) -> Multiple:
-        entry = Unbalanced()
-        for account, amount in balances.items():
-            AbacusError.must_exist(self, account)
-            pair = account, Decimal(amount)
-            if self.is_debit_account(account):
-                entry.debits.append(pair)
-            else:
-                entry.credits.append(pair)
-        return entry.to_multiple()
 
 
 Primitive = Add | Offset | Debit | Credit | PeriodEnd | Drop
@@ -257,7 +267,7 @@ class Ledger:
             case Drop(name):
                 if not self.accounts[name].is_empty():
                     raise AbacusError(f"Account {name} is not empty.")
-                    # also check contra accounts are empty
+                    # FIMXE: must also check contra accounts are empty
                 del self.accounts[name]
                 return [action]
             case Debit(account, amount):
@@ -268,12 +278,12 @@ class Ledger:
                 AbacusError.must_exist(self.accounts, account)
                 self.accounts[account].credit(amount)
                 return [action]
-            case Initial(balances):
-                initial_entry = self.chart.initial_entry(balances)
-                return self.run(initial_entry)
+            case Initial(_):
+                entry = action.to_entry(self.chart)
+                return self.run(entry)
             case Transfer(from_account, to_account):
-                account_ = self.accounts[from_account]
-                transfer_entry = account_.transfer(from_account, to_account)
+                account = self.accounts[from_account]
+                transfer_entry = account.transfer(from_account, to_account)
                 operations += self.run(transfer_entry)
                 return operations
             case PeriodEnd():
@@ -288,7 +298,7 @@ class Ledger:
 
     def close_ledger_items(self, earnings_account: str) -> Iterable[Operation]:
         yield PeriodEnd()
-        for from_account, to_account in self.chart.close(earnings_account):
+        for from_account, to_account in closing_pairs(self.chart, earnings_account):
             yield Transfer(from_account, to_account)
             yield Drop(from_account)
 
