@@ -1,37 +1,32 @@
 import qualified Data.Map as Map
 
-Amount = Int 
-AccountName = String
-Side = Debit | Credit
-TAccount = TAccount Side Amount   
-T5 = Asset | Expense | Equity | Liability | Income
-Definition = Regular T5 | Contra String
-Event = Add T5 AccountName | Offset AccountName AccountName | Post Side AccountName Amount | Drop AccountName | PeriodEnd 
-Balances = Map AccountName Amount
--- CompoundEvent = Initial Balances | Transfer AccountName AccountName | Close AccountName
--- typeclass: emit CompoundEvent -> [LedgerEvent]
-Account = Account T5 AccountName [AccountName]
-single t name = Account t name []
-asset = single Asset
-expense = single Expense
-liability = single Liability
-equity = single Equity
-income = single Income
-offset contra (Account t name cs) = Account t name contra:cs
+type Dict k v = Map.Map k v
+type Amount = Int  -- can be Decimal E2
+type Name = String
+type Balances = Dict Name Amount
+data Side = Debit | Credit deriving Show
+data TAccount = TAccount Side Amount deriving Show
+type AccountMap = Dict Name TAccount
+data T5 = Asset | Expense | Equity | Liability | Income deriving Show
+data Chart = Chart Name (Dict Name T5) (Dict Name Name) deriving Show
 
-ChartMap = Map AccountName Definition
-TMap = Map AccountName TAccount
-Ledger = Ledger ChartMap TMap (Maybe TMap)  
--- apply (Ledger chart accounts m) event:
--- match event   
--- History = Ledger [Event]
+emptyChart :: Name -> Chart
+emptyChart re = Chart re (Map.fromList [(re, Equity)]) (Map.fromList [])
 
--- Add    modifies ChartMap and TMap 
--- Offset modifies ChartMap and TMap 
--- Post   modifies TMap 
--- Drop   modifies TMap
--- PeriodEnd  modifies Maybe TMap
+fromChart :: Chart -> AccountMap
+-- TODO: create AccountMap form ledger
+fromChart chart = Map.fromList []
+data Ledger = Ledger Chart AccountMap (Maybe AccountMap) deriving Show
 
--- empty -> Ledger [] [] Nothing
--- main = putStrln "This works!"
+emptyLedger :: Name -> Ledger
+emptyLedger re = let
+    chart = emptyChart re
+    in Ledger chart (fromChart chart) Nothing
 
+main :: IO ()
+main = do
+    let ledger = emptyLedger "re"
+    putStrLn "This is ledger:"
+    putStrLn (show ledger)
+
+-- Event = Set T5 Name | Offset Name Name | Add Side Name Amount | Drop Name | End
