@@ -1,7 +1,12 @@
+module Accounting where
+
 import qualified Data.Map as Map
 import Data.Maybe (mapMaybe)
 import Control.Monad (foldM)
+import Control.Monad.Trans.Except (ExceptT(..), runExceptT, throwE)
+import Control.Monad.Trans.State (StateT(..), runStateT, modify, get)
 
+-- Type Synonyms
 type Amount = Int  -- This could be Decimal E2
 type Name = String
 type Balances = Map.Map Name Amount
@@ -30,13 +35,27 @@ data Role = Regular T5 | Contra Name deriving Show
 type ChartMap = Map.Map Name Role
 data ChartItem = Add T5 Name | Offset Name Name deriving Show
 
--- Aliases for ChartItem in point-free form
+-- Aliases for ChartItem
+assets :: [Name] -> [ChartItem]
 assets = map (Add Asset)
+
+capital :: [Name] -> [ChartItem]
 capital = map (Add Equity)
+
+expenses :: [Name] -> [ChartItem]
 expenses = map (Add Expense)
+
+incomes :: [Name] -> [ChartItem]
 incomes = map (Add Income)
+
+liabilities :: [Name] -> [ChartItem]
 liabilities = map (Add Liability)
+
+offset :: Name -> [Name] -> [ChartItem]
 offset name = map (Offset name)
+
+account :: T5 -> Name -> [Name] -> [ChartItem]
+account t name contraNames = [Add t name] ++ offset name contraNames
 
 -- Add ChartItem to Chart
 dispatch :: ChartItem -> ChartMap -> ChartMap
@@ -79,149 +98,140 @@ fromChartMap chartMap = Ledger chartMap (toAccountMap chartMap) Nothing
 emptyLedger :: Ledger
 emptyLedger = fromChartMap emptyChartMap
 
-type Single = (Side, Name, Amount)
-data Entry = Double Name Name Amount | Multiple [Single] deriving Show
+-- Define single entry
+data SingleEntry = Single Side Name Amount deriving Show
+dr :: Name -> Amount -> SingleEntry
+dr = Single Debit
 
-toSingles :: Entry -> [Single]
-toSingles (Multiple posts) = posts
-toSingles (Double debitName creditName amount) = [(Debit, debitName, amount), (Credit, creditName, amount)]
-  
-isBalanced :: [Single] -> Bool
-isBalanced posts = (total Debit == total Credit)
-    where
-        amounts s1 (s2, _, a) = (if s1 == s2 then a else 0)
-        total side = sum $ map (amounts side) posts
+cr :: Name -> Amount -> SingleEntry
+cr = Single Credit
 
+-- Check if a list of single entries is balanced
+isBalanced :: [SingleEntry] -> Bool
+isBalanced posts = sideSum Debit posts == sideSum Credit posts
+
+sideSum side posts = sum $ map (getAmount side) posts
+    where 
+        getAmount side (Single s _ a) = if s == side then a else 0
+
+-- Post single entry to t-account.
 post :: Side -> Amount -> TAccount -> TAccount
-post Debit amount (Debit, balance) = (Debit, balance + amount)
-post Credit amount (Debit, balance) = (Debit, balance - amount)
-post Debit amount (Credit, balance) = (Credit, balance - amount)
-post Credit amount (Credit, balance) = (Credit, balance + amount)
+post side amount (tSide, balance) =
+    let newBalance = if side == tSide then balance + amount else balance - amount
+    in (tSide, newBalance)
 
-applySingle :: Single -> AccountMap -> Either Single AccountMap
-applySingle (side, name, amount) accountMap = case Map.lookup name accountMap of
-    Just tAccount -> Right $ Map.insert name (post side amount tAccount) accountMap
-    Nothing -> Left (side, name, amount)
+data Error = NotFound [Name] | NotBalanced [SingleEntry]
 
--- Affects only the account map, maybe should use Lens or State
-acceptSingle :: Ledger -> Single -> Either Single Ledger
-acceptSingle (Ledger chartMap accountMap storage) post =
-    let newAccountMap = applySingle post accountMap in
-    case newAccountMap of
-        Left post -> Left post
-        Right accountMap -> Right $ Ledger chartMap accountMap storage
+-- Apply a single entry to the AccountMap
+applySingle :: SingleEntry -> AccountMap -> Either Error AccountMap
+applySingle (Single side name amount) accountMap = case Map.lookup name accountMap of
+    Just tAccount -> Right $ Map.insert name tAccount' accountMap
+        where tAccount' = post side amount tAccount
+    Nothing -> Left $ NotFound [name]
 
-acceptMany :: Ledger -> [Single] -> ([Single], Ledger)
-acceptMany ledger posts
-    | isBalanced posts = acceptUnbalanced ledger posts
-    | otherwise = (posts, ledger)
+-- Accept a single entry into the Ledger
+acceptSingle :: SingleEntry -> Ledger -> Either Error Ledger
+acceptSingle post (Ledger chartMap accountMap storage) =
+    case applySingle post accountMap of
+        Left err -> Left err
+        Right accountMap' -> Right $ Ledger chartMap accountMap' storage
 
-acceptUnbalanced :: Ledger -> [Single] -> ([Single], Ledger)
-acceptUnbalanced ledger posts = foldl next ([], ledger) posts
-    where
-        next (failed, ledger) post =
-            case (acceptSingle ledger post) of
-                Left post_ -> (post_ : failed, ledger)
-                Right ledger_ -> (failed, ledger_)
+-- Accept multiple entries into the Ledger
+acceptMany :: [SingleEntry] -> Ledger -> Either Error Ledger
+acceptMany posts ledger
+    | isBalanced posts = acceptUnbalanced posts ledger
+    | otherwise = Left $ NotBalanced posts
 
-postEntry :: Entry -> Ledger -> Either [Single] Ledger
-postEntry entry ledger 
-    | null failed = Right ledger_
-    | otherwise = Left failed
-  where
-    (failed, ledger_) = acceptMany ledger (toSingles entry)
-        
--- Print account names and balances each on new line
+-- Accept unbalanced entries into the Ledger
+acceptUnbalanced :: [SingleEntry] -> Ledger -> Either Error Ledger
+acceptUnbalanced posts ledger = foldM (flip acceptSingle) ledger posts
+
+
+-- Print account names and balances by lines
 printAccountBalances :: Ledger -> IO ()
-printAccountBalances (Ledger chartMap accountMap storage) = do
-    let names = Map.keys accountMap
-    let balances = mapMaybe (\name -> fmap (\(_, balance) -> (name, balance)) (Map.lookup name accountMap)) names
-    mapM_ print balances
+printAccountBalances (Ledger _ accountMap _) = 
+    mapM_ print $ mapMaybe getBalance (Map.keys accountMap)
+    where
+        getBalance :: Name -> Maybe (Name, Amount)
+        getBalance name = do
+            (side, balance) <- Map.lookup name accountMap
+            return (name, balance)
 
-diagnose :: Either [Single] Ledger -> IO ()
-diagnose (Left posts) = putStrLn ("Unable to post: " ++ show posts)
+-- Diagnose the Ledger for errors
+diagnose :: Either Error Ledger -> IO ()
+diagnose (Left (NotFound names)) = putStrLn ("Accounts not found: " ++ show names)
+diagnose (Left (NotBalanced posts)) = putStrLn ("Entry not balanced" ++ show posts)
 diagnose (Right ledger) = printAccountBalances ledger
 
+-- Sample chart items and ledgers
+chartItems :: [ChartItem]
 chartItems = assets ["cash"] ++
-  capital ["eq", "re"] ++
-  [Offset "re" "ts"] ++
+  capital ["eq"] ++
+  account Equity "re" ["ts"] ++
   expenses ["rent", "wages"] ++
-  incomes ["sales"] ++
-  offset "sales" ["refunds", "voids"]
-sampleChart = fromChartItems chartItems
-ledger = fromChartMap sampleChart
-ledger2 = postEntry (Double "cash" "brrr" 5) ledger
-ledger3 = postEntry (Multiple [(Debit, "cash", 1000), (Credit, "eq", 1000)]) ledger
+  account Income "sales" ["refunds", "voids"]
 
+sampleChart :: ChartMap
+sampleChart = fromChartItems chartItems
+
+ledger :: Ledger
+ledger = fromChartMap sampleChart
+
+ledger2 :: Either Error Ledger
+ledger2 = acceptMany (double "cash" "no_account" 5) ledger
+
+ledger3 :: Either Error Ledger
+ledger3 = acceptMany [dr "cash" 1000, cr "eq" 1000] ledger
+
+ledger4 :: Either Error Ledger
+ledger4 = acceptMany [dr "cash" 1000, cr "eq" 1001] ledger
 
 -- Stages of accounting cycle and types of entries
 data Activity = Opening | Business | Adjustment | Closing | PostClose
 
--- Irreducible actions that can be performed on a ledger
-data Primitive = Insert ChartItem | 
-                 Post Single |
+-- Irreducible actions that change a ledger
+data Primitive = Insert ChartItem |
+                 Post SingleEntry |
                  Drop Name |
-                 End Activity 
+                 End Activity
 
 data Action = Act [Primitive] |
-              Open Balances | 
-              Enter Entry | 
-              Transfer Name Name | 
-              CloseTo Name 
-              
+              Open Balances |
+              Enter [SingleEntry] |
+              Transfer Name Name |
+              CloseTo Name
+
+-- Get the balance of an account
 balance :: Name -> AccountMap -> Maybe Amount
 balance name accountMap = case Map.lookup name accountMap of
     Just (_, balance) -> Just balance
     Nothing -> Nothing
 
+-- Create a double entry
+double :: Name -> Name -> Amount -> [SingleEntry]
+double drName crName amount = [Single Debit drName amount, Single Credit crName amount]
 
-transfer :: Name -> Name -> AccountMap -> Maybe Double
-transfer fromName toName accountMap = 
-    let fromAccount = Map.lookup from accountMap in
-    case fromAccount of
-        Just (side, balance) -> 
-            case Map.member toName accountMap of
-                True -> Just (transferEntry side balance fromName toName)
-                False -> Nothing
+-- Transfer balance between accounts
+transfer :: Name -> Name -> AccountMap -> Maybe [SingleEntry]
+transfer fromName toName accountMap =
+    case Map.lookup fromName accountMap of
+        Just (side, balance) ->
+            if Map.member toName accountMap
+            then Just (transferEntry side fromName toName balance)
+            else Nothing
         Nothing -> Nothing
-    where     
-        transferEntry side balance from to = 
-            case side of
-                Debit -> Double to from balance
-                Credit -> Double from to balance
-
-convert :: Action -> Ledger -> [Action]
-convert (Open balances) ledger = [] 
-convert (CloseTo name) legder = [End Adjustment]
-convert (Transfer from to) (Ledger _ accountMap _) =
-    case (transfer from to accountMap) of
-        Just double -> [Enter double, Drop from]
-        Nothing -> []
-convert a _ = [a]
-
-apply :: Action -> Ledger -> Either String Ledger
-apply (Open balances) _ = Left "Not implemented" 
-apply (Enter entry) ledger = let res = postEntry entry ledger in 
-    case res of
-        Left posts -> Left ("Unable to post: " ++ show posts)
-        Right ledger -> Right ledger
-apply (Transfer from to) ledger = Right ledger -- postEntry (Double from to 0) ledger
-apply (Drop name) (Ledger chartMap accountMap storage) = 
-    case Map.lookup name accountMap of
-        Just _ -> Right $ Ledger chartMap (Map.delete name accountMap) storage
-        Nothing -> Left ("Account '" ++ name ++ "' not found ledger")
-apply (CloseTo name) ledger = Left "I am not ready for this yet."
-apply (End Adjustment) (Ledger chartMap accountMap _) = Right (Ledger chartMap accountMap (Just accountMap)) 
-apply (End _) ledger = Right ledger
-apply (Sequence actions) ledger = Right ledger
-apply _ _ = Left "Not implemented"
+    where
+        transferEntry :: Side -> Name -> Name -> Amount -> [SingleEntry]
+        transferEntry Debit from to = double to from
+        transferEntry Credit from to = double from to
 
 -- Main function to demonstrate the creation of a Ledger
 main :: IO ()
 main = do
     print (whichSide "ts" sampleChart)
-    print sampleChart
     putStrLn "This is incorrect posting:"
     diagnose ledger2
+    putStrLn "This is also incorrect posting:"
+    diagnose ledger4
     putStrLn "This is correct posting:"
     diagnose ledger3

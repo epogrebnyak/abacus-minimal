@@ -1,0 +1,26 @@
+
+-- convert :: Action -> Ledger -> [Action]
+-- convert (Open balances) ledger = [] 
+-- convert (CloseTo name) legder = [End Adjustment]
+-- convert (Transfer from to) (Ledger _ accountMap _) =
+--     case (transfer from to accountMap) of
+--         Just double -> [Enter double, Drop from]
+--         Nothing -> []
+-- convert a _ = [a]
+
+-- apply :: Action -> Ledger -> Either String Ledger
+-- apply (Open balances) _ = Left "Not implemented" 
+-- apply (Enter entry) ledger = let res = postEntry entry ledger in 
+--     case res of
+--         Left posts -> Left ("Unable to post: " ++ show posts)
+--         Right ledger -> Right ledger
+-- apply (Transfer from to) ledger = Right ledger -- postEntry (Double from to 0) ledger
+-- apply (Drop name) (Ledger chartMap accountMap storage) = 
+--     case Map.lookup name accountMap of
+--         Just _ -> Right $ Ledger chartMap (Map.delete name accountMap) storage
+--         Nothing -> Left ("Account '" ++ name ++ "' not found ledger")
+-- apply (CloseTo name) ledger = Left "I am not ready for this yet."
+-- apply (End Adjustment) (Ledger chartMap accountMap _) = Right (Ledger chartMap accountMap (Just accountMap)) 
+-- apply (End _) ledger = Right ledger
+-- -- apply (Sequence actions) ledger = Right ledger
+-- apply _ _ = Left "Not implemented"
