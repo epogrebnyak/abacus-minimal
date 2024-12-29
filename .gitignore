@@ -4,6 +4,7 @@ store.json
 posts/db.db
 history*.json
 node_modules/
+haskell/dist-newstyle/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
