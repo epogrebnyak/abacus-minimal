@@ -1,11 +1,17 @@
+# do not save JSON files with data
 balances.json
 chart.json
 store.json
 posts/db.db
 history*.json
+
+# npm
 node_modules/
+
+# haskell
 */dist-newstyle/*
 
+# the rest is Python
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
