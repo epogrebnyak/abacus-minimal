@@ -14,7 +14,7 @@ which Expense = Debit
 which _ = Credit
 
 -- Reverse side
-revert :: Side -> Side -- is revert good enough of a name?
+revert :: Side -> Side -- Q: is revert good name?
 revert Debit = Credit
 revert Credit = Debit
 
@@ -65,8 +65,3 @@ whichSide name chartMap = case Map.lookup name chartMap of
 -- Define empty ChartMap
 emptyChartMap :: ChartMap
 emptyChartMap = Map.empty
-        
--- Code under test
-f :: Maybe Side
-f = let chart = dispatchMany (account Income "sales" ["refunds"]) emptyChartMap 
-   in whichSide "refunds" chart  
