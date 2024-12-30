@@ -3,8 +3,8 @@ module Accounting where
 import qualified Data.Map as Map
 import Data.Maybe (mapMaybe)
 import Control.Monad (foldM)
-import Control.Monad.Trans.Except (ExceptT(..), runExceptT, throwE)
-import Control.Monad.Trans.State (StateT(..), runStateT, modify, get)
+-- import Control.Monad.Trans.Except (ExceptT(..), runExceptT, throwE)
+-- import Control.Monad.Trans.State (StateT(..), runStateT, modify, get)
 
 -- Type Synonyms
 type Amount = Int  -- This could be Decimal E2
@@ -19,7 +19,7 @@ data T5 = Asset | Expense | Equity | Liability | Income deriving Show
 emptyAccount :: Side -> TAccount
 emptyAccount side = (side, 0)
 
--- Determine normal debit or credit for a T5 account type
+-- Determine normal side (debit or credit) for a T5 account type
 which :: T5 -> Side
 which Asset = Debit
 which Expense = Debit
@@ -30,12 +30,12 @@ revert :: Side -> Side
 revert Debit = Credit
 revert Credit = Debit
 
--- Chart of accounts
+-- Chart of accounts is a map of account name to account type  
 data Role = Regular T5 | Contra Name deriving Show
 type ChartMap = Map.Map Name Role
 data ChartItem = Add T5 Name | Offset Name Name deriving Show
 
--- Aliases for ChartItem
+-- Aliases for ChartItem constructors
 assets :: [Name] -> [ChartItem]
 assets = map (Add Asset)
 
@@ -55,7 +55,7 @@ offset :: Name -> [Name] -> [ChartItem]
 offset name = map (Offset name)
 
 account :: T5 -> Name -> [Name] -> [ChartItem]
-account t name contraNames = [Add t name] ++ offset name contraNames
+account t name contraNames = Add t name : offset name contraNames
 
 -- Add ChartItem to Chart
 dispatch :: ChartItem -> ChartMap -> ChartMap

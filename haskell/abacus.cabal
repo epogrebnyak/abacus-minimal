@@ -57,8 +57,9 @@ library
     -- Import common warning flags.
     import:           warnings
 
-    -- Modules exported by the library.
-    exposed-modules:  Abacus
+    -- Modules exported by the library
+    -- FIXME: is it possible to change to submodule structure?
+    exposed-modules:  Abacus, Chart, Bases
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -67,7 +68,8 @@ library
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.17.2.1
+    build-depends:  base ^>=4.17.2.1, 
+                    containers
 
     -- Directories containing source files.
     hs-source-dirs:   src
@@ -124,4 +126,5 @@ test-suite abacus-test
     -- Test dependencies.
     build-depends:
         base ^>=4.17.2.1,
-        abacus
+        abacus,
+        HUnit
