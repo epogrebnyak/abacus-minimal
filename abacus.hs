@@ -110,6 +110,7 @@ cr = Single Credit
 isBalanced :: [SingleEntry] -> Bool
 isBalanced posts = sideSum Debit posts == sideSum Credit posts
 
+sideSum :: Side -> [SingleEntry] -> Amount
 sideSum side posts = sum $ map (getAmount side) posts
     where 
         getAmount side (Single s _ a) = if s == side then a else 0
