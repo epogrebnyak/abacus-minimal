@@ -7,8 +7,8 @@ import Bases
 -- End-to-end test for chart creation
 testWhichSide :: Test
 testWhichSide = TestCase $ do
-    let chart = fromChartItems (account Income "sales" ["refunds", "voids"])
-    assertEqual "Refunds is a debit account" (Just Debit) (whichSide "refunds" chart)
+    let chartMap = fromChartItems (account Income "sales" ["refunds", "voids"])
+    assertEqual "Refunds is a debit account" (Just Debit) (whichSide "refunds" chartMap)
 
 -- Test capital constructor
 testConstructorCapital :: Test

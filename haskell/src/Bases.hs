@@ -22,5 +22,8 @@ data Error = NotFound [Name] | NotBalanced [SingleEntry] | NotUnique [Name]
 
 -- Ledger
 type Balances = Map.Map Name Amount
-data Ledger = Ledger ChartMap AccountMap (Maybe AccountMap) deriving Show
+data Ledger = Ledger {
+    chart :: ChartMap,
+    accounts :: AccountMap,
+    deactivated :: [Name] } deriving Show
 

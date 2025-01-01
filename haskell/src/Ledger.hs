@@ -50,10 +50,10 @@ applySingle (Single side name amount) accountMap = case Map.lookup name accountM
 
 -- Accept a single entry into the Ledger
 acceptSingle :: SingleEntry -> Ledger -> Either Error Ledger
-acceptSingle post (Ledger chartMap accountMap storage) =
+acceptSingle post (Ledger chartMap accountMap deactivated) =
     case applySingle post accountMap of
         Left err -> Left err
-        Right accountMap' -> Right $ Ledger chartMap accountMap' storage
+        Right accountMap' -> Right $ Ledger chartMap accountMap' deactivated
 
 -- Accept multiple entries into the Ledger
 acceptMany :: [SingleEntry] -> Ledger -> Either Error Ledger
