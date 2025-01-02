@@ -30,9 +30,9 @@ type ChartMap = Map.Map Name Role
 data SingleEntry = Single Side Name Amount deriving Show
 
 -- Error Handling
-data Error = AccountError AccountError | TransactionError TransactionError
-data AccountError = NotFound Name | NotUnique Name | NotEquity Name | Dropped Name
-data TransactionError = NotBalanced [SingleEntry]
+data Error = AccountError AccountError | TransactionError TransactionError deriving Show
+data AccountError = NotFound Name | NotUnique Name | NotEquity Name | Dropped Name deriving Show
+data TransactionError = NotBalanced [SingleEntry] deriving Show
 
 -- Ledger
 type Balances = Map.Map Name Amount
@@ -46,9 +46,14 @@ data Activity = Opening | Business | Adjustment | Closing | PostClose deriving S
 
 -- Chart Actions
 data ChartAction = Account T5 Name
-                | Accounts T5 [Name]
-                | Account' T5 Name [Name]
-                deriving Show
+                 | Accounts T5 [Name]
+                 | Account' T5 Name [Name]
+                 deriving Show
+
+toPrimitives :: ChartAction -> [Primitive]
+toPrimitives (Account t name) = [Add t name] 
+toPrimitives (Accounts t names) = map (Add t) names
+toPrimitives (Account' t name names) = Add t name : [Offset name n | n <- names]      
 
 data Entry = DoubleEntry Name Name Amount | BalancedEntry [SingleEntry] deriving Show
 
