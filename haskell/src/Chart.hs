@@ -5,7 +5,7 @@ import qualified Data.Map as Map
 
 -- Create an empty T-account
 emptyAccount :: Side -> TAccount
-emptyAccount side = (side, 0)
+emptyAccount side = TA side 0
 
 -- Determine normal side (debit or credit) for a T5 account type
 which :: T5 -> Side
@@ -65,3 +65,42 @@ whichSide name chartMap = case Map.lookup name chartMap of
 -- Define empty ChartMap
 emptyChartMap :: ChartMap
 emptyChartMap = Map.empty
+
+-- List all accounts from chart by specific type
+byType :: ChartMap -> T5 -> [Name]
+byType chartMap t = Map.keys $ Map.filter (== Regular t) chartMap
+
+-- Return list of contra accounts for a specific regular account 
+contras :: ChartMap -> Name -> [Name] 
+contras chartMap name =
+    case Map.lookup name chartMap of
+        Just (Regular _) -> Map.keys $ Map.filter (== Contra name) chartMap
+        _ -> []
+
+-- Create a tuple with closeTo as second item
+toPair :: Name -> Name -> (Name, Name)
+toPair closeTo name = (name, closeTo) 
+
+-- Return all contra accounts for a specific account type
+-- May reuse for net permanent accounts
+contraPairs :: ChartMap -> T5 -> [(Name, Name)]
+contraPairs chartMap t = byType chartMap t >>= pairs 
+   where pairs name = toPair name <$> contras chartMap name
+
+-- Create complete list of closing pairs 
+closingPairs :: ChartMap -> Name -> [(Name, Name)]
+closingPairs chartMap accName = concat [f Expense, f Income, g Expense, g Income] -- may change order
+    where 
+        f = contraPairs chartMap
+        accumulationPairs :: T5 -> [(Name, Name)]
+        accumulationPairs t = toPair accName <$> byType chartMap t
+        g = accumulationPairs                   
+
+playWithThisChart :: ChartMap
+playWithThisChart = fromChartItems $ concat [
+            assets ["cash"], 
+            capital ["equity", "re"],
+            -- no liabilities 
+            expenses ["salary"],
+            account Income "sales" ["refunds"]
+        ]    

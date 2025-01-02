@@ -20,10 +20,10 @@ name:               abacus
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            0.0.1
+version:            0.0.2
 
 -- A short (one-line) description of the package.
-synopsis:           Minimal double entry accounting engine
+synopsis:           Minimal double entry accounting engine for a flat chart of accounts
 
 -- A longer description of the package.
 -- description:
@@ -59,7 +59,7 @@ library
 
     -- Modules exported by the library
     -- FIXME: is it possible to change to submodule structure?
-    exposed-modules:  Abacus, Chart, Bases
+    exposed-modules:  Abacus, Chart, Bases, Ledger
 
     -- Modules included in this library but not exported.
     -- other-modules:
