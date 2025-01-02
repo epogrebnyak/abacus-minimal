@@ -37,17 +37,17 @@ chartStream =  [
 
 ledgerStream :: [Action] 
 ledgerStream = [
-    DoubleEntry "cash" "eq" 1000,    -- shareholder investment
-    Balanced [Single Credit "sales" 500,
+    Enter $ DoubleEntry "cash" "eq" 1000,    -- shareholder investment
+    Enter $ BalancedEntry [Single Credit "sales" 500,
               Single Credit "tax" 25,     -- 5% sales tax
               Single Debit "ar" 525],     -- invoiced customer 
-    DoubleEntry "refunds" "ar" 25,   -- issued refund 
-    DoubleEntry "voids" "ar" 75,     -- voided part of invoice 
-    DoubleEntry "salary" "cash" 200, -- paid salaries
+    Enter $ DoubleEntry "refunds" "ar" 25,   -- issued refund 
+    Enter $ DoubleEntry "voids" "ar" 75,     -- voided part of invoice 
+    Enter $ DoubleEntry "salary" "cash" 200, -- paid salaries
     Close "re",                      -- closed period   
-    DoubleEntry "re" "dd" 100,       -- accrued dividend
-    DoubleEntry "dd" "cash" 100,     -- payed dividend
-    DoubleEntry "cash" "ts" 50]      -- bought back shares 
+    Enter $ DoubleEntry "re" "dd" 100,       -- accrued dividend
+    Enter $ DoubleEntry "dd" "cash" 100,     -- payed dividend
+    Enter $ DoubleEntry "cash" "ts" 50]      -- bought back shares 
 
 exampleStream :: [Action]
 exampleStream = map Use chartStream ++ ledgerStream

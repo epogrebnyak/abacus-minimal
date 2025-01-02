@@ -63,7 +63,7 @@ library
     --, Chart, Bases, Ledger
 
     -- Modules included in this library but not exported.
-    other-modules: Types, Chart, Ledger
+    other-modules: Types, Chart, Ledger, Print
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

@@ -67,7 +67,7 @@ closeActions chartMap accName =
         _                     -> Left $ AccountError (NotFound accName)
     where toActions (fromName, toName) = [Transfer fromName toName, Deactivate fromName]
 
-transferEntry :: Name -> Name -> TAccount -> Action
+transferEntry :: Name -> Name -> TAccount -> Entry
 transferEntry fromName toName (TAccount side a b) =
     case side of
         Debit -> DoubleEntry toName fromName (a-b)
@@ -80,20 +80,23 @@ process ledger (l:ls) = do
     ledger' <- run ledger l
     process ledger' ls
 
+toBalanced :: Entry -> Entry
+toBalanced (DoubleEntry d c a) = BalancedEntry [Single Debit d a, Single Credit c a]
+toBalanced x = x
+
 -- Run a single ledger action
 run :: Ledger -> Action -> Either Error Ledger
-run ledger (DoubleEntry d c a) = run ledger $ Balanced [Single Debit d a, Single Credit c a]
-run ledger (Balanced posts) = acceptMany posts ledger
+run ledger (Enter d@(DoubleEntry _ _ _)) = run ledger $ Enter (toBalanced d)
+run ledger (Enter (BalancedEntry singles)) = acceptMany singles ledger
 run ledger (Close accName) = do
     actions <- closeActions (chart ledger) accName
     foldM run ledger actions
 run ledger (Transfer fromName toName) =
     case Map.lookup fromName (accounts ledger) of
-        Just tAccount -> run ledger (transferEntry fromName toName tAccount)
+        Just tAccount -> run ledger $ Enter (transferEntry fromName toName tAccount)
         Nothing -> Left $ AccountError (NotFound fromName)
 run (Ledger cm am ds) (Deactivate name) = Right $ Ledger cm am (name:ds)
 run ledger (Finish _) = Right ledger  -- assuming Finish does not change the ledger
 run ledger (_) = Right ledger  -- other items
 
-
---update :: Action -> State Ledger (Either Error) -> State Ledger (Either Error)
+-- update :: Action -> State Ledger (Maybe Error) 

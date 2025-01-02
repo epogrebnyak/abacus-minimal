@@ -50,7 +50,7 @@ data ChartAction = Account T5 Name
                 | Account' T5 Name [Name]
                 deriving Show
 
-data Entry = DoubleE Name Name Amount | BalancedE [SingleEntry]
+data Entry = DoubleEntry Name Name Amount | BalancedEntry [SingleEntry] deriving Show
 
 -- Ledger actions
 data Action =   Use ChartAction
