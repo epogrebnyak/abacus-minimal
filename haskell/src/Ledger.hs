@@ -2,8 +2,9 @@ module Ledger where
 
 import qualified Data.Map as Map
 import Control.Monad (foldM)
+import Control.Monad.State (State, gets, put)
 
-import Chart (emptyAccount, closingPairs, whichSide)
+import Chart (emptyAccount, dispatchMany, closingPairs, whichSide)
 import Types
 
 -- Create AccountMap from ChartMap using do notation (similar to list comprehension)
@@ -82,10 +83,87 @@ process ledger (l:ls) = do
 
 toBalanced :: Entry -> Entry
 toBalanced (DoubleEntry d c a) = BalancedEntry [Single Debit d a, Single Credit c a]
-toBalanced x = x
+toBalanced b = b
+
+updateAdd :: ChartMap -> AccountMap -> T5 -> Name -> (ChartMap, AccountMap) 
+updateAdd chartMap accMap t name = 
+    let chartMap' = Map.insert name (Regular t) chartMap
+        accMap' = case whichSide name chartMap' of
+            Just side -> Map.insert name (emptyAccount side) accMap
+            Nothing -> accMap
+    in (chartMap', accMap')
+
+updateOffset :: ChartMap -> AccountMap -> Name -> Name -> (ChartMap, AccountMap)
+updateOffset chartMap accMap name contraName = 
+    let chartMap' = Map.insert contraName (Contra name) chartMap
+        accMap' = case whichSide contraName chartMap' of
+            Just side -> Map.insert contraName (emptyAccount side) accMap
+            Nothing -> accMap
+    in (chartMap', accMap')
+
+update :: Primitive -> State Ledger (Maybe Error)  
+update p = do
+    chartMap <- gets chart
+    accMap <- gets accounts
+    names <- gets deactivated
+    case p of
+        Add t name -> 
+            if name `elem` names then return $ Just $ AccountError (Dropped name) 
+            else case Map.lookup name chartMap of
+                Just _ -> return $ Just $ AccountError (AlreadyExists name)
+                Nothing -> do
+                    let (chartMap',  accMap') = updateAdd chartMap accMap t name
+                    put $ Ledger chartMap' accMap' names
+                    return Nothing
+        Offset name contraName ->
+            if name `elem` names then return $ Just $ AccountError (Dropped name) 
+            else if name `notElem` Map.keys chartMap then return $ Just $ AccountError (NotFound name) 
+            else if contraName `elem` names then return $ Just $ AccountError (AlreadyExists contraName) 
+            else do
+                let (chartMap',  accMap') = updateOffset chartMap accMap name contraName
+                put $ Ledger chartMap' accMap' names
+                return Nothing
+        Record (Single side name amount) -> 
+            if name `elem` names then return $ Just $ AccountError (Dropped name) 
+            else if name `notElem` Map.keys accMap then return $ Just $ AccountError (NotFound name) 
+            else do
+                let accMap' = Map.insert name (alter side amount (accMap Map.! name)) accMap
+                put $ Ledger chartMap accMap' names
+                return Nothing
+        Drop name ->    
+            if name `elem` names then return $ Just $ AccountError (Dropped name) 
+            else if name `notElem` Map.keys chartMap then return $ Just $ AccountError (NotFound name) 
+            else do
+                let names' = name:names
+                put $ Ledger chartMap accMap names'
+                return Nothing
+        Copy -> return Nothing            
+
+
+
+
+
+-- update (Ledger chartMap accMap names) (Offset name cotraName) = --affects accMap and chartMap
+-- update (Ledger chartMap accMap names) (Record (SingleEntry s n a)) = --affects accMap  
+-- update (Ledger chartMap accMap names) (Drop name) = --affects names
+-- update l@(Ledger chartMap accMap names) Copy = Right l 
+
+-- update ledger (Use chartAction) = Right $ Ledger chartMap' accountMap' names
+--     where
+--         prims = toPrimitives chartAction 
+--         chartMap' = dispatchMany chartMap prims
+--         -- update Ledger with new accounts
+--         accoutMap' = toAccountMap chartMap'
 
 -- Run a single ledger action
 run :: Ledger -> Action -> Either Error Ledger
+run (Ledger chartMap accountMap names) (Use chartAction) = 
+    Right $ Ledger chartMap' accountMap names
+    where
+        prims = toPrimitives chartAction 
+        chartMap' = dispatchMany chartMap prims
+        -- update Ledger with new accounts
+        accoutMap' = toAccountMap chartMap'
 run ledger (Post prose d@(DoubleEntry {})) = run ledger $ Post prose (toBalanced d)
 run ledger (Post _ (BalancedEntry singles)) = acceptMany singles ledger
 run ledger (Close accName) = do
@@ -96,7 +174,7 @@ run ledger (Transfer fromName toName) =
         Just tAccount -> run ledger $ Post "Transfer entry" (transferEntry fromName toName tAccount)
         Nothing -> Left $ AccountError (NotFound fromName)
 run (Ledger cm am ds) (Deactivate name) = Right $ Ledger cm am (name:ds)
-run ledger (Finish _) = Right ledger  -- assuming Finish does not change the ledger
+run ledger (End _) = Right ledger  -- assuming Finish does not change the ledger
 run ledger _ = Right ledger  -- other items
 
 -- update :: Action -> State Ledger (Maybe Error) 

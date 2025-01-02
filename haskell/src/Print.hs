@@ -1,7 +1,7 @@
 module Print where 
 
 import Types
-import Ledger
+import Ledger()
 import qualified Data.Map as Map
 
 explain :: Error -> String

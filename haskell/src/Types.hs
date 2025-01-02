@@ -31,7 +31,12 @@ data SingleEntry = Single Side Name Amount deriving Show
 
 -- Error Handling
 data Error = AccountError AccountError | TransactionError TransactionError deriving Show
-data AccountError = NotFound Name | NotUnique Name | NotEquity Name | Dropped Name deriving Show
+data AccountError = NotFound Name 
+                  | NotUnique Name 
+                  | NotEquity Name 
+                  | Dropped Name 
+                  | AlreadyExists Name
+                  deriving Show
 data TransactionError = NotBalanced [SingleEntry] deriving Show
 
 -- Ledger
@@ -51,9 +56,9 @@ data ChartAction = Account T5 Name
                  deriving Show
 
 toPrimitives :: ChartAction -> [Primitive]
-toPrimitives (Account t name) = [Add t name] 
-toPrimitives (Accounts t names) = map (Add t) names
-toPrimitives (Account' t name names) = Add t name : [Offset name n | n <- names]      
+toPrimitives (Account  t n)    = [Add t n] 
+toPrimitives (Accounts t ns)   = map (Add t) ns
+toPrimitives (Account' t n ns) = Add t n : [Offset n c | c <- ns]      
 
 data Entry = DoubleEntry Name Name Amount | BalancedEntry [SingleEntry] deriving Show
 
@@ -63,7 +68,7 @@ data Action =   Use ChartAction
               | Close Name
               | Transfer Name Name
               | Deactivate Name
-              | Finish Activity
+              | End Activity
               | Unsafe [Primitive]
               deriving Show
 
@@ -72,5 +77,5 @@ data Primitive = Add T5 Name
                | Offset Name Name
                | Record SingleEntry
                | Drop Name  -- same as Deactivate
-               | End Activity  -- same as Finish
+               | Copy       -- copy ledger before closing accounts 
                deriving Show

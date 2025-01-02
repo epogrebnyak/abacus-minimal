@@ -9,3 +9,5 @@ main = do
   mapM_ (\x -> putStrLn ("  " ++ show x)) exampleStream
   diagnose $ result
   print result
+  let u = Use (Accounts Asset ["cash","ap"])
+  print $ process emptyLedger [u] 
