@@ -14,52 +14,31 @@ which Expense = Debit
 which _ = Credit
 
 -- Reverse side
-revert :: Side -> Side -- Q: is revert good name?
-revert Debit = Credit
-revert Credit = Debit
+toggle :: Side -> Side
+toggle Debit = Credit
+toggle Credit = Debit
 
--- Aliases for ChartItem constructors
-assets :: [Name] -> [ChartItem]
-assets = map (Add Asset)
-
-capital :: [Name] -> [ChartItem]
-capital = map (Add Equity)
-
-expenses :: [Name] -> [ChartItem]
-expenses = map (Add Expense)
-
-incomes :: [Name] -> [ChartItem]
-incomes = map (Add Income)
-
-liabilities :: [Name] -> [ChartItem]
-liabilities = map (Add Liability)
-
-offset :: Name -> [Name] -> [ChartItem]
-offset name = map (Offset name)
-
-account :: T5 -> Name -> [Name] -> [ChartItem]
-account t name contraNames = Add t name : offset name contraNames
-
--- Add ChartItem to Chart
-dispatch :: ChartItem -> ChartMap -> ChartMap
+-- Add primitive to chart
+dispatch :: Primitive -> ChartMap -> ChartMap
 dispatch (Add t name) chartMap = Map.insert name (Regular t) chartMap
 dispatch (Offset base contra) chartMap = if Map.member base chartMap
     then Map.insert contra (Contra base) chartMap
     else chartMap
+dispatch _ chartMap = chartMap  
 
--- Add several ChartItems to Chart
-dispatchMany :: [ChartItem] -> ChartMap -> ChartMap
-dispatchMany xs chartMap = foldl (flip dispatch) chartMap xs
+-- Add several prims to Chart
+dispatchMany :: ChartMap -> [Primitive] -> ChartMap
+dispatchMany chartMap = foldl (flip dispatch) chartMap
 
--- Create ChartMap from a list of ChartItem
-fromChartItems :: [ChartItem] -> ChartMap
-fromChartItems xs = dispatchMany xs emptyChartMap
+-- Create ChartMap from a list of prims
+fromChartItems :: [Primitive] -> ChartMap
+fromChartItems = dispatchMany emptyChartMap
 
 -- Get side of a given account
 whichSide :: Name -> ChartMap -> Maybe Side
 whichSide name chartMap = case Map.lookup name chartMap of
     Just (Regular t) -> Just (which t)
-    Just (Contra cname) -> revert <$> whichSide cname chartMap
+    Just (Contra cname) -> toggle <$> whichSide cname chartMap
     Nothing -> Nothing
 
 -- Define empty ChartMap
@@ -84,14 +63,16 @@ toPair closeTo name = (name, closeTo)
 -- Return all contra accounts for a specific account type
 -- May reuse for netting of permanent accounts
 contraPairs :: ChartMap -> T5 -> [(Name, Name)]
-contraPairs chartMap t = byType chartMap t >>= pairs 
-   where pairs name = toPair name <$> contras chartMap name
+contraPairs chartMap t = byType chartMap t >>= (\name -> toPair name <$> contras chartMap name)
 
--- Create complete list of closing pairs 
+-- Return closing pairs for regular account that close to accumulation account
+accumulationPairs :: ChartMap -> T5 -> Name -> [(Name, Name)]
+accumulationPairs chartMap t accName = toPair accName <$> byType chartMap t
+
+-- Combine contraPairs and accumulationPairs
+allPairs :: ChartMap -> Name -> T5 -> [(Name, Name)]
+allPairs chartMap accName t = contraPairs chartMap t ++ accumulationPairs chartMap t accName
+
+-- Create complete list of pairs for closing temporary accounts
 closingPairs :: ChartMap -> Name -> [(Name, Name)]
-closingPairs chartMap accName = f Expense ++ f Income -- may change order
-    where 
-        accumulationPairs :: T5 -> [(Name, Name)]
-        accumulationPairs t = toPair accName <$> byType chartMap t
-        f t = contraPairs chartMap t ++ accumulationPairs t                 
- 
+closingPairs chartMap accName = [Expense, Income] >>= (allPairs chartMap accName)

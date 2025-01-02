@@ -20,7 +20,7 @@ name:               abacus
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            0.0.2
+version:            0.0.3
 
 -- A short (one-line) description of the package.
 synopsis:           Minimal double entry accounting engine for a flat chart of accounts
@@ -70,7 +70,9 @@ library
 
     -- Other library packages from which modules are imported.
     build-depends:  base ^>=4.17.2.1, 
-                    containers
+                    containers,
+                    transformers,
+                    mtl
 
     -- Directories containing source files.
     hs-source-dirs:   src

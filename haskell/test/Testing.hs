@@ -3,6 +3,9 @@ module Main (main) where
 import Test.HUnit
 import Abacus
 
+account :: T5 -> Name -> [Name] -> [Primitive]
+account t name contraNames = Add t name : map (Offset name) contraNames
+
 -- Chart where contra accounts not listed alphabetically 
 chartSample :: ChartMap
 chartSample = fromChartItems (account Income "sales" ["voids", "refunds"] ++ -- ... real names
@@ -13,11 +16,6 @@ testWhichSide :: Test
 testWhichSide = TestCase $ do
     assertEqual "Refunds is a debit account" (Just Debit) (whichSide "refunds" chartSample)
 
--- Test capital constructor
-testConstructorCapital :: Test
-testConstructorCapital = TestCase $ do
-    let chartItems = capital ["eq", "re"]
-    assertEqual "Capital constructor" [Add Equity "eq", Add Equity "re"] chartItems
 
 -- Contra account names are alphabetically sorted 
 testContras :: Test
@@ -36,7 +34,6 @@ testClosingPairs = TestCase $ do
 -- Main function to run the test
 main :: IO ()
 main = do
-    _ <- runTestTT testConstructorCapital
     _ <- runTestTT testWhichSide
     _ <- runTestTT testContras
     _ <- runTestTT testClosingPairs

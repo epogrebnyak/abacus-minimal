@@ -12,26 +12,29 @@ import Chart
 import Ledger
 
 playWithThisChart :: ChartMap
-playWithThisChart = fromChartItems $ concat [
-            assets ["cash"], 
-            capital ["equity", "re"],
-            -- no liabilities 
-            expenses ["salary"],
-            account Income "sales" ["refunds"]
+playWithThisChart = fromChartItems $ [
+            Add Asset "cash", 
+            Add Equity "equity",
+            Add Equity "re",
+            Add Expense "salary",
+            Add Income "sales", 
+            Offset "sales" "refunds"
         ]
 
 playWithThisLedger :: Ledger
 playWithThisLedger = fromChartMap playWithThisChart
 
-exampleStream :: [Compound]
-exampleStream = [
+chartStream :: [ChartAction]
+chartStream =  [
     Accounts Asset ["cash", "ap"],
     Account' Equity "eq" ["ts"],      -- "ts" is treasury shares
     Account  Equity "re",             -- "re" is retained earnings account  
     Account' Income "sales" ["voids", "refunds"],
     Account  Expense "salary",
-    Accounts Liability ["ap", "dd", "tax"],  
-    -- may add OpenWith here
+    Accounts Liability ["ap", "dd", "tax"]]
+
+ledgerStream :: [LedgerAction] 
+ledgerStream = [
     DoubleEntry "cash" "eq" 1000,    -- shareholder investment
     Balanced [Single Credit "sales" 500,
               Single Credit "tax" 25,     -- 5% sales tax
@@ -43,6 +46,9 @@ exampleStream = [
     DoubleEntry "re" "dd" 100,       -- accrued dividend
     DoubleEntry "dd" "cash" 100,     -- payed dividend
     DoubleEntry "cash" "ts" 50]      -- bought back shares 
+
+exampleStream :: [Action]
+exampleStream = map ChartA chartStream ++ map LedgerA ledgerStream
 
 someFunc :: IO ()
 someFunc = putStrLn "someFunc"
