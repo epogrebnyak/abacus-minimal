@@ -34,6 +34,7 @@ data Error = AccountError AccountError | TransactionError TransactionError deriv
 data AccountError = NotFound Name 
                   | NotUnique Name 
                   | NotEquity Name 
+                  | NotRegular Name
                   | Dropped Name 
                   | AlreadyExists Name
                   deriving Show

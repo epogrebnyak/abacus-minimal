@@ -28,7 +28,7 @@ playWithThisLedger = fromChartMap playWithThisChart
 
 chartStream :: [ChartAction]
 chartStream =  [
-    Accounts Asset ["cash", "ap"],
+    Accounts Asset ["cash", "ar"],
     Account' Equity "eq" ["ts"],      -- "ts" is treasury shares
     Account  Equity "re",             -- "re" is retained earnings account  
     Account' Income "sales" ["voids", "refunds"],
@@ -56,7 +56,7 @@ ledgerStream = [
     close "re",                         
     double "Accrued dividend" "re" "dd" 100,         
     double "Paid dividend" "dd" "cash" 100,          
-    double "Bought back shares" "cash" "ts" 50]      
+    double "Bought back shares" "ts" "cash" 50]      
 
 exampleStream :: [Action]
 exampleStream = map Use chartStream ++ ledgerStream

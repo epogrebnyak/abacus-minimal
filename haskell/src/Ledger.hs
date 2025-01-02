@@ -101,69 +101,72 @@ updateOffset chartMap accMap name contraName =
             Nothing -> accMap
     in (chartMap', accMap')
 
-update :: Primitive -> State Ledger (Maybe Error)  
+
+data Book = Book {chartM :: ChartMap, ledgerM :: AccountMap, copy :: Maybe AccountMap}
+
+emptyBook :: Book
+emptyBook = Book Map.empty Map.empty Nothing  
+
+isRegular :: Role -> Bool
+isRegular (Regular _) = True
+isRegular _ = False
+
+isMember :: Name -> Map.Map Name a -> Bool
+isMember = Map.member
+
+allowOffset :: ChartMap -> Name -> Name -> Maybe AccountError
+allowOffset chartMap name contraName  
+   | not (isMember name chartMap) = Just $ NotFound name
+   | isMember contraName chartMap = Just $ AlreadyExists contraName
+   | (isRegular <$> Map.lookup name chartMap) /= Just True = Just $ NotRegular name
+   | otherwise = Nothing
+
+update :: Primitive -> State Book (Maybe Error)  
 update p = do
-    chartMap <- gets chart
-    accMap <- gets accounts
-    names <- gets deactivated
+    let error e = return $ Just $ AccountError e
+    chart <- gets chartM
+    ledger <- gets ledgerM
+    copy <- gets copy 
     case p of
         Add t name -> 
-            if name `elem` names then return $ Just $ AccountError (Dropped name) 
-            else case Map.lookup name chartMap of
-                Just _ -> return $ Just $ AccountError (AlreadyExists name)
+            case Map.lookup name chart of
+                Just _ -> error (AlreadyExists name)
                 Nothing -> do
-                    let (chartMap',  accMap') = updateAdd chartMap accMap t name
-                    put $ Ledger chartMap' accMap' names
+                    let (chart', ledger') = updateAdd chart ledger t name
+                    put $ Book chart' ledger' copy
                     return Nothing
         Offset name contraName ->
-            if name `elem` names then return $ Just $ AccountError (Dropped name) 
-            else if name `notElem` Map.keys chartMap then return $ Just $ AccountError (NotFound name) 
-            else if contraName `elem` names then return $ Just $ AccountError (AlreadyExists contraName) 
-            else do
-                let (chartMap',  accMap') = updateOffset chartMap accMap name contraName
-                put $ Ledger chartMap' accMap' names
-                return Nothing
+            case allowOffset chart name contraName of
+                Just e -> error e
+                Nothing -> do
+                  let (chart', ledger') = updateOffset chart ledger name contraName
+                  put $ Book chart' ledger' copy
+                  return Nothing
         Record (Single side name amount) -> 
-            if name `elem` names then return $ Just $ AccountError (Dropped name) 
-            else if name `notElem` Map.keys accMap then return $ Just $ AccountError (NotFound name) 
+            if not (isMember name ledger) then error (NotFound name) 
             else do
-                let accMap' = Map.insert name (alter side amount (accMap Map.! name)) accMap
-                put $ Ledger chartMap accMap' names
+                let tAccount' = alter side amount (ledger Map.! name)
+                let ledger' = Map.insert name tAccount' ledger
+                put $ Book chart ledger' copy
                 return Nothing
         Drop name ->    
-            if name `elem` names then return $ Just $ AccountError (Dropped name) 
-            else if name `notElem` Map.keys chartMap then return $ Just $ AccountError (NotFound name) 
+            if not (isMember name ledger) then error (NotFound name) 
             else do
-                let names' = name:names
-                put $ Ledger chartMap accMap names'
+                let ledger' = Map.delete name ledger
+                put $ Book chart ledger' copy
                 return Nothing
-        Copy -> return Nothing            
-
-
-
-
-
--- update (Ledger chartMap accMap names) (Offset name cotraName) = --affects accMap and chartMap
--- update (Ledger chartMap accMap names) (Record (SingleEntry s n a)) = --affects accMap  
--- update (Ledger chartMap accMap names) (Drop name) = --affects names
--- update l@(Ledger chartMap accMap names) Copy = Right l 
-
--- update ledger (Use chartAction) = Right $ Ledger chartMap' accountMap' names
---     where
---         prims = toPrimitives chartAction 
---         chartMap' = dispatchMany chartMap prims
---         -- update Ledger with new accounts
---         accoutMap' = toAccountMap chartMap'
+        Copy -> do 
+            put $ Book chart ledger (Just ledger)
+            return Nothing            
 
 -- Run a single ledger action
 run :: Ledger -> Action -> Either Error Ledger
-run (Ledger chartMap accountMap names) (Use chartAction) = 
-    Right $ Ledger chartMap' accountMap names
+run (Ledger chartMap _ names) (Use chartAction) = 
+    Right $ Ledger chartMap' accountMap' names
     where
         prims = toPrimitives chartAction 
         chartMap' = dispatchMany chartMap prims
-        -- update Ledger with new accounts
-        accoutMap' = toAccountMap chartMap'
+        accountMap' = toAccountMap chartMap'
 run ledger (Post prose d@(DoubleEntry {})) = run ledger $ Post prose (toBalanced d)
 run ledger (Post _ (BalancedEntry singles)) = acceptMany singles ledger
 run ledger (Close accName) = do
