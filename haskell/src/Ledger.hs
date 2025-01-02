@@ -42,7 +42,7 @@ applySingle (Single side name amount) accountMap = case Map.lookup name accountM
 
 -- Accept a single entry into the Ledger
 acceptSingle :: Ledger -> SingleEntry -> Either Error Ledger
-acceptSingle (Ledger chartMap accountMap names) s@(Single side name amount) =
+acceptSingle (Ledger chartMap accountMap names) s@(Single _ name _) =
     if name `elem` names then Left (AccountError (Dropped name)) else 
     case applySingle s accountMap of
         Left err -> Left err
@@ -86,17 +86,17 @@ toBalanced x = x
 
 -- Run a single ledger action
 run :: Ledger -> Action -> Either Error Ledger
-run ledger (Enter d@(DoubleEntry _ _ _)) = run ledger $ Enter (toBalanced d)
-run ledger (Enter (BalancedEntry singles)) = acceptMany singles ledger
+run ledger (Post prose d@(DoubleEntry {})) = run ledger $ Post prose (toBalanced d)
+run ledger (Post _ (BalancedEntry singles)) = acceptMany singles ledger
 run ledger (Close accName) = do
     actions <- closeActions (chart ledger) accName
     foldM run ledger actions
 run ledger (Transfer fromName toName) =
     case Map.lookup fromName (accounts ledger) of
-        Just tAccount -> run ledger $ Enter (transferEntry fromName toName tAccount)
+        Just tAccount -> run ledger $ Post "Transfer entry" (transferEntry fromName toName tAccount)
         Nothing -> Left $ AccountError (NotFound fromName)
 run (Ledger cm am ds) (Deactivate name) = Right $ Ledger cm am (name:ds)
 run ledger (Finish _) = Right ledger  -- assuming Finish does not change the ledger
-run ledger (_) = Right ledger  -- other items
+run ledger _ = Right ledger  -- other items
 
 -- update :: Action -> State Ledger (Maybe Error) 

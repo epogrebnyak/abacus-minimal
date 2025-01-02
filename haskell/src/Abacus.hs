@@ -2,7 +2,6 @@ module Abacus (module Types,
                module Chart, 
                module Ledger, 
                module Print,
-               someFunc, 
                exampleStream,
                playWithThisChart,               
                playWithThisLedger               
@@ -13,6 +12,7 @@ import Chart
 import Ledger
 import Print
 
+-- Basic chart
 playWithThisChart :: ChartMap
 playWithThisChart = fromChartItems $ [
             Add Asset "cash", 
@@ -35,22 +35,28 @@ chartStream =  [
     Account  Expense "salary",
     Accounts Liability ["ap", "dd", "tax"]]
 
+double :: String -> Name -> Name -> Amount -> Action
+double comment d c a = Post comment $ DoubleEntry d c a
+
+balanced :: String -> [SingleEntry] -> Action
+balanced comment ss = Post comment $ BalancedEntry ss
+
+close :: Name -> Action
+close = Close   
+
 ledgerStream :: [Action] 
 ledgerStream = [
-    Enter $ DoubleEntry "cash" "eq" 1000,    -- shareholder investment
-    Enter $ BalancedEntry [Single Credit "sales" 500,
-              Single Credit "tax" 25,     -- 5% sales tax
-              Single Debit "ar" 525],     -- invoiced customer 
-    Enter $ DoubleEntry "refunds" "ar" 25,   -- issued refund 
-    Enter $ DoubleEntry "voids" "ar" 75,     -- voided part of invoice 
-    Enter $ DoubleEntry "salary" "cash" 200, -- paid salaries
-    Close "re",                      -- closed period   
-    Enter $ DoubleEntry "re" "dd" 100,       -- accrued dividend
-    Enter $ DoubleEntry "dd" "cash" 100,     -- payed dividend
-    Enter $ DoubleEntry "cash" "ts" 50]      -- bought back shares 
+    double "Shareholder investment" "cash" "eq" 1000,    
+    balanced "Invoice with 5% sales tax" [Single Credit "sales" 500,
+              Single Credit "tax" 25,     
+              Single Debit "ar" 525],     
+    double "Issued partial refund" "refunds" "ar" 25,    
+    double "Made partial void" "voids" "ar" 75,     
+    double "Paid salaries" "salary" "cash" 200, 
+    close "re",                         
+    double "Accrued dividend" "re" "dd" 100,         
+    double "Paid dividend" "dd" "cash" 100,          
+    double "Bought back shares" "cash" "ts" 50]      
 
 exampleStream :: [Action]
 exampleStream = map Use chartStream ++ ledgerStream
-
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"

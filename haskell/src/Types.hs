@@ -54,7 +54,7 @@ data Entry = DoubleEntry Name Name Amount | BalancedEntry [SingleEntry] deriving
 
 -- Ledger actions
 data Action =   Use ChartAction
-              | Enter Entry 
+              | Post String Entry 
               | Close Name
               | Transfer Name Name
               | Deactivate Name
@@ -65,7 +65,7 @@ data Action =   Use ChartAction
 -- Primitives
 data Primitive = Add T5 Name
                | Offset Name Name
-               | Post SingleEntry
+               | Record SingleEntry
                | Drop Name  -- same as Deactivate
                | End Activity  -- same as Finish
                deriving Show
