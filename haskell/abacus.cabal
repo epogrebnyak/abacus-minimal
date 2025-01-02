@@ -20,7 +20,7 @@ name:               abacus
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            0.0.3
+version:            0.0.4
 
 -- A short (one-line) description of the package.
 synopsis:           Minimal double entry accounting engine for a flat chart of accounts
