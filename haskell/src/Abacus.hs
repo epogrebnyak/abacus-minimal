@@ -1,6 +1,7 @@
 module Abacus (module Types, 
                module Chart, 
                module Ledger, 
+               module Print,
                someFunc, 
                exampleStream,
                playWithThisChart,               
@@ -10,6 +11,7 @@ module Abacus (module Types,
 import Types
 import Chart
 import Ledger
+import Print
 
 playWithThisChart :: ChartMap
 playWithThisChart = fromChartItems $ [
@@ -33,7 +35,7 @@ chartStream =  [
     Account  Expense "salary",
     Accounts Liability ["ap", "dd", "tax"]]
 
-ledgerStream :: [LedgerAction] 
+ledgerStream :: [Action] 
 ledgerStream = [
     DoubleEntry "cash" "eq" 1000,    -- shareholder investment
     Balanced [Single Credit "sales" 500,
@@ -48,7 +50,7 @@ ledgerStream = [
     DoubleEntry "cash" "ts" 50]      -- bought back shares 
 
 exampleStream :: [Action]
-exampleStream = map ChartA chartStream ++ map LedgerA ledgerStream
+exampleStream = map Use chartStream ++ ledgerStream
 
 someFunc :: IO ()
 someFunc = putStrLn "someFunc"

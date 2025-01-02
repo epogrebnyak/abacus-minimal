@@ -7,7 +7,7 @@ import qualified Data.Map as Map
 emptyAccount :: Side -> TAccount
 emptyAccount side = TAccount side 0 0
 
--- Determine normal side (debit or credit) for a T5 account type
+-- Determine debit or credit side for a T5 account type
 which :: T5 -> Side
 which Asset = Debit
 which Expense = Debit

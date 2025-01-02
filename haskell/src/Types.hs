@@ -30,13 +30,9 @@ type ChartMap = Map.Map Name Role
 data SingleEntry = Single Side Name Amount deriving Show
 
 -- Error Handling
-data Error = NotFound [Name] | NotBalanced [SingleEntry] | NotUnique [Name] | NotEquity Name
-
-explain :: Error -> String
-explain (NotFound names) = "Accounts not found: " ++ show names
-explain (NotBalanced posts) = "Entry not balanced: " ++ show posts
-explain (NotUnique names) = "Duplicate account names: " ++ show names
-explain (NotEquity name) = "Must be an equity account: " ++ name
+data Error = AccountError AccountError | TransactionError TransactionError
+data AccountError = NotFound Name | NotUnique Name | NotEquity Name | Dropped Name
+data TransactionError = NotBalanced [SingleEntry]
 
 -- Ledger
 type Balances = Map.Map Name Amount
@@ -54,17 +50,17 @@ data ChartAction = Account T5 Name
                 | Account' T5 Name [Name]
                 deriving Show
 
--- Ledger Actions
-data LedgerAction = DoubleEntry Name Name Amount
-                 | Balanced [SingleEntry]
-                 | Close Name
-                 | Transfer Name Name
-                 | Deactivate Name
-                 | Finish Activity
-                 deriving Show
+data Entry = DoubleE Name Name Amount | BalancedE [SingleEntry]
 
--- Actions
-data Action = ChartA ChartAction | LedgerA LedgerAction deriving Show
+-- Ledger actions
+data Action =   Use ChartAction
+              | Enter Entry 
+              | Close Name
+              | Transfer Name Name
+              | Deactivate Name
+              | Finish Activity
+              | Unsafe [Primitive]
+              deriving Show
 
 -- Primitives
 data Primitive = Add T5 Name
