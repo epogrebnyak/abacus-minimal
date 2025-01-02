@@ -3,10 +3,10 @@ module Ledger where
 import qualified Data.Map as Map
 import Control.Monad (foldM)
 
-import Chart (emptyChartMap, emptyAccount, closingPairs, playWithThisChart, whichSide)
+import Chart (emptyChartMap, emptyAccount, closingPairs, whichSide)
 import Types
 
--- Create AccountMap from ChartMap using do notation
+-- Create AccountMap from ChartMap using do notation (similar to list comprehension)
 toAccountMap :: ChartMap -> AccountMap
 toAccountMap chartMap = Map.fromList $ do
     name <- Map.keys chartMap
@@ -21,12 +21,6 @@ fromChartMap chartMap = Ledger chartMap (toAccountMap chartMap) []
 emptyLedger :: Ledger
 emptyLedger = fromChartMap emptyChartMap
 
-dr :: Name -> Amount -> SingleEntry
-dr = Single Debit
-
-cr :: Name -> Amount -> SingleEntry
-cr = Single Credit
-
 -- Check if a list of single entries is balanced
 isBalanced :: [SingleEntry] -> Bool
 isBalanced posts = let f = sideSum posts in f Debit == f Credit
@@ -37,15 +31,13 @@ sideSum posts side = sum [a | Single s _ a <- posts, s == side]
 
 -- Post single entry to t-account.
 post :: Side -> Amount -> TAccount -> TAccount
-post side amount (TA tSide balance) =
-    if side == tSide then TA tSide (balance + amount)
-                     else TA tSide (balance - amount)
+post Debit amount (TAccount side d c)  = TAccount side (d+amount) c
+post Credit amount (TAccount side d c) = TAccount side d (c+amount) 
 
 -- Apply a single entry to the AccountMap
 applySingle :: SingleEntry -> AccountMap -> Either Error AccountMap
 applySingle (Single side name amount) accountMap = case Map.lookup name accountMap of
-    Just tAccount -> Right $ Map.insert name tAccount' accountMap
-        where tAccount' = post side amount tAccount
+    Just tAccount -> Right $ Map.insert name (post side amount tAccount) accountMap
     Nothing -> Left $ NotFound [name]
 
 -- Accept a single entry into the Ledger
@@ -71,8 +63,8 @@ printAccountBalances ledger = mapM_ putStrLn (accountStrings ledger)
   where 
     accountStrings :: Ledger -> [String]
     accountStrings (Ledger _ accountMap _) = do
-        (name, TA _ balance) <- Map.toList accountMap
-        return $ name ++ ": " ++ show balance
+        (name, tAccount) <- Map.toList accountMap
+        return $ name ++ ": " ++ show (accountBalance tAccount)
 
 -- Diagnose the Ledger for errors or print accounts
 diagnose :: Either Error Ledger -> IO ()
@@ -86,12 +78,3 @@ closeActions chartMap accName =
         Just _ -> Left $ NotEquity accName
         _ -> Left $ NotFound [accName]
     where toActions (fromName, toName) = [Transfer fromName toName, Deactivate fromName]
-
--- accept ledger and a list containing transfer actions 
--- convert transfer to double and apply this entry to ledger
--- return a new list where transfers are changed to double 
--- Your task create a ledger with sales, refunds, salary and retained earnings
--- to test this action
-playWithThisLedger :: Ledger
-playWithThisLedger = fromChartMap playWithThisChart
-

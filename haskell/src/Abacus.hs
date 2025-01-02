@@ -1,8 +1,27 @@
-module Abacus (module Ledger, module Types, module Chart, someFunc, exampleStream) where
+module Abacus (module Types, 
+               module Chart, 
+               module Ledger, 
+               someFunc, 
+               exampleStream,
+               playWithThisChart,               
+               playWithThisLedger               
+               ) where
 
 import Types
 import Chart
 import Ledger
+
+playWithThisChart :: ChartMap
+playWithThisChart = fromChartItems $ concat [
+            assets ["cash"], 
+            capital ["equity", "re"],
+            -- no liabilities 
+            expenses ["salary"],
+            account Income "sales" ["refunds"]
+        ]
+
+playWithThisLedger :: Ledger
+playWithThisLedger = fromChartMap playWithThisChart
 
 exampleStream :: [Compound]
 exampleStream = [
@@ -12,7 +31,7 @@ exampleStream = [
     Account' Income "sales" ["voids", "refunds"],
     Account  Expense "salary",
     Accounts Liability ["ap", "dd", "tax"],  
-    -- may add OpenWith later here
+    -- may add OpenWith here
     DoubleEntry "cash" "eq" 1000,    -- shareholder investment
     Balanced [Single Credit "sales" 500,
               Single Credit "tax" 25,     -- 5% sales tax

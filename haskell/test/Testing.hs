@@ -3,9 +3,10 @@ module Main (main) where
 import Test.HUnit
 import Abacus
 
+-- Chart where contra accounts not listed alphabetically 
 chartSample :: ChartMap
-chartSample = fromChartItems (account Income "sales" ["voids", "refunds"] ++
-                              account Expense "cogs" ["sgoc", "abc"])
+chartSample = fromChartItems (account Income "sales" ["voids", "refunds"] ++ -- ... real names
+                              account Expense "cogs" ["sgoc", "abc"]) -- ... fictional names
 
 -- End-to-end test for chart creation
 testWhichSide :: Test
@@ -18,7 +19,7 @@ testConstructorCapital = TestCase $ do
     let chartItems = capital ["eq", "re"]
     assertEqual "Capital constructor" [Add Equity "eq", Add Equity "re"] chartItems
 
--- Note that keys returned should be alphabetically sorted 
+-- Contra account names are alphabetically sorted 
 testContras :: Test
 testContras = TestCase $ do
     assertEqual "Return contra accounts for cogs" ["abc", "sgoc"] (contras chartSample "cogs")
@@ -27,8 +28,8 @@ testContras = TestCase $ do
 testClosingPairs :: Test
 testClosingPairs = TestCase $ do
     let ref =  [("abc","cogs"), ("sgoc","cogs"), -- close contra expense
-                ("refunds","sales"),("voids","sales"), -- close contra income
                 ("cogs","re"), -- close expense to retained earnings 
+                ("refunds","sales"),("voids","sales"), -- close contra income
                 ("sales","re")] -- close income to retained earnings 
     assertEqual "List closing pairs for chartSample" ref (closingPairs chartSample "re")
 

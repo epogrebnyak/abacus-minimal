@@ -5,7 +5,12 @@ import qualified Data.Map as Map
 type Amount = Int  -- This could be Decimal E2
 type Name = String
 data Side = Debit | Credit deriving (Show, Eq)
-data TAccount = TA Side Amount deriving Show
+data TAccount = TAccount Side Amount Amount deriving Show
+
+accountBalance :: TAccount -> Amount
+accountBalance (TAccount Debit a b) = a - b
+accountBalance (TAccount Credit a b) = b - a
+
 type AccountMap = Map.Map Name TAccount
 data T5 = Asset | Expense | Equity | Liability | Income deriving (Show, Eq)
 
