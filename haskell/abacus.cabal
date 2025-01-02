@@ -59,10 +59,11 @@ library
 
     -- Modules exported by the library
     -- FIXME: is it possible to change to submodule structure?
-    exposed-modules:  Abacus, Chart, Bases, Ledger
+    exposed-modules:  Abacus 
+    --, Chart, Bases, Ledger
 
     -- Modules included in this library but not exported.
-    -- other-modules:
+    other-modules: Types, Chart, Ledger
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -121,7 +122,7 @@ test-suite abacus-test
     hs-source-dirs:   test
 
     -- The entrypoint to the test suite.
-    main-is:          Main.hs
+    main-is:          Testing.hs
 
     -- Test dependencies.
     build-depends:

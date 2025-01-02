@@ -1,8 +1,10 @@
 module Main where
 
-import qualified Abacus (someFunc)
+import Abacus 
 
 main :: IO ()
 main = do
   putStrLn "Hello, Haskell!"
-  Abacus.someFunc
+  someFunc
+  print playWithThisLedger
+  print exampleStream

@@ -1,4 +1,4 @@
-module Bases where
+module Types where
 
 import qualified Data.Map as Map
 
@@ -34,4 +34,21 @@ data Ledger = Ledger {
     deactivated :: [Name] } deriving Show
 
 -- Stages of accounting cycle and types of entries
-data Activity = Opening | Business | Adjustment | Closing | PostClose
+data Activity = Opening | Business | Adjustment | Closing | PostClose deriving Show
+
+data Compound = Account T5 Name |
+                Accounts T5 [Name] |
+                Account' T5 Name [Name] |
+                OpenWith Balances | 
+                DoubleEntry Name Name Amount |
+                Balanced [SingleEntry] |
+                Close Name | 
+                Transfer Name Name | 
+                Deactivate Name | 
+                End Activity deriving Show
+
+data Primitive = Use ChartItem |  
+                 Post SingleEntry |
+                 Drop Name |   -- same as Deactivate
+                 EndP Activity -- same as End 
+                 deriving Show

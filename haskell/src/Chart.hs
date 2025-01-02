@@ -1,6 +1,6 @@
 module Chart where 
 
-import Bases
+import Types
 import qualified Data.Map as Map
 
 -- Create an empty T-account

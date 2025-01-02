@@ -1,8 +1,7 @@
 module Main (main) where
 
 import Test.HUnit
-import Chart
-import Bases
+import Abacus
 
 chartSample :: ChartMap
 chartSample = fromChartItems (account Income "sales" ["voids", "refunds"] ++
